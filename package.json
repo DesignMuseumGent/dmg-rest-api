@@ -1,0 +1,18 @@
+{
+  "type": "module",
+  "name": "dmg-rest-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.4.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2"
+  }
+}

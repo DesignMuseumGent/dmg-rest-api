@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "npm start",
     "start": "serve -s build",
-    "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"
@@ -19,6 +18,9 @@
     "@supabase/supabase-js": "^2.4.1",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "^5.0.1",
     "serve": "^14.2.0"
   },
   "engines": {

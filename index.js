@@ -9,15 +9,15 @@ app.listen(
     console.log("it's alive")
 )
 
-const billboards = await fetchAllBillboards()
+const billboard = await fetchAllBillboards()
 
 // retrieve all billboards;
 app.get('/exhibitions/billboardseries/', (req, res) => {
     const billboards = [];
-    for (let x=0; x < billboards.length; x++) {
-        if (billboards[x]["GecureerdeCollectie.bestaatUit"]["MensgemaaktObject.titel"].includes(_test)){
-            console.log(billboards[x]);
-            billboards.push(billboards[x]);
+    for (let x=0; x < billboard.length; x++) {
+        if (billboard[x]){
+            console.log(billboard[x]);
+            billboards.push(billboard[x]);
         }
     }
 

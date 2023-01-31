@@ -13,14 +13,11 @@ const billboards = await fetchAllBillboards()
 
 // retrieve all billboards;
 app.get('/exhibitions/billboardseries/', (req, res) => {
-    var _test = req.query.test;
-    if (req.query.test){
-        const billboards = [];
-        for (let x=0; x < billboards.length; x++) {
-            if (billboards[x]["GecureerdeCollectie.bestaatUit"]["MensgemaaktObject.titel"].includes(_test)){
-                console.log(billboards[x]);
-                billboards.push(billboards[x]);
-            }
+    const billboards = [];
+    for (let x=0; x < billboards.length; x++) {
+        if (billboards[x]["GecureerdeCollectie.bestaatUit"]["MensgemaaktObject.titel"].includes(_test)){
+            console.log(billboards[x]);
+            billboards.push(billboards[x]);
         }
     }
 

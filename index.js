@@ -1,6 +1,7 @@
 import {supabase} from "./supabaseClient.js";
 import {fetchAllBillboards, fetchBillboardByYear} from "./src/utils/parsers.js";
 import express from "express";
+
 const app = express();
 const PORT = 1992;
 

@@ -3,10 +3,11 @@ import {fetchAllBillboards, fetchBillboardByYear} from "./src/utils/parsers.js";
 import express from "express";
 
 const app = express();
+app.use(express.static("public"))
 const PORT = 1992;
 
 app.listen(
-    PORT,
+    process.env.PORT || 3000,
     console.log("it's alive")
 )
 

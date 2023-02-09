@@ -1,4 +1,5 @@
 import {supabase} from "../../supabaseClient.js";
+
 export async function fetchAllBillboards() {
     const {data, error} = await supabase
         .from("exh_billboardseries")

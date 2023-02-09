@@ -4,6 +4,7 @@ export async function fetchAllBillboards() {
         .from("exh_billboardseries")
         .select("OSLO", {'head':false})
 
+
     let billboards = []
     for (let x=0; x < data.length; x++) {
         billboards.push(data[x]["OSLO"])

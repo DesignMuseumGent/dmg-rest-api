@@ -1,10 +1,9 @@
 import {supabase} from "./supabaseClient.js";
-import {fetchAllBillboards, fetchBillboardByYear} from "./src/utils/parsers.js";
+import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber} from "./src/utils/parsers.js";
 import express from "express";
 
 const app = express();
 app.use(express.static("public"))
-const PORT = 1992;
 
 app.listen(
     process.env.PORT || 3000,
@@ -30,4 +29,14 @@ app.get('/exhibitions/billboardseries/', (req, res) => {
     );
 })
 
-// retrieve billboards for a specific year;
+app.get('/objects/:objectNumber', async (req, res) => {
+
+    // 2005-0014_2-3
+
+    const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
+    const result = x[0]["LDES_raw"];
+
+    res.send(
+        {result}
+    )
+})

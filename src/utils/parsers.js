@@ -13,6 +13,10 @@ export async function fetchAllBillboards() {
     return billboards;
 }
 
+const callApi =  setInterval(()=> {
+    fetchAllBillboards();
+}, 30000);
+
 export async function fetchBillboardByYear(year) {
     const {data, error} = await supabase
         .from("exh_billboardseries")
@@ -23,4 +27,12 @@ export async function fetchBillboardByYear(year) {
         billboards.push(data[x]["OSLO"])
     }
     return billboards;
+}
+
+export async function fetchLDESRecordByObjectNumber(_On) {
+    const {data, error} = await supabase
+        .from("dmg_objects_LDES")
+        .select('LDES_raw')
+        .eq('objectNumber', _On)
+    return data;
 }

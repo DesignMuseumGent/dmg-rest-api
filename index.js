@@ -1,42 +1,71 @@
-import {supabase} from "./supabaseClient.js";
 import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber} from "./src/utils/parsers.js";
 import express from "express";
+import * as cron from 'node-cron';
 
-const app = express();
-app.use(express.static("public"))
+cron.schedule("09 55 * * *", start)
 
-app.listen(
-    process.env.PORT || 3000,
-    console.log("it's alive")
-)
+async function start(){
 
-const billboard = await fetchAllBillboards()
+    const app = express();
+    app.use(express.static("public"))
+
+    app.listen(
+        process.env.PORT || 3000,
+        console.log("it's alive")
+    )
+
+    const billboard = await fetchAllBillboards()
 
 // retrieve all billboards;
-app.get('/exhibitions/billboardseries/', (req, res) => {
-    const billboards = [];
-    for (let x=0; x < billboard.length; x++) {
-        if (billboard[x]){
-            console.log(billboard[x]);
-            billboards.push(billboard[x]);
+    app.get('/exhibitions/billboardseries/', (req, res) => {
+        const billboards = [];
+        for (let x=0; x < billboard.length; x++) {
+            if (billboard[x]){
+                console.log(billboard[x]);
+                billboards.push(billboard[x]);
+            }
         }
-    }
 
-    res.send(
-        {
-            billboards
+        res.send(
+            {
+                billboards
+            }
+        );
+    })
+
+
+    app.get('/objects/:objectNumber', async (req, res) => {
+
+        // 2005-0014_2-3
+
+        const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
+
+
+        const result_cidoc = x[0]["LDES_raw"];
+        const result_oslo = x[0]["OSLO"];
+
+        const type = req.params.ikwil;
+        console.log(req.params.ikwil);
+
+        if(type === "OSLO") {
+            res.send(
+                {result_oslo}
+            )
         }
-    );
-})
 
-app.get('/objects/:objectNumber', async (req, res) => {
+        else if(type === "CIDOC") {
+            res.send(
+                {result_cidoc}
+            )
+        }
 
-    // 2005-0014_2-3
+        else {
+            res.send(
+                {result_cidoc}
+            )
+        }
 
-    const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-    const result = x[0]["LDES_raw"];
 
-    res.send(
-        {result}
-    )
-})
+    })
+    console.log("DONE :D :D :D :D ")
+}

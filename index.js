@@ -2,7 +2,7 @@ import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber}
 import express from "express";
 import * as cron from 'node-cron';
 
-cron.schedule("09 55 * * *", start)
+cron.schedule("55 09 * * *", start)
 
 async function start(){
 

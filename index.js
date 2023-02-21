@@ -2,7 +2,7 @@ import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber}
 import express from "express";
 import * as cron from 'node-cron';
 
-cron.schedule("55 09 * * *", start)
+cron.schedule("30 09 * * *", start)
 
 async function start(){
 
@@ -10,13 +10,13 @@ async function start(){
     app.use(express.static("public"))
 
     app.listen(
-        process.env.PORT || 3000,
+        process.env.PORT || 1992,
         console.log("it's alive")
     )
 
     const billboard = await fetchAllBillboards()
 
-// retrieve all billboards;
+    // retrieve all billboards;
     app.get('/exhibitions/billboardseries/', (req, res) => {
         const billboards = [];
         for (let x=0; x < billboard.length; x++) {
@@ -35,8 +35,6 @@ async function start(){
 
 
     app.get('/objects/:objectNumber', async (req, res) => {
-
-        // 2005-0014_2-3
 
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
 
@@ -69,3 +67,5 @@ async function start(){
     })
     console.log("DONE :D :D :D :D ")
 }
+
+start();

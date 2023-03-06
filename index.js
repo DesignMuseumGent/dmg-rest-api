@@ -1,8 +1,8 @@
-import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber} from "./src/utils/parsers.js";
+import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber, fetchLDESRecordByAgentID} from "./src/utils/parsers.js";
 import express from "express";
 import * as cron from 'node-cron';
 
-cron.schedule("30 09 * * *", start)
+cron.schedule("30 09 * * *", start);
 
 async function start(){
 
@@ -33,11 +33,16 @@ async function start(){
         );
     })
 
+    app.get('/agents/:agentPID', async(req, res) => {
+        const x = await fetchLDESRecordByAgentID(req.params.agentPID);
+        const result_cidoc = x[0]["LDES_raw"];
+        res.send({result_cidoc})
+    })
+
 
     app.get('/objects/:objectNumber', async (req, res) => {
 
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-
 
         const result_cidoc = x[0]["LDES_raw"];
         const result_oslo = x[0]["OSLO"];

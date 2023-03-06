@@ -36,3 +36,18 @@ export async function fetchLDESRecordByObjectNumber(_On) {
         .eq('objectNumber', _On)
     return data;
 }
+
+export async function fetchLDESRecordByAgentID(AgentPID) {
+    const {data, error} = await supabase
+        .from("dmg_personen_LDES")
+        .select("LDES_raw")
+        .eq('agent_ID', AgentPID)
+    return data;
+}
+
+export async function fetchLDESAllAgents() {
+    const {data, error} = await supabase
+        .from("dmg_personen_LDES")
+        .select("LDES_raw")
+    return data;
+}

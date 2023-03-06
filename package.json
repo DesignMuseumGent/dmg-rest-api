@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "npm start",
-    "start": "serve -s build",
+    "start": "node index.js",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"

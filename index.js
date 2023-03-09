@@ -44,11 +44,16 @@ async function start(){
         res.send({result_cidoc})
     })
 
-    app.get('/exhibitions/:exhibtionPID', async (req, res)=>{
+    app.get('/exhibitions/:exhibitionPID', async (req, res)=>{
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
-        const result_cidoc = x[0]["LDES_raw"];
+        try{
+            const result_cidoc = x[0]["LDES_raw"];
+            console.log(result_cidoc)
+            res.send({result_cidoc})
+        } catch (e) {
+            console.log(e)
+        }
 
-        res.send({result_cidoc})
     } )
 
     app.get('/objects/:objectNumber', async (req, res) => {

@@ -1,4 +1,9 @@
-import {fetchAllBillboards, fetchBillboardByYear, fetchLDESRecordByObjectNumber, fetchLDESRecordByAgentID} from "./src/utils/parsers.js";
+import {
+    fetchAllBillboards,
+    fetchLDESRecordByObjectNumber,
+    fetchLDESRecordByAgentID,
+    fetchLDESrecordsByExhibitionID
+} from "./src/utils/parsers.js";
 import express from "express";
 import * as cron from 'node-cron';
 
@@ -39,6 +44,12 @@ async function start(){
         res.send({result_cidoc})
     })
 
+    app.get('/exhibitions/:exhibtionPID', async (req, res)=>{
+        const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
+        const result_cidoc = x[0]["LDES_raw"];
+
+        res.send({result_cidoc})
+    } )
 
     app.get('/objects/:objectNumber', async (req, res) => {
 

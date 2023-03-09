@@ -42,7 +42,7 @@ export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
         .from("dmg_tentoonstelling_LDES")
         .select("LDES_raw")
         .eq('exh_PID', ExhibitionPID)
-
+    return data;
 }
 
 export async function fetchLDESRecordByAgentID(AgentPID) {

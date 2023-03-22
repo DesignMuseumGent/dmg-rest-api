@@ -7,7 +7,7 @@ import {
 import express from "express";
 import * as cron from 'node-cron';
 
-cron.schedule("30 09 * * *", start);
+cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
 
 async function start(){
 

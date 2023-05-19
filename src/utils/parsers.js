@@ -44,6 +44,13 @@ export async function fetchAllLDESrecordsObjects() {
     return data;
 }
 
+export async function fetchAllExhibitions(){
+    const {data, error} = await supabase
+        .from("dmg_tentoonstelling_LDES")
+        .select('exh_PID')
+    return data;
+}
+
 
 
 export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {

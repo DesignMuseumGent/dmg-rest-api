@@ -2,7 +2,8 @@ import {
     fetchAllBillboards,
     fetchLDESRecordByObjectNumber,
     fetchLDESRecordByAgentID,
-    fetchLDESrecordsByExhibitionID
+    fetchLDESrecordsByExhibitionID,
+    fetchAllLDESrecordsObjects
 } from "./src/utils/parsers.js";
 import express from "express";
 import * as cron from 'node-cron';
@@ -53,6 +54,38 @@ async function start(){
                 billboards
             }
         );
+    })
+
+    // todo: add context
+    // todo: add cidoc
+    app.get('/objects/', async(req, res)=> {
+        const x = await fetchAllLDESrecordsObjects()
+        let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
+        let offset = parseInt(req.query.offset) || 0; // Default offset is 0
+        const _objects = []
+        console.log(x.length)
+        let len = x.length
+
+        //check if limit exceeds max.
+        if(limit >= x.length) {
+            limit = x.length
+        }
+
+        //check max offset.
+        const maxOffset = x.length / limit
+        if (offset > maxOffset) {
+            offset = maxOffset
+        }
+
+        for(let i = 0; i < x.length; i++) {
+            let _object = {}
+            _object["@id"] = "https://data.designmuseumgent.be/objects/"+x[i]["objectNumber"]
+            _object["objectNumber"] = x[i]
+            _objects.push(_object)
+        }
+
+        const paginatedObjects = _objects.slice(offset, offset + limit);
+        res.send({paginatedObjects})
     })
 
     app.get('/agents/:agentPID', async(req, res) => {

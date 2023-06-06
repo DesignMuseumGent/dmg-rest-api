@@ -15,13 +15,163 @@ paths:
       responses:
         '200': #status code
           description: a JSON array of metadata on billboards organized by 019 and hosted by Design Museum Gent
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                "@id":
-                  type: uri
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@type":
+                      type: string
+                      maxItems: 1
+
+                    # context
+                    context:
+                      type: object
+                      properties:
+                        la:
+                          type: string
+                          maxItems: 1
+                        cest:
+                          type: string
+                          maxItems: 1
+                        foaf:
+                          type: string
+                          maxItems: 1
+                        prov:
+                          type: string
+                          maxItems: 1
+                        skos:
+                          type: string
+                          maxItems: 1
+                        cidoc:
+                          type: string
+                          maxItems: 1
+                        label:
+                          type: string
+                          maxItems: 1
+                        inhoud:
+                          type: string
+                          maxItems: 1
+                        "foaf:page":
+                          type: object
+                          properties:
+                            "@type":
+                              type: string
+                              maxItems: 1
+                        "opmerking":
+                          type: string
+                          maxItems: 1
+                        equivalent:
+                          type: object
+                          properties:
+                            "@id":
+                              type: string
+                              maxItems: 1
+                            "@type":
+                              type: string
+                              maxItems: 1
+                        "dcterms:isVersionOf":
+                          type: object
+                          properties:
+                            "@type":
+                              type: string
+                              maxItems: 1
+
+                     # entiteit.type
+                    "Entiteit.type":
+                      type: object
+                      properties:
+                        "@id":
+                          type: string
+                          maxItems: 1
+                        "skos.prefLabel":
+                          type: object
+                          properties:
+                            "@value":
+                              type: string
+                            "@language":
+                              type: string
+
+                    #gebeurtenis.tijd
+                    "Gebeurtenis.tijd":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        "@value":
+                          type: string
+
+                    #gebeurtenis.plaats
+                    "gebeurtenis.plaats":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        equivalent:
+                          type: object
+                          properties:
+                            "@id":
+                              type: string
+                              maxItems: 1
+                            "skos.prefLabel":
+                              type: object
+                              properties:
+                                "@value":
+                                  type: string
+                                "@language":
+                                  type: string
+
+                    #activiteit.gebruiktObject
+                    "activiteit.gebruiktObject":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        "MaterieelDing.productie":
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              "Activiteit.uitgevoerdDoor":
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    "@type":
+                                      type: string
+                                      maxItems: 1
+                                    equivalent:
+                                      type: object
+                                      properties:
+                                        "@id":
+                                          type: string
+                                          maxItems: 1
+                                        "@type":
+                                          type: string
+                                          maxItems: 1
+                                        label:
+                                          type: object
+                                          properties:
+                                            value:
+                                              type: string
+                                            language:
+                                              type: string
+                    "MensgemaaktObject.titel":
+                      type: string
+                    "MensegemaaktObject.beschrijving":
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          "@value":
+                            type: string
+                          "@language":
+                            type: string
 
 
 

@@ -1,0 +1,51 @@
+openapi: 3.0.0
+info:
+  title: Design Museum Gent restful API
+  description: resftulAPI for linked open data published by Design Museum Gent (Belgium)
+  version: 1.0.0
+servers:
+  - url: https://data.designmuseumgent.be/
+    description: Main (production server)
+paths:
+  /exhibitions/billboardseries/: #billboards
+    get:
+      summary: a list of all billboards
+      description: a list of all billboards hosted by Design Museum Gent in JSON-LD
+      responses:
+        '200': #status code
+          description: a JSON array of metadata on billboards organized by 019 and hosted by Design Museum Gent
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                "@id":
+                  type: uri
+
+
+
+  /exhibitions: #exhibitions
+    get:
+      summary: a list of exhibitions
+      description: a list of all exhibitions associated with objects from which data has been published by Design Museum Gent
+      responses:
+        '200': # status code
+
+  /agents: # agent list
+    get:
+      summary: a list of agents
+      description: a list of agents associated with objects from which the data has been published by Design Museum Gent
+      responses:
+        '200': # status code
+  /objects:
+    get:
+      summary: a list of objects
+      description: a list of data describing objects from the collection of Design Museum Gent
+      responses:
+        '200': #status code
+  /texts:
+    get:
+      summary: a list of texts
+      description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
+      responses:
+        '200':

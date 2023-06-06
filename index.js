@@ -24,7 +24,6 @@ async function start(){
     app.use(
         helmet({
             contentSecurityPolicy: {
-                useDefaults: false,
                 directives: {
                     "default-src": ["'none'"],
                     "img-src": ["'self"]

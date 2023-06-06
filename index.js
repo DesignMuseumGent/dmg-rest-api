@@ -10,6 +10,7 @@ import * as cron from 'node-cron';
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";
 import cors from 'cors'
+import helmet from "helmet";
 
 
 cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
@@ -20,6 +21,18 @@ async function start(){
 
     const app = express();
     app.use(cors())
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                useDefaults: false,
+                directives: {
+                    "default-src": ["'none'"],
+                    "img-src": ["'self"]
+                }
+            }
+        })
+    )
+
     app.use(express.static("public"))
 
     // swagger docs

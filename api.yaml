@@ -1,10 +1,11 @@
 openapi: 3.0.0
+
 info:
   title: Design Museum Gent restful API
   description: resftulAPI for linked open data published by Design Museum Gent (Belgium)
   version: 1.0.0
 servers:
-  - url: https://data.designmuseumgent.be/
+  - url: https://data.designmuseumgent.be
     description: Main (production server)
 paths:
   /exhibitions/billboardseries/: #billboards

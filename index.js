@@ -21,16 +21,6 @@ async function start(){
 
     const app = express();
     app.use(cors())
-    app.use(
-        helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    "default-src": ["'none'"],
-                    "img-src": ["'self"]
-                }
-            }
-        })
-    )
 
     app.use(express.static("public"))
 

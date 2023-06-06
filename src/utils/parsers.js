@@ -59,3 +59,10 @@ export async function fetchLDESAllAgents() {
         .select("LDES_raw")
     return data;
 }
+
+export async function fetchTexts() {
+    const {data} = await supabase
+        .from("exh_object_texts")
+        .select("*")
+    return data;
+}

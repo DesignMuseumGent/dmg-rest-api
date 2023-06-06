@@ -9,7 +9,7 @@ import express from "express";
 import * as cron from 'node-cron';
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";
-import accepts from "accepts"
+import cors from 'cors'
 
 
 cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
@@ -19,6 +19,7 @@ async function start(){
     // setup accept-headers
 
     const app = express();
+    app.use(cors())
     app.use(express.static("public"))
 
     // swagger docs

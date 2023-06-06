@@ -161,17 +161,17 @@ paths:
                                               type: string
                                             language:
                                               type: string
-                    "MensgemaaktObject.titel":
-                      type: string
-                    "MensegemaaktObject.beschrijving":
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          "@value":
-                            type: string
-                          "@language":
-                            type: string
+                        "MensgemaaktObject.titel":
+                          type: string
+                        "MensegemaaktObject.beschrijving":
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              "@value":
+                                type: string
+                              "@language":
+                                type: string
 
 
 

@@ -19,6 +19,29 @@ async function start(){
         console.log("it's alive")
     )
 
+    app.get('/', (req, res) => {
+        let dcat = {}
+        //todo: publish own context file.
+        let context = [
+            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
+            {
+            "dcterms": "http://purl.org/dc/terms/",
+            "tree": "https://w3id.org/tree#"
+        }]
+        dcat["@context"] = context;
+        dcat["@id"] = "https://data.designmuseumgent.be/";
+        dcat["@type"] = "Datasetcatalogus";
+        dcat["Datasetcatalogus.titel"] = {
+            "@value": "catalogus Design Museum Gent",
+            "@language": "nl"
+        }
+        dcat["Datasetcatalogus.heeftLicentie"] ={
+            "@id": "https://creativecommons.org/publicdomain/zero/1.0/"
+        }
+
+        res.send({dcat})
+    })
+
     const billboard = await fetchAllBillboards()
 
     // retrieve all billboards;

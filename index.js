@@ -35,26 +35,43 @@ async function start(){
     )
 
     app.get('/', (req, res) => {
-        let dcat = {}
-        //todo: publish own context file.
-        let context = [
-            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
-            {
-            "dcterms": "http://purl.org/dc/terms/",
-            "tree": "https://w3id.org/tree#"
-        }]
-        dcat["@context"] = context;
-        dcat["@id"] = "https://data.designmuseumgent.be/";
-        dcat["@type"] = "Datasetcatalogus";
-        dcat["Datasetcatalogus.titel"] = {
-            "@value": "catalogus Design Museum Gent",
-            "@language": "nl"
-        }
-        dcat["Datasetcatalogus.heeftLicentie"] ={
-            "@id": "https://creativecommons.org/publicdomain/zero/1.0/"
-        }
 
-        res.send({dcat})
+        res.send(
+            {
+                "@context": [
+                "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
+                {
+                    "dcterms": "http://purl.org/dc/terms/",
+                    "tree": "https://w3id.org/tree#"
+                }],
+                "@id": "https://data.designmuseumgent.be/",
+                "@type": "Datasetcatalogus",
+                "Datasetcatalogus.titel": {
+                    "@value": "catalogus Design Museum Gent",
+                    "@language": "nl"
+                },
+                "Datasetcatalogus.heeftLicentie": {
+                    "@id": "https://creativecommons.org/publicdomain/zero/1.0/"
+                },
+                "Datasetcatalogus.heeftUitger": {
+                    "@id": "https://www.wikidata.org/entity/Q1809071",
+                    "Agent.naam": {
+                        "@value": "Design Museum Gent",
+                        "@language": "nl"
+                    }
+                },
+                "Datasetcatalogus.heeftDataset": [
+                    {
+                        "@id": "https://data.designmuseumgent.be/exhibitions",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset rond tentoonstellingen gerelateerd aan objecten uit de collectie",
+                            "@langeuage": "nl"
+                        }
+                    }
+                ]
+            }
+        )
     })
 
     const billboard = await fetchAllBillboards()

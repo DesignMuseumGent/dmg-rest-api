@@ -6,18 +6,11 @@ info:
     
     Welcome to the Swagger documentation for the Design Museum Gent REST API! This documentation provides a comprehensive guide on how to interact with the REST API published at data.designmuseumgent.be. Whether you're a developer, data enthusiast, or simply curious about the museum's data, this documentation will assist you in understanding and utilizing the API effectively.
     
-    #### About Design Museum Gent
-    Design Museum Gent is a renowned museum located in the heart of Ghent, Belgium. It houses an extensive collection of historical and contemporary design artifacts, showcasing the evolution and impact of design on society. The museum's commitment to accessibility and openness extends beyond its physical space, as evidenced by the availability of its data through this REST API.
-    
+
     #### Api Overview
     The Design Museum Gent REST API enables you to retrieve and interact with a wealth of data related to the museum's exhibitions, collections, events, and more. By leveraging this API, you can build innovative applications, create engaging visualizations, conduct research, and explore the fascinating world of design through data.
-    
-    #### Documentation Structure 
-    This Swagger documentation is structured to provide you with a clear and intuitive way to explore the API's endpoints, parameters, request/response formats, and authentication mechanisms, if applicable. Each section is organized to ensure you have all the necessary information at your fingertips to start using the API efficiently.
-    
-    #### Getting Started
-    To get started, we recommend familiarizing yourself with the "Endpoints" section, which lists all available API endpoints along with their descriptions. Each endpoint provides details on the supported methods, required parameters, and example requests/responses. The documentation also includes examples in multiple programming languages to assist you in implementing the API in your preferred environment.
-
+        This Swagger documentation is structured to provide you with a clear and intuitive way to explore the API's endpoints, parameters, request/response formats, and authentication mechanisms, if applicable. Each section is organized to ensure you have all the necessary information at your fingertips to start using the API efficiently.
+        To get started, we recommend familiarizing yourself with the "Endpoints" section, which lists all available API endpoints along with their descriptions. Each endpoint provides details on the supported methods, required parameters, and example requests/responses. The documentation also includes examples in multiple programming languages to assist you in implementing the API in your preferred environment.
     We're excited to have you explore the Design Museum Gent REST API! So go ahead, dive into the documentation, and unleash your creativity. If you have any questions, encounter issues, or would like to provide feedback, please don't hesitate to reach out to us. Happy exploring and enjoy the journey into the world of design data!
 
   version: 1.0.0
@@ -192,12 +185,22 @@ paths:
 
 
 
-  /exhibitions: #exhibitions
+  /exhibitions/TE_2021-008: #exhibitions
     get:
       summary: a list of exhibitions
       description: a list of all exhibitions associated with objects from which data has been published by Design Museum Gent
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: false
+          description: id to fetch specific exhibition data
+          example: TE_2021-008
+
       responses:
         '200': # status code
+
 
   /agents: # agent list
     get:
@@ -205,12 +208,14 @@ paths:
       description: a list of agents associated with objects from which the data has been published by Design Museum Gent
       responses:
         '200': # status code
+
   /objects:
     get:
       summary: a list of objects
       description: a list of data describing objects from the collection of Design Museum Gent
       responses:
         '200': #status code
+
   /texts:
     get:
       summary: a list of texts

@@ -62,11 +62,27 @@ async function start(){
                 },
                 "Datasetcatalogus.heeftDataset": [
                     {
-                        "@id": "https://data.designmuseumgent.be/exhibitions",
+                        "@id": "https://data.designmuseumgent.be/objects/",
                         "@type": "Dataset",
                         "Dataset.titel": {
-                            "@value": "dataset rond tentoonstellingen gerelateerd aan objecten uit de collectie",
+                            "@value": "dataset met metadata van reeds gepubliceerde items uit de collectie van het Design Museum Gent.",
                             "@langeuage": "nl"
+                        }
+                    },
+                    {
+                        "@id": "https://data.designmuseumgent.be/exhibitions/",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset met metadata rond de tentoonstellingen gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent.",
+                            "@language": "nl"
+                        }
+                    },
+                    {
+                        "@id": "https://data.designgent.be/agents/",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset met met metadata rond personen en instellingen (agenten) gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent",
+                            "@language": "nl"
                         }
                     }
                 ]

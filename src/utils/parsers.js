@@ -37,6 +37,22 @@ export async function fetchLDESRecordByObjectNumber(_On) {
     return data;
 }
 
+export async function fetchAllLDESrecordsObjects() {
+    const {data, error} = await supabase
+        .from("dmg_objects_LDES")
+        .select('objectNumber')
+    return data;
+}
+
+export async function fetchAllExhibitions(){
+    const {data, error} = await supabase
+        .from("dmg_tentoonstelling_LDES")
+        .select('exh_PID')
+    return data;
+}
+
+
+
 export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
     const {data, error} = await supabase
         .from("dmg_tentoonstelling_LDES")

@@ -3,6 +3,8 @@ import {
     fetchLDESRecordByObjectNumber,
     fetchLDESRecordByAgentID,
     fetchLDESrecordsByExhibitionID,
+    fetchAllLDESrecordsObjects,
+    fetchAllExhibitions
     fetchTexts
 } from "./src/utils/parsers.js";
 import express from "express";
@@ -34,6 +36,9 @@ async function start(){
         console.log("it's alive")
     )
 
+    const baseURI = "https://data.designmuseumgent.be/"
+
+    // *** BILLBOARD SERIES *** //
     app.get('/', (req, res) => {
 
         res.send(
@@ -89,7 +94,6 @@ async function start(){
             }
         )
     })
-
     const billboard = await fetchAllBillboards()
 
     // retrieve all billboards;
@@ -126,43 +130,38 @@ async function start(){
         );
     })
 
-    app.get('/agents/:agentPID', async(req, res) => {
-        const x = await fetchLDESRecordByAgentID(req.params.agentPID);
-        const result_cidoc = x[0]["LDES_raw"];
-        res.send({result_cidoc})
-    })
+    // *** OBJECTS *** //
+    // todo: add context
+    // todo: add cidoc
+    app.get('/objects/', async(req, res)=> {
+        const x = await fetchAllLDESrecordsObjects()
+        let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
+        let offset = parseInt(req.query.offset) || 0; // Default offset is 0
+        const _objects = []
+        console.log(x.length)
+        let len = x.length
 
-    // ark
-    app.get('/ark:/29417/agents/:agentPID', async(req, res) => {
-        const x = await fetchLDESRecordByAgentID(req.params.agentPID);
-        const result_cidoc = x[0]["LDES_raw"];
-        res.send({result_cidoc})
-    })
-
-
-    app.get('/exhibitions/:exhibitionPID', async (req, res)=>{
-        const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
-        try{
-            const result_cidoc = x[0]["LDES_raw"];
-            console.log(result_cidoc)
-            res.send({result_cidoc})
-        } catch (e) {
-            console.log(e)
+        //check if limit exceeds max.
+        if(limit >= x.length) {
+            limit = x.length
         }
 
-    } )
-
-    app.get('/ark:/29417/exhibitions/:exhibitionPID', async (req, res)=>{
-        const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
-        try{
-            const result_cidoc = x[0]["LDES_raw"];
-            console.log(result_cidoc)
-            res.send({result_cidoc})
-        } catch (e) {
-            console.log(e)
+        //check max offset.
+        const maxOffset = x.length / limit
+        if (offset > maxOffset) {
+            offset = maxOffset
         }
 
-    } )
+        for(let i = 0; i < x.length; i++) {
+            let _object = {}
+            _object["@id"] = baseURI+"objects/"+x[i]["objectNumber"]
+            _object["objectNumber"] = x[i]
+            _objects.push(_object)
+        }
+
+        const paginatedObjects = _objects.slice(offset, offset + limit);
+        res.send({paginatedObjects})
+    })
 
     app.get('/objects/:objectNumber' || '/ark:/29417/objects/:objectNumber', async (req, res) => {
 
@@ -191,15 +190,11 @@ async function start(){
                 {result_cidoc}
             )
         }
-
-
     })
 
     // ark
     app.get('/ark:/29417/objects/:objectNumber', async (req, res) => {
-
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-
         const result_cidoc = x[0]["LDES_raw"];
         const result_oslo = x[0]["OSLO"];
 
@@ -223,9 +218,61 @@ async function start(){
                 {result_cidoc}
             )
         }
-
-
     })
+
+    // *** AGENTS *** //
+
+
+    app.get('/agents/:agentPID', async(req, res) => {
+        const x = await fetchLDESRecordByAgentID(req.params.agentPID);
+        const result_cidoc = x[0]["LDES_raw"];
+        res.send({result_cidoc})
+    })
+
+    // ark
+    app.get('/ark:/29417/agents/:agentPID', async(req, res) => {
+        const x = await fetchLDESRecordByAgentID(req.params.agentPID);
+        const result_cidoc = x[0]["LDES_raw"];
+        res.send({result_cidoc})
+    })
+
+    // *** EXHIBITIONS *** //
+    app.get('/exhibitions/', async(req, res)=> {
+        const exh = await fetchAllExhibitions()
+        let range = exh.length
+        let _exhibitions = []
+
+        for (let i = 0; i < range; i ++) {
+            let _exhibition = {}
+            _exhibition["@id"] = baseURI+"exhibitions/"+exh[i]["exh_PID"]
+            _exhibitions.push(_exhibition)
+        }
+        res.send({_exhibitions})
+    })
+
+    app.get('/exhibitions/:exhibitionPID', async (req, res)=> {
+        const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
+        try{
+            const result_cidoc = x[0]["LDES_raw"];
+            console.log(result_cidoc)
+            res.send({result_cidoc})
+        } catch (e) {
+            console.log(e)
+        }
+
+    } )
+
+    app.get('/ark:/29417/exhibitions/:exhibitionPID', async (req, res)=>{
+        const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
+        try{
+            const result_cidoc = x[0]["LDES_raw"];
+            console.log(result_cidoc)
+            res.send({result_cidoc})
+        } catch (e) {
+            console.log(e)
+        }
+
+    } )
 
     // texts on objects from the collection.
     app.get('/texts/', async(get, res)=> {

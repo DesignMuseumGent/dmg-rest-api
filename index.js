@@ -5,16 +5,31 @@ import {
     fetchLDESrecordsByExhibitionID,
     fetchAllLDESrecordsObjects,
     fetchAllExhibitions
+    fetchTexts
 } from "./src/utils/parsers.js";
 import express from "express";
 import * as cron from 'node-cron';
+import YAML from "yamljs";
+import swaggerUI from "swagger-ui-express";
+import cors from 'cors'
+import helmet from "helmet";
+
 
 cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
 
 async function start(){
 
+    // setup accept-headers
+
     const app = express();
+    app.use(cors())
+
     app.use(express.static("public"))
+
+    // swagger docs
+
+    const swaggerDocument = YAML.load('./api.yaml')
+    app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 
     app.listen(
         process.env.PORT || 1992,
@@ -24,6 +39,61 @@ async function start(){
     const baseURI = "https://data.designmuseumgent.be/"
 
     // *** BILLBOARD SERIES *** //
+    app.get('/', (req, res) => {
+
+        res.send(
+            {
+                "@context": [
+                "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
+                {
+                    "dcterms": "http://purl.org/dc/terms/",
+                    "tree": "https://w3id.org/tree#"
+                }],
+                "@id": "https://data.designmuseumgent.be/",
+                "@type": "Datasetcatalogus",
+                "Datasetcatalogus.titel": {
+                    "@value": "catalogus Design Museum Gent",
+                    "@language": "nl"
+                },
+                "Datasetcatalogus.heeftLicentie": {
+                    "@id": "https://creativecommons.org/publicdomain/zero/1.0/"
+                },
+                "Datasetcatalogus.heeftUitger": {
+                    "@id": "https://www.wikidata.org/entity/Q1809071",
+                    "Agent.naam": {
+                        "@value": "Design Museum Gent",
+                        "@language": "nl"
+                    }
+                },
+                "Datasetcatalogus.heeftDataset": [
+                    {
+                        "@id": "https://data.designmuseumgent.be/objects/",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset met metadata van reeds gepubliceerde items uit de collectie van het Design Museum Gent.",
+                            "@langeuage": "nl"
+                        }
+                    },
+                    {
+                        "@id": "https://data.designmuseumgent.be/exhibitions/",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset met metadata rond de tentoonstellingen gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent.",
+                            "@language": "nl"
+                        }
+                    },
+                    {
+                        "@id": "https://data.designgent.be/agents/",
+                        "@type": "Dataset",
+                        "Dataset.titel": {
+                            "@value": "dataset met met metadata rond personen en instellingen (agenten) gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent",
+                            "@language": "nl"
+                        }
+                    }
+                ]
+            }
+        )
+    })
     const billboard = await fetchAllBillboards()
 
     // retrieve all billboards;
@@ -204,6 +274,62 @@ async function start(){
 
     } )
 
+    // texts on objects from the collection.
+    app.get('/texts/', async(get, res)=> {
+        const _texts = await fetchTexts()
+        const _range=_texts.length
+        const catalouge = [];
+
+        const _context = [
+            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld",
+            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-object-ap.jsonld"
+        ]
+
+        for (let text=0; text<_range; text++) {
+            let _text = {};
+            let catalogueTexts = [];
+            let _objectNumber = _texts[text]["object_number"]
+            let _objectID = "https://data.designmuseumgent.be/objects/"+_objectNumber //todo: add resolver when the object has not been published yet.
+
+            //nl
+            if (_texts[text]["text_NL"]) {
+                const _textNL = {
+                    "text": _texts[text]["text_NL"],
+                    "@lang": "nl"
+                }
+                catalogueTexts.push(_textNL);
+            }
+
+            //en
+            if (_texts[text]["text_EN"]) {
+                const _textEN = {
+                    "text": _texts[text]["text_EN"],
+                    "@lang": "en"
+                }
+                catalogueTexts.push(_textEN);
+            }
+
+            //fr
+            if (_texts[text]["text_FR"]) {
+                const _textFR = {
+                    "text": _texts[text]["text_FR"],
+                    "@lang": "fr"
+                }
+                catalogueTexts.push(_textFR);
+            }
+
+            _text["@context"] = _context
+            _text["@type"] = "InformatieObject";
+            _text["InformatieObject.gaatOver"] = {
+                // todo: or refers to?
+                "@id": _objectID,
+                "@type": "MensgemaaktObject"
+            };
+            _text["InformatieObject.omvat"] = catalogueTexts;
+            catalouge.push(_text);
+        }
+        res.send({catalouge})
+    })
 
     console.log("DONE :D :D :D :D ")
 }

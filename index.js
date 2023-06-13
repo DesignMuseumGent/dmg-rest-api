@@ -4,7 +4,7 @@ import {
     fetchLDESRecordByAgentID,
     fetchLDESrecordsByExhibitionID,
     fetchAllLDESrecordsObjects,
-    fetchAllExhibitions
+    fetchAllExhibitions,
     fetchTexts
 } from "./src/utils/parsers.js";
 import express from "express";
@@ -190,6 +190,8 @@ async function start(){
                 {result_cidoc}
             )
         }
+
+
     })
 
     // ark

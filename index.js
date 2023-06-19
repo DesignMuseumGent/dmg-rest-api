@@ -174,28 +174,22 @@ async function start(){
         res.send({objects})
     })
 
-    app.get('/object/:objectNumber.:format', async (req, res, next) => {
+    app.get('/object/:objectNumber.:format?', async (req, res, next) => {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];
-
-        console.log(req.params.objectNumber)
-        console.log(req.params.format)
-
-        if (req.params.format === "") {
-            res.send({"test":"x"})
-        }
-        else {
-            switch (req.params.format) {
-                case "json":
-                    res.send({result_cidoc})
-                    break;
-                case "html":
-                    res.redirect(_redirect)
-                    break;
+        req.negotiate(req.params.format, {
+            'json': function() {
+                res.send(result_cidoc)
+            },
+            'html': function() {
+                res.redirect(_redirect)
+            },
+            'default': function() {
+                //send html anyway.
+                res.redirect(_redirect)
             }
-        }
-
+        })
     })
 
     // *** AGENTS *** //

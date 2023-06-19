@@ -23,6 +23,15 @@ paths:
     get:
       summary: a list of objects
       description: a list of data describing objects from the collection of Design Museum Gent
+      parameters:
+        -in: query
+        name: limit
+        schema:
+          type: integer
+        required: false
+        description: set the limit for number objects to be shown on the page.
+        example: 10
+
       responses:
         '200': #status code
           description: a json array of all the unique objects published from the collection of Design Museum Gent

@@ -12,8 +12,6 @@ import * as cron from 'node-cron';
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";
 import cors from 'cors'
-import helmet from "helmet";
-
 
 cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
 
@@ -133,6 +131,7 @@ async function start(){
     // *** OBJECTS *** //
     // todo: add context
     // todo: add cidoc
+
     app.get('/objects/', async(req, res)=> {
         const x = await fetchAllLDESrecordsObjects()
         let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
@@ -154,72 +153,49 @@ async function start(){
 
         for(let i = 0; i < x.length; i++) {
             let _object = {}
+            _object["@context"] = [
+                "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
+                "https://apidg.gent.be/op…xt/generiek-basis.jsonld"
+            ]
             _object["@id"] = baseURI+"objects/"+x[i]["objectNumber"]
-            _object["objectNumber"] = x[i]
+            _object["@type"] = "MensgemaaktObject"
+            _object["Object.identificator"] = [
+                {
+                    "@type": "Identificator",
+                    "Identificator.identificator": {
+                        "@value": x[i]["objectNumber"]
+                    }
+                }
+            ]
             _objects.push(_object)
         }
 
-        const paginatedObjects = _objects.slice(offset, offset + limit);
-        res.send({paginatedObjects})
+        const objects = _objects.slice(offset, offset + limit);
+        res.send({objects})
     })
 
-    app.get('/objects/:objectNumber' || '/ark:/29417/objects/:objectNumber', async (req, res) => {
-
+    app.get('/objects/:objectNumber.:format', async (req, res, next) => {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-
+        let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];
-        const result_oslo = x[0]["OSLO"];
 
-        const type = req.params.ikwil;
-        console.log(req.params.ikwil);
+        console.log(req.params.objectNumber)
+        console.log(req.params.format)
 
-        if(type === "OSLO") {
-            res.send(
-                {result_oslo}
-            )
+        if (req.params.format === "") {
+            res.send({"test":"x"})
         }
-
-        else if(type === "CIDOC") {
-            res.send(
-                {result_cidoc}
-            )
-        }
-
         else {
-            res.send(
-                {result_cidoc}
-            )
+            switch (req.params.format) {
+                case "json":
+                    res.send({result_cidoc})
+                    break;
+                case "html":
+                    res.redirect(_redirect)
+                    break;
+            }
         }
 
-
-    })
-
-    // ark
-    app.get('/ark:/29417/objects/:objectNumber', async (req, res) => {
-        const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-        const result_cidoc = x[0]["LDES_raw"];
-        const result_oslo = x[0]["OSLO"];
-
-        const type = req.params.ikwil;
-        console.log(req.params.ikwil);
-
-        if(type === "OSLO") {
-            res.send(
-                {result_oslo}
-            )
-        }
-
-        else if(type === "CIDOC") {
-            res.send(
-                {result_cidoc}
-            )
-        }
-
-        else {
-            res.send(
-                {result_cidoc}
-            )
-        }
     })
 
     // *** AGENTS *** //

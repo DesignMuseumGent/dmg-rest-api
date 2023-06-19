@@ -18,6 +18,27 @@ servers:
   - url: https://data.designmuseumgent.be
     description: Main (production server)
 paths:
+  #objects
+  /objects:
+    get:
+      summary: a list of objects
+      description: a list of data describing objects from the collection of Design Museum Gent
+      responses:
+        '200': #status code
+          description: a json array of all the unique objects published from the collection of Design Museum Gent
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@context":
+                      type: array
+                    "@id":
+                      type: string
+                      maxItems: 1
+
   /exhibitions/billboardseries/: #billboards
     get:
       summary: a list of all billboards
@@ -208,13 +229,6 @@ paths:
       description: a list of agents associated with objects from which the data has been published by Design Museum Gent
       responses:
         '200': # status code
-
-  /objects:
-    get:
-      summary: a list of objects
-      description: a list of data describing objects from the collection of Design Museum Gent
-      responses:
-        '200': #status code
 
   /texts:
     get:

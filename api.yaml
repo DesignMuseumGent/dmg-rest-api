@@ -69,12 +69,39 @@ paths:
                               properties:
                                 "@value":
                                   type: string
-  /object/{id}:
+  /object/{id}.{format}:
     get:
       summary:
         get metadata on a specific object from the collection of Design Museum Gent.
       description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: id (object number) of a specific object to fetch metadata from.
+        example: 1987-0942
 
+      - in: query
+        name: format
+        required: false
+        schema:
+          type: string
+          enum:
+            - json
+            - html
+        description: define format for content negotiation.
+
+
+      responses:
+        '200': #status code
+
+
+  /exhibitions:
+    get:
+      summary: get a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
+      description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
 
   /exhibition/{id}: #exhibitions
     get:

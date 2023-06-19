@@ -21,16 +21,23 @@ paths:
   #objects
   /objects:
     get:
-      summary: a list of objects
+      summary: get a list of objects from the collection of Design Museum Gent
       description: a list of data describing objects from the collection of Design Museum Gent
       parameters:
-        -in: query
+
+      - in: query
         name: limit
         schema:
           type: integer
-        required: false
         description: set the limit for number objects to be shown on the page.
         example: 10
+
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: set the offset of the get request (recursively move through paginated objects based on the limit)
+        example: 2
 
       responses:
         '200': #status code
@@ -38,15 +45,49 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    "@context":
-                      type: array
-                    "@id":
-                      type: string
-                      maxItems: 1
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      "@context":
+                        type: array
+                      "@id":
+                        type: string
+                        maxItems: 1
+                      "@type":
+                        type: string
+                        maxItems: 1
+                      "Object.identificator":
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            "@type":
+                              type: string
+                            "Identificator.identificator":
+                              type: object
+                              properties:
+                                "@value":
+                                  type: string
+
+  /exhibition: #exhibitions
+    get:
+      summary: get metadata on a specific exhibition
+      description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: false
+          description: id to fetch specific exhibition data
+          example: TE_2021-008
+
+      responses:
+        '200': # status code
+          description: an object containing metadata on a specific exhibition
+
+
 
   /exhibitions/billboardseries/: #billboards
     get:
@@ -212,24 +253,6 @@ paths:
                                 type: string
                               "@language":
                                 type: string
-
-
-
-  /exhibitions/TE_2021-008: #exhibitions
-    get:
-      summary: a list of exhibitions
-      description: a list of all exhibitions associated with objects from which data has been published by Design Museum Gent
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-          required: false
-          description: id to fetch specific exhibition data
-          example: TE_2021-008
-
-      responses:
-        '200': # status code
 
 
   /agents: # agent list

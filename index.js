@@ -228,7 +228,7 @@ async function start(){
         res.send({_exhibitions})
     })
 
-    app.get('/exhibitions/:exhibitionPID', async (req, res)=> {
+    app.get('/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             const result_cidoc = x[0]["LDES_raw"];
@@ -240,7 +240,7 @@ async function start(){
 
     } )
 
-    app.get('/ark:/29417/exhibitions/:exhibitionPID', async (req, res)=>{
+    app.get('/ark:/29417/exhibition/:exhibitionPID', async (req, res)=>{
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             const result_cidoc = x[0]["LDES_raw"];

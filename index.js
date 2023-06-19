@@ -8,6 +8,7 @@ import {
     fetchTexts
 } from "./src/utils/parsers.js";
 import express from "express";
+import negotiate from 'express-negotiate'
 import * as cron from 'node-cron';
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";

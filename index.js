@@ -174,7 +174,7 @@ async function start(){
         res.send({objects})
     })
 
-    app.get('/objects/:objectNumber.:format', async (req, res, next) => {
+    app.get('/object/:objectNumber.:format', async (req, res, next) => {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];

@@ -102,6 +102,9 @@ paths:
     get:
       summary: get a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
       description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
+    responses:
+      '200':
+        description: array of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent
 
   /exhibition/{id}: #exhibitions
     get:

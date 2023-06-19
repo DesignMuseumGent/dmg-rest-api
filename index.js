@@ -19,7 +19,6 @@ cron.schedule('0 0 * * 0', start); // run harvest every day at 10:00
 async function start(){
 
     // setup accept-headers
-
     const app = express();
     app.use(cors())
 
@@ -210,7 +209,7 @@ async function start(){
     })
 
     // *** EXHIBITIONS *** //
-    app.get('/exhibitions/', async(req, res)=> {
+    app.get('/exhibitions', async(req, res)=> {
         const exh = await fetchAllExhibitions()
         let range = exh.length
         let _exhibitions = []

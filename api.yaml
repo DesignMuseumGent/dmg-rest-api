@@ -74,6 +74,9 @@ paths:
       summary:
         get metadata on a specific object from the collection of Design Museum Gent.
       description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
+      produces:
+        - text/html
+        - application/json
       parameters:
       - in: path
         name: id
@@ -96,6 +99,9 @@ paths:
 
       responses:
         '200': #status code
+          content:
+            text/html:
+
 
 
   /exhibitions:

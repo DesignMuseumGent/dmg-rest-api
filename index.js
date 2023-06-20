@@ -24,7 +24,6 @@ async function start(){
     app.use(express.static("public"))
 
     // swagger docs
-
     const swaggerDocument = YAML.load('./api.yaml')
     app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument))
 
@@ -37,7 +36,6 @@ async function start(){
 
     // *** BILLBOARD SERIES *** //
     app.get('/', (req, res) => {
-
         res.send(
             {
                 "@context": [
@@ -127,20 +125,17 @@ async function start(){
         );
     })
 
-    // *** OBJECTS *** //
-    // todo: add context
-    // todo: add cidoc
+    // todo: add endpoint for individual billboards and refer to HTML and MACHINE-READABLE page.
 
+    // *** OBJECTS *** //
     app.get('/objects/', async(req, res)=> {
         const x = await fetchAllLDESrecordsObjects()
         let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
         const _objects = []
-        console.log(x.length)
-        let len = x.length
 
         //check if limit exceeds max.
-        if(limit >= x.length) {
+        if (limit >= x.length) {
             limit = x.length
         }
 
@@ -156,7 +151,7 @@ async function start(){
                 "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
                 "https://apidg.gent.be/op…xt/generiek-basis.jsonld"
             ]
-            _object["@id"] = baseURI+"objects/"+x[i]["objectNumber"]
+            _object["@id"] = baseURI+"id/object/"+x[i]["objectNumber"] // create id (PID) for individual object
             _object["@type"] = "MensgemaaktObject"
             _object["Object.identificator"] = [
                 {
@@ -168,7 +163,6 @@ async function start(){
             ]
             _objects.push(_object)
         }
-
         const objects = _objects.slice(offset, offset + limit);
         res.send({objects})
     })
@@ -177,29 +171,30 @@ async function start(){
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];
-        app.use(cors())
+
+        // redefine - @id to use URIs and PIDs defined by the museum
+        result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+
+        // assign foaf:pages
+        result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/object/" + req.params.objectNumber
 
         req.negotiate(req.params.format, {
             'json': function() {
-                res.send(result_cidoc)
+                // if format .json redirect to machine-readable page.
+                res.send(result_cidoc["object"])
             },
             'html': function() {
-                app.use(cors())
-
+                // if format .html redirect to human-readable page
                 res.redirect(_redirect)
             },
             'default': function() {
                 //send html anyway.
-                app.use(cors())
-
                 res.redirect(_redirect)
             }
         })
     })
 
     // *** AGENTS *** //
-
-
     app.get('/agents/:agentPID', async(req, res) => {
         const x = await fetchLDESRecordByAgentID(req.params.agentPID);
         const result_cidoc = x[0]["LDES_raw"];
@@ -221,7 +216,14 @@ async function start(){
 
         for (let i = 0; i < range; i ++) {
             let _exhibition = {}
-            _exhibition["@id"] = baseURI+"exhibitions/"+exh[i]["exh_PID"]
+            _exhibition["@id"] = baseURI+"exhibition/"+exh[i]["exh_PID"]
+            _exhibition["cidoc:P1_is_identified_by"] = {
+                "@type": "cidoc:E33_E41_Linguistic_Appellation",
+                "inhoud": {
+                    "@value": exh[i]["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"],
+                    "@language": "nl"
+                }
+            }
             _exhibitions.push(_exhibition)
         }
         res.send({_exhibitions})
@@ -236,10 +238,9 @@ async function start(){
         } catch (e) {
             console.log(e)
         }
+    })
 
-    } )
-
-    app.get('/ark:/29417/exhibition/:exhibitionPID', async (req, res)=>{
+    app.get('/ark:/29417/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             const result_cidoc = x[0]["LDES_raw"];
@@ -307,6 +308,7 @@ async function start(){
         }
         res.send({catalouge})
     })
+
 
     console.log("DONE :D :D :D :D ")
 }

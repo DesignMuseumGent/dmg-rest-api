@@ -96,13 +96,10 @@ paths:
             - html
         description: define format for content negotiation.
 
-
       responses:
         '200': #status code
           content:
-            text/html:
-
-
+            application/json:
 
   /exhibitions:
     get:

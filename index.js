@@ -21,7 +21,6 @@ async function start(){
     // setup accept-headers
     const app = express();
     app.use(cors())
-
     app.use(express.static("public"))
 
     // swagger docs
@@ -178,15 +177,21 @@ async function start(){
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];
+        app.use(cors())
+
         req.negotiate(req.params.format, {
             'json': function() {
                 res.send(result_cidoc)
             },
             'html': function() {
+                app.use(cors())
+
                 res.redirect(_redirect)
             },
             'default': function() {
                 //send html anyway.
+                app.use(cors())
+
                 res.redirect(_redirect)
             }
         })

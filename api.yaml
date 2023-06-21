@@ -100,6 +100,7 @@ paths:
         '200': #status code
           content:
             application/json:
+            html/text:
 
   /exhibitions:
     get:
@@ -108,6 +109,28 @@ paths:
       responses:
         '200':
           description: array of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent
+          content:
+            'application/json':
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@id":
+                      type: string
+                      maxItems: 1
+                    "cidoc:P1_is_identified_by":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                        "inhoud":
+                          type: object
+                          properties:
+                            "@value":
+                              type: string
+                            "@language":
+                              type: string
 
   /exhibition/{id}: #exhibitions
     get:

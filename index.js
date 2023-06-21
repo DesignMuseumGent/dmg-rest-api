@@ -108,6 +108,7 @@ async function start(){
         );
     })
 
+
     // ark
     app.get('/ark:/29417/exhibitions/billboardseries/', (req, res) => {
         const billboards = [];
@@ -167,7 +168,7 @@ async function start(){
         res.send({objects})
     })
 
-    app.get('/object/:objectNumber.:format?', async (req, res, next) => {
+    app.get(['/id/object/:objectNumber.:format?','/object/:objectNumber.:format?'], async (req, res, next) => {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         const result_cidoc = x[0]["LDES_raw"];

@@ -129,7 +129,7 @@ async function start(){
     // todo: add endpoint for individual billboards and refer to HTML and MACHINE-READABLE page.
 
     // *** OBJECTS *** //
-    app.get('/objects/', async(req, res)=> {
+    app.get('/id/objects/', async(req, res)=> {
         const x = await fetchAllLDESrecordsObjects()
         let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
@@ -177,7 +177,7 @@ async function start(){
         result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
 
         // assign foaf:pages
-        result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/object/" + req.params.objectNumber
+        result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
 
         req.negotiate(req.params.format, {
             'json': function() {
@@ -196,21 +196,21 @@ async function start(){
     })
 
     // *** AGENTS *** //
-    app.get('/agents/:agentPID', async(req, res) => {
+    app.get('/id/agents/:agentPID', async(req, res) => {
         const x = await fetchLDESRecordByAgentID(req.params.agentPID);
         const result_cidoc = x[0]["LDES_raw"];
         res.send({result_cidoc})
     })
 
     // ark
-    app.get('/ark:/29417/agents/:agentPID', async(req, res) => {
+    app.get('/id/ark:/29417/agents/:agentPID', async(req, res) => {
         const x = await fetchLDESRecordByAgentID(req.params.agentPID);
         const result_cidoc = x[0]["LDES_raw"];
         res.send({result_cidoc})
     })
 
     // *** EXHIBITIONS *** //
-    app.get('/exhibitions', async(req, res)=> {
+    app.get('/id/exhibitions', async(req, res)=> {
         const exh = await fetchAllExhibitions()
         let range = exh.length
         let _exhibitions = []
@@ -230,18 +230,17 @@ async function start(){
         res.send({_exhibitions})
     })
 
-    app.get('/exhibition/:exhibitionPID', async (req, res)=> {
+    app.get('/id/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
-            const result_cidoc = x[0]["LDES_raw"];
-            console.log(result_cidoc)
-            res.send({result_cidoc})
+            console.log(x[0]["LDES_raw"])
+            res.send(x[0]["LDES_raw"])
         } catch (e) {
             console.log(e)
         }
     })
 
-    app.get('/ark:/29417/exhibition/:exhibitionPID', async (req, res)=> {
+    app.get('/id/ark:/29417/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             const result_cidoc = x[0]["LDES_raw"];
@@ -254,10 +253,10 @@ async function start(){
     } )
 
     // texts on objects from the collection.
-    app.get('/texts/', async(get, res)=> {
+    app.get('/id/texts/', async(get, res)=> {
         const _texts = await fetchTexts()
         const _range=_texts.length
-        const catalouge = [];
+        const catalogue = [];
 
         const _context = [
             "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld",

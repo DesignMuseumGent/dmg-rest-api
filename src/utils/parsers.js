@@ -1,5 +1,11 @@
 import {supabase} from "../../supabaseClient.js";
 
+export async function fetchArchive() {
+    const {data, error} = await supabase
+        .from("dmg_archief_ldes")
+        .select('LDES_raw', {'head':false})
+}
+
 export async function fetchAllBillboards() {
     const {data, error} = await supabase
         .from("exh_billboardseries")

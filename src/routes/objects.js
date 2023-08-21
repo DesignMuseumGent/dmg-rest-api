@@ -1,4 +1,5 @@
 import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber} from "../utils/parsers.js";
+import negotiate from 'express-negotiate'
 
 export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
@@ -17,6 +18,8 @@ export function requestObjects(app) {
         if (offset > maxOffset) {
             offset = maxOffset
         }
+
+        //todo: add top level for collection of objects (dataset contains).
 
         for(let i = 0; i < x.length; i++) {
             let _object = {}
@@ -39,6 +42,16 @@ export function requestObjects(app) {
         const objects = _objects.slice(offset, offset + limit);
         res.send({objects})
     })
+
+    /*
+    app.error(function(err, req, res, next) {
+        if (err instanceof negotiate.NotAcceptable) {
+            res.send('Sorry, I dont know how to return any of the content types requested', 406);
+        } else {
+            next(err);
+        }
+    });
+    */
 
 }
 
@@ -69,4 +82,14 @@ export function requestObject(app) {
             }
         })
     })
+
+    /*
+    app.error(function(err, req, res, next) {
+        if (err instanceof negotiate.NotAcceptable) {
+            res.send('Sorry, I dont know how to return any of the content types requested', 406);
+        } else {
+            next(err);
+        }
+    });
+    */
 }

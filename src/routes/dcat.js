@@ -21,43 +21,73 @@ export function requestDCAT(app) {
                 },
                 "Datasetcatalogus.heeftUitgever": {
                     "@id": "https://www.wikidata.org/entity/Q1809071",
-                    "Agent.naam": {
-                        "@value": "Design Museum Gent",
-                        "@language": "nl"
-                    }
+                    "Agent.naam": [
+                        {
+                            "@value": "Design Museum Gent",
+                            "@language": "nl"
+                        },
+                        {
+                            "@value": "Design Museum Gent",
+                            "@language": "en"
+                        }
+                    ]
                 },
                 "Datasetcatalogus.heeftDataset": [
                     {
                         "@id": "https://data.designmuseumgent.be/id/objects/",
                         "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata van reeds gepubliceerde items uit de collectie van het Design Museum Gent.",
-                            "@language": "nl"
-                        }
+                        "Dataset.titel": [
+                            {
+                                "@value": "dataset met metadata van reeds gepubliceerde items uit de collectie van het Design Museum Gent.",
+                                "@language": "nl"
+                            },
+                            {
+                                "@value": "dataset with metadata concerning the published human-made objects of Design Museum Gent",
+                                "@language": "en"
+                            }
+                        ]
                     },
                     {
                         "@id": "https://data.designmuseumgent.be/id/exhibitions/",
                         "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata rond de tentoonstellingen gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent.",
-                            "@language": "nl"
-                        }
+                        "Dataset.titel": [
+                            {
+                                "@value": "dataset met metadata rond de tentoonstellingen gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent.",
+                                "@language": "nl"
+                            },
+                            {
+                                "@value": "dataset with metadata concerning the exhibitions that are related to the collection of Design Museum Gent",
+                                "@language": "en"
+                            }
+                        ]
                     },
                     {
                         "@id": "https://data.designgent.be/id/agents/",
                         "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata rond personen en instellingen (agenten) gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent",
-                            "@language": "nl"
-                        }
+                        "Dataset.titel": [
+                            {
+                                "@value": "dataset met metadata rond personen en instellingen (agenten) gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent",
+                                "@language": "nl"
+                            },
+                            {
+                                "@value": "dataset with metadata concerning the agents that are related to the collection of Design Museum Gent",
+                                "@language": "en"
+                            }
+                        ]
                     },
                     {
                         "@id": "https://data.designmuseum.be/id/exhibitions/billboardseries",
                         "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata rond billboards die in samenwerking met 019 geproduceerd werden op de banner in de Drabstraat aan Design Museum Gent",
-                            "@language": "nl"
-                        }
+                        "Dataset.titel": [
+                            {
+                                "@value": "dataset met metadata rond billboards die in samenwerking met 019 geproduceerd werden op de banner in de Drabstraat aan Design Museum Gent",
+                                "@language": "nl"
+                            },
+                            {
+                                "@value": "dataset with metadata concerning the billboardseries at Design Museum Gent.",
+                                "@language": "en"
+                            }
+                        ]
                     }
                 ]
             }

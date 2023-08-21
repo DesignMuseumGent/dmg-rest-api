@@ -15,7 +15,7 @@ export function requestTexts(app) {
             let _text = {};
             let catalogueTexts = [];
             let _objectNumber = _texts[text]["object_number"]
-            let _objectID = "https://data.designmuseumgent.be/id/objects/"+_objectNumber //todo: add resolver when the object has not been published yet.
+            let _objectID = "https://data.designmuseumgent.be/id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
 
             //nl
             if (_texts[text]["text_NL"]) {

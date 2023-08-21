@@ -1,9 +1,11 @@
 import {supabase} from "../../supabaseClient.js";
 
-export async function fetchArchive() {
+export async function fetchArchiveByObjectNumber(_On) {
     const {data, error} = await supabase
-        .from("dmg_archief_ldes")
-        .select('LDES_raw', {'head':false})
+        .from("dmg_archief_LDES")
+        .select('LDES_raw')
+        .eq('objectNumber', _On)
+    return data
 }
 
 export async function fetchAllBillboards() {

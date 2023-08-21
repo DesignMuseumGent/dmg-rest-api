@@ -16,6 +16,7 @@ import {requestAllBillboards} from "./src/routes/billboards.js";
 import {requestAgents} from "./src/routes/agents.js";
 import {requestExhibition, requestExhibitions} from "./src/routes/exhibitions.js";
 import {requestTexts} from "./src/routes/texts.js";
+import {requestArchive} from "./src/routes/archief.js";
 
 async function start(){
 
@@ -52,6 +53,9 @@ async function start(){
 
     // ROUTES to agent (authority list) data
     requestAgents(app)
+
+    // ROUTES to archive (posters)
+    requestArchive(app);
 
     // ROUTES to texts that are related to the collection of Design Museum Gent
     requestTexts(app)

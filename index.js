@@ -1,20 +1,22 @@
+// import dependencies
+import express from "express";
+import YAML from "yamljs";
+import swaggerUI from "swagger-ui-express";
+import cors from 'cors'
+
+// import functions to populate API.
 import {
     fetchAllBillboards,
-    fetchLDESRecordByObjectNumber,
     fetchLDESRecordByAgentID,
     fetchLDESrecordsByExhibitionID,
-    fetchAllLDESrecordsObjects,
     fetchAllExhibitions,
     fetchTexts
 } from "./src/utils/parsers.js";
 
-import {requestObjects} from "./src/routes/objects.js";
-
-import express from "express";
-import negotiate from 'express-negotiate'
-import YAML from "yamljs";
-import swaggerUI from "swagger-ui-express";
-import cors from 'cors'
+// import routes (API contructors)
+import {requestObjects, requestObject} from "./src/routes/objects.js";
+import {requestDCAT} from "./src/routes/dcat.js";
+import {requestAllBillboards} from "./src/routes/billboards.js";
 
 async function start(){
 
@@ -36,107 +38,16 @@ async function start(){
 
     const baseURI = "https://data.designmuseumgent.be/"
 
-    // function to retrieve human-made objects
-    requestObjects(app);
+    // ROUTE to top level DCAT
+    requestDCAT(app);
 
+    // ROUTES to human-made objects
+    requestObjects(app); // request list of all published human-made objects
+    requestObject(app); // request individual entity (human-made object) using content-negotiation.
 
-
-    // *** BILLBOARD SERIES *** //
-    app.get('/', (req, res) => {
-        res.send(
-            {
-                "@context": [
-                "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
-                {
-                    "dcterms": "http://purl.org/dc/terms/",
-                    "tree": "https://w3id.org/tree#"
-                }],
-                "@id": "https://data.designmuseumgent.be/",
-                "@type": "Datasetcatalogus",
-                "Datasetcatalogus.titel": {
-                    "@value": "catalogus Design Museum Gent",
-                    "@language": "nl"
-                },
-                "Datasetcatalogus.heeftLicentie": {
-                    "@id": "https://creativecommons.org/publicdomain/zero/1.0/"
-                },
-                "Datasetcatalogus.heeftUitger": {
-                    "@id": "https://www.wikidata.org/entity/Q1809071",
-                    "Agent.naam": {
-                        "@value": "Design Museum Gent",
-                        "@language": "nl"
-                    }
-                },
-                "Datasetcatalogus.heeftDataset": [
-                    {
-                        "@id": "https://data.designmuseumgent.be/id/objects/",
-                        "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata van reeds gepubliceerde items uit de collectie van het Design Museum Gent.",
-                            "@langeuage": "nl"
-                        }
-                    },
-                    {
-                        "@id": "https://data.designmuseumgent.be/id/exhibitions/",
-                        "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met metadata rond de tentoonstellingen gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent.",
-                            "@language": "nl"
-                        }
-                    },
-                    {
-                        "@id": "https://data.designgent.be/id/agents/",
-                        "@type": "Dataset",
-                        "Dataset.titel": {
-                            "@value": "dataset met met metadata rond personen en instellingen (agenten) gerelateerd aan gepubliceerd items uit de collectie van Design Museum Gent",
-                            "@language": "nl"
-                        }
-                    }
-                ]
-            }
-        )
-    })
-    const billboard = await fetchAllBillboards()
-
-    // retrieve all billboards;
-    app.get('/exhibitions/billboardseries/', (req, res) => {
-        const billboards = [];
-        for (let x=0; x < billboard.length; x++) {
-            if (billboard[x]){
-                console.log(billboard[x]);
-                billboards.push(billboard[x]);
-            }
-        }
-
-        res.send(
-            {
-                billboards
-            }
-        );
-    })
-
-
-    // ark
-    app.get('/ark:/29417/exhibitions/billboardseries/', (req, res) => {
-        const billboards = [];
-        for (let x=0; x < billboard.length; x++) {
-            if (billboard[x]){
-                console.log(billboard[x]);
-                billboards.push(billboard[x]);
-            }
-        }
-
-        res.send(
-            {
-                billboards
-            }
-        );
-    })
-
-    // todo: add endpoint for individual billboards and refer to HTML and MACHINE-READABLE page.
-
-    // *** OBJECTS *** //
-
+    // ROUTES to exhibition data
+    const billboard = await fetchAllBillboards() // fetch data from supabase
+    requestAllBillboards(app, billboard); // request all billboards. (endpoint)
 
     // *** AGENTS *** //
     app.get('/id/agents/:agentPID', async(req, res) => {

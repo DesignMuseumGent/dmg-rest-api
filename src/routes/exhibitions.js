@@ -9,19 +9,31 @@ export function requestExhibitions(app) {
 
         for (let i = 0; i < range; i ++) {
             let _exhibition = {}
+
+            // generate PURI for exhibition
             _exhibition["@id"] = baseURI+"id/exhibition/"+exh[i]["exh_PID"]
-            _exhibition["cidoc:P1_is_identified_by"] = {
+
+            // parse title from LDES feed - if no title available use value "title unknown".
+            let _title = "title unknown"
+            try{
+                _title = exh[i]["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"]
+            } catch (e) {}
+
+            // parse identification.
+            let _identification = {
                 "@type": "cidoc:E33_E41_Linguistic_Appellation",
                 "inhoud": {
-                    "@value": exh[i]["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"],
+                    "@value": _title,
                     "@language": "nl"
                 }
             }
+            _exhibition["cidoc:P1_is_identified_by"] = _identification
+
+            // push to endpoint.
             _exhibitions.push(_exhibition)
         }
         res.send({_exhibitions})
     })
-
 }
 
 export function requestExhibition(app) {

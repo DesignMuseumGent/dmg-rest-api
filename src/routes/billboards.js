@@ -1,22 +1,19 @@
-// endpoint: Billboards.
-
 import {fetchAllBillboards} from "../utils/parsers.js";
-
 export function requestAllBillboards(app) {
-    app.get('/id/exhibitions/billboardseries/', (req, res) => {
-        const billboard =  fetchAllBillboards()
-        console.log(billboard)
+    app.get('/id/exhibitions/billboardseries/', async (req, res) => {
+        // ASYNC FUNCTION THAT AWAITS fetch from Supabase.
+        const billboard =  await fetchAllBillboards()
+
+        // init list to populate with all billboards
         const billboards = [];
         for (let x=0; x < billboard.length; x++) {
+            //push single billboard to list.
             if (billboard[x]){
                 billboards.push(billboard[x]);
             }
         }
         res.send(
-            //todo: setup top level metadata (DCAT) -  collection
-            {
-                billboards
-            }
+            {billboards}
         );
     })
 }

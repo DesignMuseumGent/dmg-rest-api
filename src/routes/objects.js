@@ -3,7 +3,8 @@ import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber} from "../util
 export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
 
-        let x = await fetchAllLDESrecordsObjects()
+        // await data from GET request (supabase)
+        const x = await fetchAllLDESrecordsObjects()
 
         let limit = 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
@@ -23,7 +24,10 @@ export function requestObjects(app) {
         //todo: add top level for collection of objects (dataset contains).
 
         for(let i = 0; i < x.length; i++) {
+
             let _object = {}
+            const baseURI = "https://data.designmuseumgent.be/"
+
             _object["@context"] = [
                 "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
                 "https://apidg.gent.be/op…xt/generiek-basis.jsonld"
@@ -53,31 +57,47 @@ export function requestObjects(app) {
 
 export function requestObject(app) {
     app.get('/id/object/:objectNumber.:format?', async (req, res, next) => {
+
+        // await data from GET request (supabase)
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
-        let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
-        const result_cidoc = x[0];
-        console.log(result_cidoc)
+        const _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
+        let _error = "" ;
+        const result_cidoc = x;
 
-        // redefine - @id to use URIs and PIDs defined by the museum
-        result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+        try{
 
-        // assign foaf:pages
-        result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            // redefine - @id to use URIs and PIDs defined by the museum
+            result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            // assign foaf:pages
+            result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
 
-        req.negotiate(req.params.format, {
-            'json': function() {
-                // if format .json redirect to machine-readable page.
-                res.send(result_cidoc)
-            },
-            'html': function() {
-                // if format .html redirect to human-readable page
-                res.redirect(_redirect)
-            },
-            'default': function() {
-                //send html anyway.
-                res.redirect(_redirect)
+        } catch (error) {_error = error}
+
+
+        // error handling.
+        try{
+            if (result_cidoc.length !== 0) {
+                req.negotiate(req.params.format, {
+                    'json': function() {
+                        // if format .json redirect to machine-readable page.
+                        res.send(result_cidoc)
+                    },
+                    'html': function() {
+                        // if format .html redirect to human-readable page
+                        res.redirect(_redirect)
+                    },
+                    'default': function() {
+                        //send html anyway.
+                        res.redirect(_redirect)
+                    }
+                })
+            } else {
+                res.status(503).send(_error)
             }
-        })
+        } catch (e) {
+            res.status(503).send(e)
+        }
+
     })
 
     /*

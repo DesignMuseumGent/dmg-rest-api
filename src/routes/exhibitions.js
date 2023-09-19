@@ -5,10 +5,11 @@ export function requestExhibitions(app) {
         const exh = await fetchAllExhibitions()
         let range = exh.length
         let _exhibitions = []
+        const baseURI = "https://data.designmuseumgent.be/"
 
         for (let i = 0; i < range; i ++) {
             let _exhibition = {}
-            _exhibition["@id"] = baseURI+"exhibition/"+exh[i]["exh_PID"]
+            _exhibition["@id"] = baseURI+"id/exhibition/"+exh[i]["exh_PID"]
             _exhibition["cidoc:P1_is_identified_by"] = {
                 "@type": "cidoc:E33_E41_Linguistic_Appellation",
                 "inhoud": {

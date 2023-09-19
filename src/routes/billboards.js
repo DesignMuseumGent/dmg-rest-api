@@ -1,7 +1,11 @@
 // endpoint: Billboards.
 
-export function requestAllBillboards(app, billboard) {
+import {fetchAllBillboards} from "../utils/parsers.js";
+
+export function requestAllBillboards(app) {
     app.get('/id/exhibitions/billboardseries/', (req, res) => {
+        const billboard =  fetchAllBillboards()
+        console.log(billboard)
         const billboards = [];
         for (let x=0; x < billboard.length; x++) {
             if (billboard[x]){

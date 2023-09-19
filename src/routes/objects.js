@@ -1,10 +1,11 @@
 import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber} from "../utils/parsers.js";
-import negotiate from 'express-negotiate'
 
 export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
-        const x = await fetchAllLDESrecordsObjects()
-        let limit = parseInt(req.query.limit) || x.length; // if no limit set, return all items.
+
+        let x = await fetchAllLDESrecordsObjects()
+
+        let limit = 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
         const _objects = []
 
@@ -40,26 +41,22 @@ export function requestObjects(app) {
             _objects.push(_object)
         }
         const objects = _objects.slice(offset, offset + limit);
-        res.send({objects})
-    })
 
-    /*
-    app.error(function(err, req, res, next) {
-        if (err instanceof negotiate.NotAcceptable) {
-            res.send('Sorry, I dont know how to return any of the content types requested', 406);
+        // error handling.
+        if (objects.length !== 0) {
+            res.send(objects)
         } else {
-            next(err);
+            res.status(503).send('will be available soon!')
         }
-    });
-    */
-
+    })
 }
 
 export function requestObject(app) {
     app.get('/id/object/:objectNumber.:format?', async (req, res, next) => {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         let _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
-        const result_cidoc = x[0]["LDES_raw"];
+        const result_cidoc = x[0];
+        console.log(result_cidoc)
 
         // redefine - @id to use URIs and PIDs defined by the museum
         result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
@@ -70,7 +67,7 @@ export function requestObject(app) {
         req.negotiate(req.params.format, {
             'json': function() {
                 // if format .json redirect to machine-readable page.
-                res.send(result_cidoc["object"])
+                res.send(result_cidoc)
             },
             'html': function() {
                 // if format .html redirect to human-readable page

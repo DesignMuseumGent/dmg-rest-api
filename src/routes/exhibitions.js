@@ -29,7 +29,9 @@ export function requestExhibition(app) {
     app.get('/id/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
-            res.send(x[0]["LDES_raw"])
+            //res.send(x[0]["LDES_raw"])
+            res.send(x[0])
+
         } catch (e) {
             console.log(e)
         }

@@ -10,6 +10,7 @@ export function requestArchive(app) {
         const PID = req.params.objectNumber.split("_Aff")[0]
         const exh_PURI = `https://data.designmuseumgent.be/id/exhibition/${PID}`
 
+        //todo: remove when in LDES.
         object[0]["LDES_raw"]["object"]["http://purl.org/dc/terms/isPartOf"]["cidoc:P16_used_specific_object"]["@id"] = exh_PURI
 
         res.send(object[0]["LDES_raw"])

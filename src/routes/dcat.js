@@ -62,7 +62,7 @@ export function requestDCAT(app) {
                         ]
                     },
                     {
-                        "@id": "https://data.designgent.be/id/agents/",
+                        "@id": "https://data.designmuseumgent.be/id/agents/",
                         "@type": "Dataset",
                         "Dataset.titel": [
                             {
@@ -76,7 +76,7 @@ export function requestDCAT(app) {
                         ]
                     },
                     {
-                        "@id": "https://data.designmuseum.be/id/exhibitions/billboardseries",
+                        "@id": "https://data.designmuseumgent.be/id/exhibitions/billboardseries",
                         "@type": "Dataset",
                         "Dataset.titel": [
                             {

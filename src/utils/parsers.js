@@ -78,7 +78,7 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
 export async function fetchLDESAllAgents() {
     const {data, error} = await supabase
         .from("dmg_personen_LDES")
-        .select("LDES_raw")
+        .select("*")
     return data;
 }
 

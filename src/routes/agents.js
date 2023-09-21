@@ -56,8 +56,12 @@ export function requestAgents(app) {
 
     app.get('/id/agent/:agentPID', async(req, res) => {
         const x = await fetchLDESRecordByAgentID(req.params.agentPID);
-        const result_cidoc = x[0]["LDES_raw"];
-        res.send(x[0]["LDES_raw"])
+        const result_cidoc = x
+
+        try{
+            res.send(result_cidoc)
+        } catch(e) {res.send(e)}
+
     })
 }
 

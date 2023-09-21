@@ -319,13 +319,13 @@ paths:
                               "@language":
                                 type: string
 
-
   /id/agents: # agent list
     get:
       summary: a list of agents
       description: a list of agents associated with objects from which the data has been published by Design Museum Gent
       responses:
-        '200': # status code
+        '200':
+          description: a JSON array of metadata on agents associated with objects from which the data has been published by Design Museum Gent
 
   /id/texts:
     get:
@@ -333,3 +333,4 @@ paths:
       description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
       responses:
         '200':
+          description: a JSON array of texts (in different languages) associated with objects from which the data has been published by Design Museum Gent.

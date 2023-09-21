@@ -101,9 +101,6 @@ paths:
             application/json:
               schema:
                 type: object
-            html/text:
-              schema:
-                type: string
 
   /id/exhibitions:
     get:
@@ -326,6 +323,23 @@ paths:
       responses:
         '200':
           description: a JSON array of metadata on agents associated with objects from which the data has been published by Design Museum Gent
+
+  /id/agent/{id}: #exhibitions
+    get:
+      summary: get metadata on a specific agent
+      description: metadata on a specific agent that is associated with objects from which data has been published by Design Museum Gent
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: id to fetch specific agent data
+          example: DMG-A-00028
+
+      responses:
+        '200': # status code
+          description: an object containing metadata on a specific agent
 
   /id/texts:
     get:

@@ -105,7 +105,7 @@ paths:
               schema:
                 type: string
 
-  /exhibitions:
+  /id/exhibitions:
     get:
       summary: get a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
       description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
@@ -135,7 +135,7 @@ paths:
                             "@language":
                               type: string
 
-  /exhibition/{id}: #exhibitions
+  /id/exhibition/{id}: #exhibitions
     get:
       summary: get metadata on a specific exhibition
       description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
@@ -154,7 +154,7 @@ paths:
 
 
 
-  /exhibitions/billboardseries/: #billboards
+  /id/exhibitions/billboardseries/: #billboards
     get:
       summary: a list of all billboards
       description: a list of all billboards hosted by Design Museum Gent in JSON-LD
@@ -320,14 +320,14 @@ paths:
                                 type: string
 
 
-  /agents: # agent list
+  /id/agents: # agent list
     get:
       summary: a list of agents
       description: a list of agents associated with objects from which the data has been published by Design Museum Gent
       responses:
         '200': # status code
 
-  /texts:
+  /id/texts:
     get:
       summary: a list of texts
       description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent

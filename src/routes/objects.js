@@ -6,7 +6,7 @@ export function requestObjects(app) {
         // await data from GET request (supabase)
         const x = await fetchAllLDESrecordsObjects()
 
-        let limit = 10; // if no limit set, return all items.
+        let limit =  parseInt(req.query.limit) || 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
         const _objects = []
 

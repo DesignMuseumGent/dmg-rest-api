@@ -2,8 +2,6 @@ openapi: 3.0.0
 
 info:
   title: Design Museum Gent REST API Swagger Documentation
-  description: |
-      
 
   version: 1.0.0
 servers:
@@ -74,10 +72,16 @@ paths:
         required: true
         schema:
           type: string
-        description: id (object number) of a specific object to fetch metadata from.
+        description: api query to fetch a specific object based on the input ID (object number).
         example: 1987-0942
-
-#      - in: query
+      - in: path
+        name: manifest
+        required: false
+        schema:
+          type: boolean
+        description: api query to return only manifest as result.
+        example: true
+      #      - in: query
 #        name: format
 #        required: false
 #        schema:

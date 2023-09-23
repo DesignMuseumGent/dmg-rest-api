@@ -8,6 +8,7 @@ export function requestObjects(app) {
 
         let limit =  parseInt(req.query.limit) || 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
+
         const _objects = []
 
         //check if limit exceeds max.
@@ -62,7 +63,20 @@ export function requestObject(app) {
         const x = await fetchLDESRecordByObjectNumber(req.params.objectNumber)
         const _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         let _error = "" ;
+        let _manifest = false
         const result_cidoc = x;
+
+        function parseBoolean(string) {
+            return string === "true" ? true : string === "false" ? false : undefined;
+        }
+
+        // if asked for image, only return manifest link.
+        try{
+            _manifest = parseBoolean(req.query.manifest) || false;
+            console.log(_manifest)
+        } catch (e) {
+            console.log(e)
+        }
 
         try{
 
@@ -79,8 +93,19 @@ export function requestObject(app) {
             if (result_cidoc.length !== 0) {
                 req.negotiate(req.params.format, {
                     'json': function() {
+
+                        // todo
+                        if (_manifest) {
+                            let _man = result_cidoc["object"]
+                            res.redirect(result_cidoc[0]["LDES_raw"]["object"]["http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
+                        }
+
+                        // if manifest only send manifest;
+                        // todo: define path that leads to  maanifest
+                        //res.send(result_cidoc[])
+
                         // if format .json redirect to machine-readable page.
-                        res.send(result_cidoc)
+                        res.send(result_cidoc[0]["LDES_raw"])
                     },
                     'html': function() {
                         // if format .html redirect to human-readable page

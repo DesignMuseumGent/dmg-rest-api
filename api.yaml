@@ -74,13 +74,13 @@ paths:
           type: string
         description: api query to fetch a specific object based on the input ID (object number).
         example: 1987-0942
-      - in: path
+      - in: query
         name: manifest
         required: false
         schema:
           type: boolean
         description: api query to return only manifest as result.
-        example: true
+        example: false
       #      - in: query
 #        name: format
 #        required: false

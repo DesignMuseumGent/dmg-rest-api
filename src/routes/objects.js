@@ -1,4 +1,5 @@
 import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber} from "../utils/parsers.js";
+import {parse} from "dotenv";
 
 export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
@@ -64,6 +65,8 @@ export function requestObject(app) {
         const _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber
         let _error = "" ;
         let _manifest = false
+        let _open = false
+
         const result_cidoc = x;
 
         function parseBoolean(string) {
@@ -73,7 +76,7 @@ export function requestObject(app) {
         // if asked for image, only return manifest link.
         try{
             _manifest = parseBoolean(req.query.manifest) || false;
-            console.log(_manifest)
+            _open = parseBoolean(req.query.open) || false;
         } catch (e) {
             console.log(e)
         }
@@ -94,18 +97,19 @@ export function requestObject(app) {
                 req.negotiate(req.params.format, {
                     'json': function() {
 
-                        // todo
-                        if (_manifest) {
+                        // if manifest only send manifest;
+                        if (_manifest && ! _open) {
                             let _man = result_cidoc["object"]
-                            res.redirect(result_cidoc[0]["LDES_raw"]["object"]["http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
+                            console.log("DONT OPEN")
+                            res.send(result_cidoc[0]["LDES_raw"]["object"]["http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
+                        } else if (_manifest && _open) {
+                            console.log("OPEN")
+                            res.redirect(result_cidoc[0]["LDES_raw"]["object"]["https://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
+                        } else {
+                            // if format .json redirect to machine-readable page.
+                            res.send(result_cidoc[0]["LDES_raw"])
                         }
 
-                        // if manifest only send manifest;
-                        // todo: define path that leads to  maanifest
-                        //res.send(result_cidoc[])
-
-                        // if format .json redirect to machine-readable page.
-                        res.send(result_cidoc[0]["LDES_raw"])
                     },
                     'html': function() {
                         // if format .html redirect to human-readable page

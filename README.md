@@ -1,5 +1,5 @@
 # Design Museum Gent - RESTful API
-This repository contains the documentation for the RESTful API of the Design Museum Gent. The API allows users to access various data catalogues (DCAT) containing metadata related to the collection and programming of [Design Museum Gent](https://designmuseumgent.be).
+This repository contains the documentation for the RESTful API of the Design Museum Gent. The API allows users to access various data catalogues (DCAT) containing metadata related to the collection and programming of [Design Museum Gent](https://designmuseumgent.be). To ensure a healthy upstream, this API relies on the [dmg-resolver](https://github.com/designmuseumgent/dmg-resolver) service. 
 
 ## documentation
 for further documentation on how to use the REST-API and which catalogues are available, a [swagger documentation](https://data.designmuseumgent.be/api-docs) has been setup. 

@@ -107,7 +107,7 @@ export function requestObject(app) {
                             res.redirect(result_cidoc[0]["LDES_raw"]["object"]["https://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else {
                             // if format .json redirect to machine-readable page.
-                            res.send(result_cidoc[0]["LDES_raw"])
+                            res.send(result_cidoc[0]["LDES_raw"]["object"])
                         }
 
                     },

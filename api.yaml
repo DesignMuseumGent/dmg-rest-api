@@ -19,7 +19,7 @@ paths:
         name: limit
         schema:
           type: integer
-        description: set the limit for number objects to be shown on the page.
+        description: set the limit for number objects to be shown on the page. set limit to none to fetch all records.
         example: 10
 
       - in: query

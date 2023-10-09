@@ -99,17 +99,17 @@ export function requestObject(app) {
 
                         // if manifest only send manifest;
                         if (_manifest && ! _open) {
+                            //
                             let _man = result_cidoc["object"]
-                            console.log("DONT OPEN")
                             res.send(result_cidoc[0]["LDES_raw"]["object"]["http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else if (_manifest && _open) {
-                            console.log("OPEN")
+                            //
                             res.redirect(result_cidoc[0]["LDES_raw"]["object"]["https://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else {
                             // if format .json redirect to machine-readable page.
                             res.send(result_cidoc[0]["LDES_raw"]["object"])
                         }
-
+                        //todo: add route to page when not published yet. -- this object has not been published yet.
                     },
                     'html': function() {
                         // if format .html redirect to human-readable page
@@ -121,7 +121,8 @@ export function requestObject(app) {
                     }
                 })
             } else {
-                res.status(503).send(_error)
+                // string is correct / but object can't be found.
+                res.status(422).json({"error":"Oops. the syntax of your request is correct, but data on this object is not yet been published."})
             }
         } catch (e) {
             res.status(503).send(e)

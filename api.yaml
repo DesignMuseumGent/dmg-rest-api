@@ -29,6 +29,13 @@ paths:
         description: set the offset of the get request (recursively move through paginated objects based on the limit)
         example: 2
 
+      - in: query
+        name: idOnly
+        schema:
+          type: boolean
+        description: if true, return ids only (object numbers).
+        example: true;
+
       responses:
         '200': #status code
           description: a json array of all the unique objects published from the collection of Design Museum Gent

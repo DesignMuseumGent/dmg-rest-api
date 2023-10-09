@@ -7,8 +7,17 @@ export function requestObjects(app) {
         // await data from GET request (supabase)
         const x = await fetchAllLDESrecordsObjects()
 
+        function parseBoolean(string) {
+            return string === "true" ? true : string === "false" ? false : undefined;
+        }
+
         let limit =  parseInt(req.query.limit) || 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
+        let idOnly = parseBoolean(req.query.idOnly) || false; // if not idOnly, return all items
+
+        if (idOnly) {
+            console.log("YES")
+        }
 
         const _objects = []
 
@@ -30,21 +39,25 @@ export function requestObjects(app) {
             let _object = {}
             const baseURI = "https://data.designmuseumgent.be/"
 
-            _object["@context"] = [
-                "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
-                "https://apidg.gent.be/op…xt/generiek-basis.jsonld"
-            ]
-            _object["@id"] = baseURI+"id/object/"+x[i]["objectNumber"] // create id (PID) for individual object
-            _object["@type"] = "MensgemaaktObject"
-            _object["Object.identificator"] = [
-                {
-                    "@type": "Identificator",
-                    "Identificator.identificator": {
-                        "@value": x[i]["objectNumber"]
+            if(!idOnly) {
+                _object["@context"] = [
+                    "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
+                    "https://apidg.gent.be/op…xt/generiek-basis.jsonld"
+                ]
+                _object["@id"] = baseURI+"id/object/"+x[i]["objectNumber"] // create id (PID) for individual object
+                _object["@type"] = "MensgemaaktObject"
+                _object["Object.identificator"] = [
+                    {
+                        "@type": "Identificator",
+                        "Identificator.identificator": {
+                            "@value": x[i]["objectNumber"]
+                        }
                     }
-                }
-            ]
-            _objects.push(_object)
+                ]
+                _objects.push(_object)
+            } else if (idOnly) {
+                _objects.push(x[i]["objectNumber"])
+            }
         }
         const objects = _objects.slice(offset, offset + limit);
 

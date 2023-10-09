@@ -11,7 +11,7 @@ paths:
   #objects
   /id/objects:
     get:
-      summary: get a list of objects from the collection of Design Museum Gent
+      summary: API ENDPOINT to GET a list of objects from the collection of Design Museum Gent.
       description: a list of data describing objects from the collection of Design Museum Gent
       parameters:
 
@@ -62,7 +62,7 @@ paths:
   /id/object/{id}:
     get:
       summary:
-        get metadata on a specific object from the collection of Design Museum Gent.
+        API ENDPOINT to GET metadata on a specific object from the collection of Design Museum Gent.
       description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
       produces:
         - application/json
@@ -100,7 +100,7 @@ paths:
 
   /id/exhibitions:
     get:
-      summary: get a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
+      summary: API ENDPOINT to GET a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
       description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
       responses:
         '200':
@@ -130,7 +130,7 @@ paths:
 
   /id/exhibition/{id}: #exhibitions
     get:
-      summary: get metadata on a specific exhibition
+      summary: API ENDPOINT to GET metadata on a specific exhibition
       description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
       parameters:
         - in: path
@@ -149,7 +149,7 @@ paths:
 
   /id/exhibitions/billboardseries/: #billboards
     get:
-      summary: a list of all billboards
+      summary: API ENDPOINT to GET a list of all billboards displayed at Design Museum Gent
       description: a list of all billboards hosted by Design Museum Gent in JSON-LD
       responses:
         '200': #status code
@@ -314,7 +314,7 @@ paths:
 
   /id/agents: # agent list
     get:
-      summary: a list of agents
+      summary: API ENDPOINT to GET a list of agents related to the collection and program of Design Museum Gent
       description: a list of agents associated with objects from which the data has been published by Design Museum Gent
       responses:
         '200':
@@ -322,7 +322,7 @@ paths:
 
   /id/agent/{id}: #exhibitions
     get:
-      summary: get metadata on a specific agent
+      summary: API ENDPOINT to GET metadata on a specific agent related to the collection and program of Design Museum Gent
       description: metadata on a specific agent that is associated with objects from which data has been published by Design Museum Gent
       parameters:
         - in: path
@@ -339,7 +339,7 @@ paths:
 
   /id/texts:
     get:
-      summary: a list of texts
+      summary: API ENDPOINT to GET a list of texts related to objects and the program of Design Museum Gent
       description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
       responses:
         '200':

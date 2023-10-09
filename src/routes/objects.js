@@ -26,6 +26,10 @@ export function requestObjects(app) {
             limit = x.length
         }
 
+        if (limit = "none") {
+            limit = x.length;
+        }
+
         //check max offset.
         const maxOffset = x.length / limit
         if (offset > maxOffset) {

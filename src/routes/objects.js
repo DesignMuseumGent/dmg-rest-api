@@ -84,9 +84,9 @@ export function requestObject(app) {
         try{
 
             // redefine - @id to use URIs and PIDs defined by the museum
-            result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            result_cidoc[0]["LDES_raw"]["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
             // assign foaf:pages
-            result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            result_cidoc[0]["LDES_raw"]["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
 
         } catch (error) {_error = error}
 
@@ -107,7 +107,7 @@ export function requestObject(app) {
                             res.redirect(result_cidoc[0]["LDES_raw"]["object"]["https://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else {
                             // if format .json redirect to machine-readable page.
-                            res.send(result_cidoc[0]["LDES_raw"])
+                            res.send(result_cidoc[0]["LDES_raw"]["object"])
                         }
 
                     },

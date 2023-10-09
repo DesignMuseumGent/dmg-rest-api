@@ -84,9 +84,9 @@ export function requestObject(app) {
         try{
 
             // redefine - @id to use URIs and PIDs defined by the museum
-            result_cidoc["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            result_cidoc[0]["LDES_raw"]["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
             // assign foaf:pages
-            result_cidoc["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
+            result_cidoc[0]["LDES_raw"]["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
 
         } catch (error) {_error = error}
 

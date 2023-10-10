@@ -48,7 +48,7 @@ export async function fetchLDESRecordByObjectNumber(_On) {
 export async function fetchAllLDESrecordsObjects() {
     const {data, error} = await supabase
         .from("dmg_objects_LDES")
-        .select('objectNumber')
+        .select('objectNumber, iiif_manifest')
     return data;
 }
 
@@ -87,4 +87,68 @@ export async function fetchTexts() {
         .from("exh_object_texts")
         .select("*")
     return data;
+}
+
+export async function fetchAllImages() {
+    const {data} = await supabase
+        .from("dmg_images")
+        .select("*")
+    return data
+}
+
+export async function populateSupabaseImages() {
+    // function that extracts images from other table and add to new table to improve performance of /random-image service.
+    const x = await fetchAllLDESrecordsObjects();
+
+    async function fetchImages(manifest) {
+        let res = await fetch(manifest)
+        let _im = res.json()
+        return _im;
+    }
+
+
+    // iterate over all object
+    for (let i = 0; i < x.length; i++) {
+        let _manifest = await fetchImages(x[i]["iiif_manifest"])
+        let _objectNumber = x[i]["objectNumber"]
+        // loop within manifest to find all images and store them seperately.
+        try {
+            for (let im = 0; im < _manifest["sequences"].length; im++) {
+                let _canvas = _manifest["sequences"][im]["canvases"] // top level of image metadata.
+                for (let o = 0; o < _canvas.length; o++) {
+                    let _im = _canvas[o]["images"]
+                    let _attribution = _im[0]["attribution"] // fetch attribution from within manifest
+                    let _imagePURL = _im[0]["resource"]["@id"] // fetch imagePURL (link to IIIF image API) from within manifest
+                    let _license = _im[0]["license"]
+
+                    // check if image is not yet in DB
+                    let {data, error} = await supabase
+                        .from("dmg_images")
+                        .select("*")
+                        .eq("PURL", _imagePURL)
+
+                    if (data == "") {
+                        // write metadata to DB (supabase)
+                        console.log(`writing metadata: ${_imagePURL}`)
+
+                        const {data, error} = await supabase
+                            .from("dmg_images")
+                            .insert([
+                                {
+                                    "PURL":_imagePURL,
+                                    "attribution":_attribution,
+                                    "license":_license,
+                                    "object_number":_objectNumber
+                                }
+                            ])
+                            .select()
+                    } else {
+                        console.log(`${_imagePURL} is already in the DB`)
+                    }
+
+
+                }
+            }
+        } catch (e) {console.log(`no public images for: ${_objectNumber}`)}
+    }
 }

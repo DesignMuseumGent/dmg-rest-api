@@ -8,6 +8,30 @@ servers:
   - url: https://data.designmuseumgent.be
     description: Main (production server)
 paths:
+  #random-image
+  /random-image:
+    get:
+      summary: API ENDPOINT to generate a list of random images of works from within the collection of Design Museum Gent.
+      description: this query generates a list of (max. 100) images of random objects within the collection. Although the limit is set to 100, we advice to limit to lower searches as longer searches result in a longer loading time.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: set the limit for number objects to be shown on the page. set limit to none to fetch all records.
+          example: 50
+
+      responses:
+        200: #status code
+          description: a json array of random images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+
   #objects
   /id/objects:
     get:

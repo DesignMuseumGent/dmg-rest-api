@@ -3,7 +3,6 @@ import {parse} from "dotenv";
 
 export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
-
         // await data from GET request (supabase)
         const x = await fetchAllLDESrecordsObjects()
 
@@ -59,7 +58,7 @@ export function requestObjects(app) {
                     }
                 ]
                 _objects.push(_object)
-            } else if (idOnly) {
+            } else if (idOnly && !randomImage) {
                 _objects.push(x[i]["objectNumber"])
             }
         }

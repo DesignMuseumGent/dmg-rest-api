@@ -17,6 +17,7 @@ import {requestAgents} from "./src/routes/agents.js";
 import {requestExhibition, requestExhibitions} from "./src/routes/exhibitions.js";
 import {requestTexts} from "./src/routes/texts.js";
 import {requestArchive} from "./src/routes/archief.js";
+import {requestRandomImage} from "./src/routes/randomImage.js";
 
 async function start(){
 
@@ -59,6 +60,9 @@ async function start(){
 
     // ROUTES to texts that are related to the collection of Design Museum Gent
     requestTexts(app)
+
+    // ROUTE to randomimage
+    requestRandomImage(app)
 
     console.log("DONE :D :D :D :D ")
 }

@@ -48,7 +48,7 @@ export async function fetchLDESRecordByObjectNumber(_On) {
 export async function fetchAllLDESrecordsObjects() {
     const {data, error} = await supabase
         .from("dmg_objects_LDES")
-        .select('objectNumber')
+        .select('objectNumber, iiif_manifest')
     return data;
 }
 

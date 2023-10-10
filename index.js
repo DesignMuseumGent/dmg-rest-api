@@ -6,7 +6,7 @@ import cors from 'cors'
 
 // import functions to populate API.
 import {
-    fetchAllBillboards,
+    fetchAllBillboards, populateSupabaseImages,
 } from "./src/utils/parsers.js";
 
 // import routes (API contructors)
@@ -68,3 +68,5 @@ async function start(){
 }
 
 start();
+
+//populateSupabaseImages();

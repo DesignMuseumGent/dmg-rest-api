@@ -40,7 +40,7 @@ export async function fetchBillboardByYear(year) {
 export async function fetchLDESRecordByObjectNumber(_On) {
     const {data, error} = await supabase
         .from("dmg_objects_LDES")
-        .select('LDES_raw')
+        .select('LDES_raw, RESOLVES_TO, PURI')
         .eq('objectNumber', _On)
     return data;
 }

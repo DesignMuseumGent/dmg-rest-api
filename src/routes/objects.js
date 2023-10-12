@@ -91,7 +91,7 @@ export function requestObject(app) {
             let _PURL = x[0]["PURI"]
 
             // resolver
-            if(resolver(_PURL, _route, res)){
+            if(resolver(_PURL, _route, res, req)){
                 result_cidoc = x
             };
 

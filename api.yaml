@@ -20,6 +20,12 @@ paths:
             type: integer
           description: set the limit for number objects to be shown on the page. set limit to none to fetch all records.
           example: 50
+        - in: query
+          name: pd
+          schema:
+            type: boolean
+          description: set filter to only retrieve resources that are in the public domain.
+          example: true
 
       responses:
         200: #status code
@@ -31,16 +37,16 @@ paths:
                 items:
                   type: object
                   properties:
-                    "license":
-                      type: string
-                      maxItems: 1
                     "resource":
                       type: string
                       maxItems: 1
-                    "attribution":
+                    "object_number":
                       type: string
                       maxItems: 1
-                    "object_number":
+                    "license":
+                      type: string
+                      maxItems: 1
+                    "attribution":
                       type: string
                       maxItems: 1
 

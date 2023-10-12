@@ -96,6 +96,14 @@ export async function fetchAllImages() {
     return data
 }
 
+export async function fetchPublicDomainImages() {
+    const {data} = await supabase
+        .from("dmg_images")
+        .select("*")
+        .eq('license', "https://creativecommons.org/publicdomain/zero/1.0/")
+    return data
+}
+
 export async function populateSupabaseImages() {
     // function that extracts images from other table and add to new table to improve performance of /random-image service.
     const x = await fetchAllLDESrecordsObjects();
@@ -151,4 +159,7 @@ export async function populateSupabaseImages() {
             }
         } catch (e) {console.log(`no public images for: ${_objectNumber}`)}
     }
+}
+export function parseBoolean(string) {
+    return string === "true" ? true : string === "false" ? false : undefined;
 }

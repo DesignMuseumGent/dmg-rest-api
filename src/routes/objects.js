@@ -1,4 +1,4 @@
-import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber} from "../utils/parsers.js";
+import {fetchAllLDESrecordsObjects, fetchLDESRecordByObjectNumber, parseBoolean} from "../utils/parsers.js";
 import {parse} from "dotenv";
 import {resolver} from "../utils/resolver.js";
 
@@ -6,10 +6,6 @@ export function requestObjects(app) {
     app.get('/id/objects/', async(req, res)=> {
         // await data from GET request (supabase)
         const x = await fetchAllLDESrecordsObjects()
-
-        function parseBoolean(string) {
-            return string === "true" ? true : string === "false" ? false : undefined;
-        }
 
         let limit =  parseInt(req.query.limit) || 10; // if no limit set, return all items.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0

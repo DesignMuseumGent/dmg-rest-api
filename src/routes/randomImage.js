@@ -5,7 +5,7 @@ export function requestRandomImage(app) {
         // await data from GET request (supabase)
         const x = await fetchAllImages()
         const _objects = [] // init objects
-        const limit = parseInt(req.query.limit)
+        const limit = parseInt(req.query.limit) || 10
 
         if (limit > 100) {
             res.status(422).json({"error":"to reduce the stress on our servers, the maximum limit per request is set to 100, please try again lowering the limit"})
@@ -13,8 +13,12 @@ export function requestRandomImage(app) {
 
         // fetch all objects, and populate bucket to randomize
         for (let i = 0; i < x.length; i++) {
-            let _object = {}
-            _objects.push(x[i]["PURL"])
+            let _randomImage = {}
+            _randomImage["license"] = x[i]["license"]
+            _randomImage["resource"] = x[i]["PURL"]
+            _randomImage["attribution"] = x[i]["attribution"]
+            _randomImage["object_number"] = x[i]["object_number"]
+            _objects.push(_randomImage)
         }
 
         // create index subselection (filter in subselection)
@@ -30,6 +34,7 @@ export function requestRandomImage(app) {
         for (let i = 0; i < limit; i++) {
             let _o = _objects[_subselection[i]]
             _selection.push(_o)
+
         }
 
         res.send(_selection)

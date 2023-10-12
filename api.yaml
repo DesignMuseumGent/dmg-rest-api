@@ -30,6 +30,19 @@ paths:
                 type: array
                 items:
                   type: object
+                  properties:
+                    "license":
+                      type: string
+                      maxItems: 1
+                    "resource":
+                      type: string
+                      maxItems: 1
+                    "attribution":
+                      type: string
+                      maxItems: 1
+                    "object_number":
+                      type: string
+                      maxItems: 1
 
 
   #objects

@@ -89,6 +89,11 @@ export function requestObject(app) {
             return string === "true" ? true : string === "false" ? false : undefined;
         }
 
+        // define path to resolve to
+        if (result_cidoc[0]["RESOLVE_TO"]) {
+            console.log(result_cidoc[0]["RESOLVE_TO"])
+        }
+
         // if asked for image, only return manifest link.
         try{
             _manifest = parseBoolean(req.query.manifest) || false;
@@ -98,28 +103,22 @@ export function requestObject(app) {
         }
 
         try{
-
             // redefine - @id to use URIs and PIDs defined by the museum
             result_cidoc[0]["LDES_raw"]["object"]["@id"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
             // assign foaf:pages
             result_cidoc[0]["LDES_raw"]["object"]["foaf:homepage"] = "https://data.designmuseumgent.be/id/object/" + req.params.objectNumber
-
         } catch (error) {_error = error}
-
 
         // error handling.
         try{
             if (result_cidoc.length !== 0) {
                 req.negotiate(req.params.format, {
                     'json': function() {
-
                         // if manifest only send manifest;
                         if (_manifest && ! _open) {
-                            //
                             let _man = result_cidoc["object"]
                             res.send(result_cidoc[0]["LDES_raw"]["object"]["http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else if (_manifest && _open) {
-                            //
                             res.redirect(result_cidoc[0]["LDES_raw"]["object"]["https://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of"]["@id"])
                         } else {
                             // if format .json redirect to machine-readable page.
@@ -143,16 +142,5 @@ export function requestObject(app) {
         } catch (e) {
             res.status(503).send(e)
         }
-
     })
-
-    /*
-    app.error(function(err, req, res, next) {
-        if (err instanceof negotiate.NotAcceptable) {
-            res.send('Sorry, I dont know how to return any of the content types requested', 406);
-        } else {
-            next(err);
-        }
-    });
-    */
 }

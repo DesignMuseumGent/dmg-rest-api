@@ -19,8 +19,8 @@ export function requestRandomImage(app) {
       x = await fetchAllImages();
     }
 
-    const _objects = []; // init objects
-    const _colorFilter = []; // init collection for filtered objects
+    let _objects = []; // init objects
+    let _colorFilter = []; // init collection for filtered objects
 
     if (limit > 100) {
       res.status(422).json({
@@ -71,15 +71,21 @@ export function requestRandomImage(app) {
     // populate random images
     let _selection = [];
     for (let i = 0; i < limit; i++) {
-      let _o = _objects[_subselection[i]];
-      _selection.push(_o);
+      if (color != "all") {
+        let _o = _colorFilter[_subselection[i]];
+        if (_o !== null) {
+          _selection.push(_o);
+        }
+      } else {
+        let _o = _objects[_subselection[i]];
+        if (_o !== null) {
+          _selection.push(_o);
+        }
+      }
     }
 
-    if (color != "all") {
-      res.send(_colorFilter);
-    } else {
-      res.send(_selection);
-    }
+    // send response
+    res.send(_selection);
   });
 }
 

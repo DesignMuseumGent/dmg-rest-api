@@ -67,7 +67,7 @@ async function start() {
   // ROUTE to randomimage
   requestRandomImage(app);
 
-  populateSupabaseImages();
+  //populateSupabaseImages();
 
   console.log("DONE :D :D :D :D ");
 }

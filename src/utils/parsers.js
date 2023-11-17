@@ -97,6 +97,10 @@ export async function fetchPublicDomainImages() {
   return data;
 }
 
+export async function filterColor(color, objects) {
+  // function that filters objects based on their color.
+}
+
 export async function populateSupabaseImages() {
   // function that extracts images from other table and add to new table to improve performance of /random-image service.
   const x = await fetchAllLDESrecordsObjects();

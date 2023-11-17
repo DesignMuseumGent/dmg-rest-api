@@ -36,7 +36,7 @@ export function requestRandomImage(app) {
       _randomImage["license"] = x[i]["license"];
       _randomImage["attribution"] = x[i]["attribution"];
       _randomImage["color_names"] = x[i]["color_names"];
-      _randomImage["hex_values"] = x[i]["hex_values"];
+      //_randomImage["hex_values"] = x[i]["hex_values"];
 
       // push new object to API
       _objects.push(_randomImage);
@@ -82,4 +82,3 @@ export function requestRandomImage(app) {
     }
   });
 }
-

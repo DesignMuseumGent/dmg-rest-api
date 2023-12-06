@@ -7,7 +7,8 @@ This repository contains the documentation for the RESTful API of the Design Mus
 for further documentation on how to use the REST-API and which catalogues are available, a [swagger documentation](https://data.designmuseumgent.be/api-docs) has been setup. 
 
 ## run service 
-to setup the API make sure Node is installed on your device. 
+to replicat the API service make sure Node is installed on your device.
+## To do so howver, you need credentials to fetch data from our postGres DB (which is meant for internal usage only)
 
 ### clone the repository 
 ```

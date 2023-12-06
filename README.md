@@ -8,8 +8,7 @@ for further documentation on how to use the REST-API and which catalogues are av
 
 ## run service 
 to replicat the API service make sure Node is installed on your device.
-## To do so howver, you need credentials to fetch data from our postGres DB (which is meant for internal usage only)
-
+**To do so however, you need credentials to fetch data from our postGres DB (which is meant for internal usage only)**
 ### clone the repository 
 ```
 git clone https://github.com/designmuseumgent/dmg-rest-api/

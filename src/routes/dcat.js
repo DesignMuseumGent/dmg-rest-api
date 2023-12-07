@@ -4,7 +4,7 @@ export function requestDCAT(app) {
   app.get("/", (req, res) => {
     res.send({
       "@context": [
-        "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/DCAT-AP-VL.jsonld",
+        "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
         {
           dcterms: "http://purl.org/dc/terms/",
           tree: "https://w3id.org/tree#",

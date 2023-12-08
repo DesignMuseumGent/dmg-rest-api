@@ -27,7 +27,7 @@ export function requestPrivateObjects(app) {
         rangeEnd = limit;
       } else {
         rangeStart = limit;
-        rangeEnd = offset * (limit + 1);
+        rangeEnd = (offset + 1) * limit;
       }
 
       console.log(rangeStart, rangeEnd);

@@ -32,6 +32,22 @@ export function requestDCAT(app) {
           },
         ],
       },
+      "Catalogus.contactinformatie": {
+        "@type": "contactInformatie",
+        "Contactinfo.eMail": "data@designmuseumgent.be",
+      },
+      "Catalogus.beschrijving": [
+        {
+          "@value":
+            "data catalogus met datasets die betrekking hebben tot de collectie en programmatie van Design Museum Gent",
+          "@language": "nl",
+        },
+        {
+          "@value":
+            "data catalogue containing datasets describing the collection and program of Design Museum Gent",
+          "@language": "en",
+        },
+      ],
       "Catalogus.heeftDataset": [
         {
           "@id": "https://data.designmuseumgent.be/id/objects/",
@@ -48,6 +64,8 @@ export function requestDCAT(app) {
               "@language": "en",
             },
           ],
+          "Dataset.statuut":
+            "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
           "@id": "https://data.designmuseumgent.be/id/exhibitions/",
@@ -64,6 +82,8 @@ export function requestDCAT(app) {
               "@language": "en",
             },
           ],
+          "Dataset.statuut":
+            "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
           "@id": "https://data.designmuseumgent.be/id/agents/",
@@ -80,6 +100,8 @@ export function requestDCAT(app) {
               "@language": "en",
             },
           ],
+          "Dataset.statuut":
+            "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
           "@id":
@@ -97,6 +119,8 @@ export function requestDCAT(app) {
               "@language": "en",
             },
           ],
+          "Dataset.statuut":
+            "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
       ],
     });

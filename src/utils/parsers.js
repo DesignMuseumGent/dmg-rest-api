@@ -1,5 +1,10 @@
 import { supabase } from "../../supabaseClient.js";
 
+export async function fetchAuthentication() {
+  const { data, error } = await supabase.from("authentication").select("key");
+  return data;
+}
+
 export async function fetchArchiveByObjectNumber(_On) {
   const { data, error } = await supabase
     .from("dmg_archief_LDES")
@@ -41,6 +46,14 @@ export async function fetchLDESRecordByObjectNumber(_On) {
     .from("dmg_objects_LDES")
     .select("LDES_raw, RESOLVES_TO, PURI")
     .eq("objectNumber", _On);
+  return data;
+}
+
+export async function fetchAllPrivateLDESrecordsObjects(limit) {
+  const { data, error } = await supabase
+    .from("dmg_private_objects_LDES")
+    .select("objectNumber, LDES_raw")
+    .limit(limit);
   return data;
 }
 
@@ -164,4 +177,3 @@ export async function populateSupabaseImages() {
 export function parseBoolean(string) {
   return string === "true" ? true : string === "false" ? false : undefined;
 }
-

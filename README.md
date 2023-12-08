@@ -27,4 +27,5 @@ node app.js
 ```
 
 the api is now running at localhost:PORT (PORT defined in .env)
+for more information please reach out to us via the discussions tab on Github
 

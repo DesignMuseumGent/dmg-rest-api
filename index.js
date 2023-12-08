@@ -22,6 +22,7 @@ import {
 import { requestTexts } from "./src/routes/texts.js";
 import { requestArchive } from "./src/routes/archief.js";
 import { requestRandomImage } from "./src/routes/randomImage.js";
+import { requestPrivateObjects } from "./src/routes/private_stream.js";
 
 async function start() {
   // setup accept-headers
@@ -49,6 +50,9 @@ async function start() {
   requestObjects(app); // request list of all published human-made objects
   requestObject(app); // request individual entity (human-made object) using content-negotiation.
 
+  // ROUTE to PRIVATE objects
+  requestPrivateObjects(app);
+
   // ROUTES to exhibition data
   const billboard = await fetchAllBillboards(); // fetch data from supabase
   requestAllBillboards(app); // request all billboards. (endpoint)
@@ -75,4 +79,3 @@ async function start() {
 start();
 
 //populateSupabaseImages();
-

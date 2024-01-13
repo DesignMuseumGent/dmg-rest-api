@@ -4,7 +4,7 @@ export function requestAgents(app) {
     app.get('/id/agents/', async(req, res) => {
         const x = await fetchLDESAllAgents();
 
-        let limit = 10; // if no limit set, return all items.
+        let limit = parseInt(req.query.limit) || 10; // Default limit is 10.
         let offset = parseInt(req.query.offset) || 0; // Default offset is 0
         const _agents = []
 

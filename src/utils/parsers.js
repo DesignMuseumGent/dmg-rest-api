@@ -1,12 +1,12 @@
 import { supabase } from "../../supabaseClient.js";
 
 export async function fetchAuthentication() {
-  const { data, error } = await supabase.from("authentication").select("key");
+  const { data } = await supabase.from("authentication").select("key");
   return data;
 }
 
 export async function fetchArchiveByObjectNumber(_On) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_archief_LDES")
     .select("LDES_raw")
     .eq("objectNumber", _On);
@@ -14,7 +14,7 @@ export async function fetchArchiveByObjectNumber(_On) {
 }
 
 export async function fetchAllBillboards() {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("exh_billboardseries")
     .select("OSLO", { head: false });
 
@@ -30,7 +30,7 @@ const callApi = setInterval(() => {
 }, 30000);
 
 export async function fetchBillboardByYear(year) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("exh_billboardseries")
     .select("OSLO", { head: false })
     .like("date_start", year);
@@ -42,7 +42,7 @@ export async function fetchBillboardByYear(year) {
 }
 
 export async function fetchLDESRecordByObjectNumber(_On) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_objects_LDES")
     .select("LDES_raw, RESOLVES_TO, PURI")
     .eq("objectNumber", _On);
@@ -50,7 +50,7 @@ export async function fetchLDESRecordByObjectNumber(_On) {
 }
 
 export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_private_objects_LDES")
     .select("objectNumber, LDES_raw")
     .range(rangeStart, rangeEnd);
@@ -58,26 +58,26 @@ export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
 }
 
 export async function fetchAllLDESrecordsObjects() {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_objects_LDES")
     .select("objectNumber, iiif_manifest, color_names, HEX_values");
   return data;
 }
 
 export async function fetchAllConcepts(){
-  const { data, error } = await supabase.from("dmg_thesaurus_LDES").select("*");
+  const { data } = await supabase.from("dmg_thesaurus_LDES").select("*");
   return data;
 }
 
 export async function fetchAllExhibitions() {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_tentoonstelling_LDES")
     .select("*");
   return data;
 }
 
 export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_tentoonstelling_LDES")
     .select("LDES_raw")
     .eq("exh_PID", ExhibitionPID);
@@ -85,7 +85,7 @@ export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
 }
 
 export async function fetchLDESRecordByAgentID(AgentPID) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("dmg_personen_LDES")
     .select("LDES_raw")
     .eq("agent_ID", AgentPID);
@@ -93,7 +93,7 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
 }
 
 export async function fetchLDESAllAgents() {
-  const { data, error } = await supabase.from("dmg_personen_LDES").select("*");
+  const { data } = await supabase.from("dmg_personen_LDES").select("*");
   return data;
 }
 

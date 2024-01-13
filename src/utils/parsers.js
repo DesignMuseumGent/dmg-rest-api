@@ -25,22 +25,6 @@ export async function fetchAllBillboards() {
   return billboards;
 }
 
-const callApi = setInterval(() => {
-  fetchAllBillboards();
-}, 30000);
-
-export async function fetchBillboardByYear(year) {
-  const { data } = await supabase
-    .from("exh_billboardseries")
-    .select("OSLO", { head: false })
-    .like("date_start", year);
-  let billboards = [];
-  for (let x = 0; x < data.length; x++) {
-    billboards.push(data[x]["OSLO"]);
-  }
-  return billboards;
-}
-
 export async function fetchLDESRecordByObjectNumber(_On) {
   const { data } = await supabase
     .from("dmg_objects_LDES")
@@ -125,8 +109,7 @@ export async function populateSupabaseImages() {
 
   async function fetchImages(manifest) {
     let res = await fetch(manifest);
-    let _im = res.json();
-    return _im;
+    return res.json();
   }
 
   // iterate over all object

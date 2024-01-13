@@ -64,6 +64,11 @@ export async function fetchAllLDESrecordsObjects() {
   return data;
 }
 
+export async function fetchAllConcepts(){
+  const { data, error } = await supabase.from("dmg_thesaurus_LDES").select("*");
+  return data;
+}
+
 export async function fetchAllExhibitions() {
   const { data, error } = await supabase
     .from("dmg_tentoonstelling_LDES")

@@ -130,7 +130,7 @@ export async function populateSupabaseImages() {
           let _HEX = x[i]["HEX_values"][im];
 
           // check if image is not yet in DB
-          let { data, error } = await supabase
+          let { data } = await supabase
             .from("dmg_images")
             .select("*")
             .eq("PURL", _imagePURL);
@@ -139,7 +139,7 @@ export async function populateSupabaseImages() {
             // write metadata to DB (supabase)
             console.log(`writing metadata: ${_imagePURL}`);
 
-            const { data, error } = await supabase
+            const { data } = await supabase
               .from("dmg_images")
               .insert([
                 {

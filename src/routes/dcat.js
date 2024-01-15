@@ -2,6 +2,7 @@ import negotiate from "express-negotiate";
 
 export function requestDCAT(app) {
   app.get("/", (req, res) => {
+    res.set('Content-Type', 'application/json+ld;charset=utf-8')
     res.send({
       "@context": [
         "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",

@@ -152,7 +152,7 @@ export function requestObject(app) {
                 );
               } else {
                 // if format .json redirect to machine-readable page.
-                res.set('Content-Type', 'application/json+ld;charset=utf-8')
+                // res.set('Content-Type', 'application/json+ld;charset=utf-8')
                 res.send(result_cidoc[0]["LDES_raw"]["object"]);
               }
               //todo: add route to page when not published yet. -- this object has not been published yet.

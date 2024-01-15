@@ -58,7 +58,7 @@ export function requestObjects(app) {
           },
         ];
         _objects.push(_object);
-      } else if (idOnly && !randomImage) {
+      } else if (idOnly) {
         _objects.push(x[i]["objectNumber"]);
       }
     }

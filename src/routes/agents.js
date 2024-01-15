@@ -2,6 +2,7 @@ import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../utils/parsers.js"
 
 export function requestAgents(app) {
     app.get('/id/agents/', async(req, res) => {
+        res.set('Content-Type', 'application/json+ld;charset=utf-8')
         const x = await fetchLDESAllAgents();
 
         let limit = parseInt(req.query.limit) || 10; // Default limit is 10.

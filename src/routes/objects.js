@@ -3,7 +3,6 @@ import {
   fetchLDESRecordByObjectNumber,
   parseBoolean,
 } from "../utils/parsers.js";
-import { parse } from "dotenv";
 import { resolver } from "../utils/resolver.js";
 
 export function requestObjects(app) {
@@ -14,6 +13,8 @@ export function requestObjects(app) {
     let limit = parseInt(req.query.limit) || 10; // if no limit set, return all items.
     let offset = parseInt(req.query.offset) || 0; // Default offset is 0
     let idOnly = parseBoolean(req.query.idOnly) || false; // if not idOnly, return all items
+    let collection = req.query.collection || false
+
 
     if (idOnly) {
       console.log("YES");
@@ -26,9 +27,11 @@ export function requestObjects(app) {
       limit = x.length;
     }
 
-    if ((limit = "none")) {
+    if (!limit) {
       limit = x.length;
     }
+
+    console.log(limit)
 
     //check max offset.
     const maxOffset = x.length / limit;
@@ -36,13 +39,24 @@ export function requestObjects(app) {
       offset = maxOffset;
     }
 
-    //todo: add top level for collection of objects (dataset contains).
+    // if collection
+    // https://stad.gent/id/concept/530010570
+    if (collection) {
+      console.log(collection)
+    }
 
     for (let i = 0; i < x.length; i++) {
       let _object = {};
       const baseURI = "https://data.designmuseumgent.be/";
 
-      if (!idOnly) {
+      if (collection) {
+          if (x[i]["LDES_raw"]["object"]) {
+            _objects.push(x[i]["LDES_raw"]["object"])
+          }
+      }
+
+
+      if (!idOnly || !collection ||!dump) {
         _object["@context"] = [
           "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
           "https://apidg.gent.be/op…xt/generiek-basis.jsonld",

@@ -1,6 +1,8 @@
-import {fetchAuthentication, parseBoolean} from "../utils/parsers.js";
+import {fetchAllConcepts, fetchAuthentication, parseBoolean} from "../utils/parsers.js";
 import {supabase} from "../../supabaseClient.js";
 import { writeFile } from 'fs/promises';
+
+
 
 export function dataDump(app)  {
     app.get("/objects/fetch-and-dump", async (req, res) => {
@@ -94,5 +96,37 @@ export function dataDump(app)  {
                 res.status(500).send('An error occurred')
             }
         }
+    })
+}
+
+export function Dump(app)  {
+
+    let types = ["concepts", "objects"]
+
+    app.get("/dump/:type", async(req, res)=> {
+        // await RES from DB req
+        // check type
+        // if not existing type; return error message
+
+        if (!types.includes(req.params.type)) {
+            res.status(422).json({
+                error: "there is data dump available for this type. Check the API documentation for available datasets."
+            })
+        }
+
+        if (req.params.type==="concepts") {
+            const x = await fetchAllConcepts()
+            let dump = [];
+            for (let i = 0; i < x.length; i++) {
+                dump.push(x[i]["LDES_raw"]["object"])
+            }
+            // set headers to prompt file download
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', 'attachment; filename=data.json');
+
+            // send JSON data as downloadable file
+            res.send(JSON.stringify(dump, null, 2))
+        }
+
     })
 }

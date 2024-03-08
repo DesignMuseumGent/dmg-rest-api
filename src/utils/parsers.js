@@ -44,12 +44,24 @@ export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
 export async function fetchAllLDESrecordsObjects() {
   const { data } = await supabase
     .from("dmg_objects_LDES")
-    .select("objectNumber, iiif_manifest, color_names, HEX_values");
+    .select("objectNumber, iiif_manifest, color_names, HEX_values, LDES_raw");
   return data;
 }
 
 export async function fetchAllConcepts(){
-  const { data } = await supabase.from("dmg_thesaurus_LDES").select("*");
+  // function that fetches all concepts stored in the supabase DB
+  const { data } = await supabase
+      .from("dmg_thesaurus_LDES")
+      .select("*")
+  return data;
+}
+
+export async function fetchConcept(id) {
+  // function that fetches concept record from postgresDB
+  const {data} = await supabase
+      .from("dmg_thesaurus_LDES")
+      .select("*")
+      .eq("is_version_of", id)
   return data;
 }
 
@@ -159,6 +171,7 @@ export async function populateSupabaseImages() {
       }
     } catch (e) {
       console.log(`no public images for: ${_objectNumber}`);
+
     }
   }
 }

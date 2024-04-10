@@ -1,8 +1,14 @@
-import {fetchAllConcepts, fetchAuthentication, fetchLDESAllAgents, parseBoolean} from "../utils/parsers.js";
+import {
+    fetchAllConcepts,
+    fetchAllExhibitions,
+    fetchAuthentication,
+    fetchLDESAllAgents,
+    parseBoolean
+} from "../utils/parsers.js";
 import {supabase} from "../../supabaseClient.js";
 export function Dump(app)  {
 
-    let types = ["concepts", "objects", "agents"]
+    let types = ["concepts", "objects", "agents", "exhibitions"]
 
     app.get("/dump/:type", async(req, res)=> {
         // await RES from DB req
@@ -14,7 +20,20 @@ export function Dump(app)  {
             })
         }
 
-        //todo: add dump for agents...
+        //todo: add dump for exhibitions
+        if (req.params.type==="exhibitions") {
+            const e = await fetchAllExhibitions();
+            let dump = [];
+            for (let i=0; i<e.length; i++) {
+                dump.push(e[i]["LDES_raw"]["object"])
+            }
+            // set headers to prompt file download
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', 'attachment; filename=dmg-api-exhibitions-dump.json');
+
+            // send JSON data as downloadable file
+            res.send(JSON.stringify(dump, null, 2))
+        }
 
         if (req.params.type==="agents") {
             const x = await fetchLDESAllAgents()

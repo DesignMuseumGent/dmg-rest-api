@@ -1,3 +1,4 @@
+import open from "open";
 import {
   fetchAllImages,
   parseBoolean,
@@ -6,11 +7,20 @@ import {
 
 export function requestRandomImage(app) {
   app.get("/id/random-image", async (req, res) => {
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = parseInt(req.query.limit) || 10;
     const pd = parseBoolean(req.query.pd) || true;
     const color = req.query.color || "all";
+    const openFlag = parseBoolean(req.query.open) || false
 
     let x;
+
+    // if open
+    // set limit to 1
+    // open in browser
+    if (openFlag) {
+      console.log("let's take a look - opening the image in your browser")
+      limit = 1;
+    }
 
     // await data from GET request (supabase)
     if (pd) {
@@ -20,7 +30,6 @@ export function requestRandomImage(app) {
     }
 
     const _objects = []; // init objects
-    const _colorFilter = []; // init collection for filtered objects
 
     if (limit > 100) {
       res.status(422).json({
@@ -43,42 +52,22 @@ export function requestRandomImage(app) {
     }
 
     // filter on color.
-    if (color != "all") {
-      for (let c = 0; c < _objects.length; c++) {
-        try {
-          let obj = _objects[c]["color_names"];
-          //console.log(obj);
-          for (let o = 0; o < obj.length; o++) {
-            if (obj[o] === color) {
-              _colorFilter.push(_objects[c]);
-            }
-          }
-        } catch (e) {
-          console.log(e);
-        }
-      }
+    const colorFilter = color !== "all" ? _objects.filter(obj => obj.color_names.includes(color)) : _objects;
+
+    // Select random images
+    const selection = [];
+    for (let i = 0; i < limit && i < colorFilter.length; i++) {
+      const index = Math.floor(Math.random() * colorFilter.length);
+      selection.push(colorFilter[index]);
     }
 
-    // create index subselection (filter in subselection)
-
-    let _subselection = [];
-    for (let s = 0; s < limit; s++) {
-      // generate numbers that range between 0, and the length of the bucket.
-      let _s = Math.floor(Math.random() * x.length - 1);
-      _subselection.push(_s);
+    // Open the first image in the browser if open flag is true
+    if (openFlag && selection.length > 0) {
+      await open(selection[0].resource);
     }
 
-    // populate random images
-    let _selection = [];
-    for (let i = 0; i < limit; i++) {
-      let _o = _objects[_subselection[i]];
-      _selection.push(_o);
-    }
+    res.send(selection);
 
-    if (color != "all") {
-      res.send(_colorFilter);
-    } else {
-      res.send(_selection);
-    }
+
   });
 }

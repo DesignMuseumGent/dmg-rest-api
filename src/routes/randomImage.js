@@ -61,9 +61,6 @@ export function requestRandomImage(app) {
     if (openFlag && selection.length > 0) {
       await open(selection[0].resource);
     }
-
     res.send(selection);
-
-
   });
 }

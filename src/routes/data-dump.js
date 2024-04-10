@@ -6,7 +6,6 @@ export function Dump(app)  {
 
     app.get("/dump/:type", async(req, res)=> {
         // await RES from DB req
-        // check type
         // if not existing type; return error message
 
         if (!types.includes(req.params.type)) {

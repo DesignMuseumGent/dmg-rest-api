@@ -48,7 +48,7 @@ export function requestRandomImage(app) {
     });
 
     // filter on color.
-    const colorFilter = color !== "all" ? objects.filter(obj => obj.color_names.includes(color)) : objects;
+    const colorFilter = color !== "all" ? objects.filter(obj => obj.color_names && obj.color_names.includes(color)) : objects;
 
     // Select random images
     const selection = [];

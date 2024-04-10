@@ -10,7 +10,8 @@
     "start": "node index.js",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "npm run build",
+    "build": "react-scripts build"
   },
   "keywords": [],
   "author": "",

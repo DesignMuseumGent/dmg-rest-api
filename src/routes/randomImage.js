@@ -14,9 +14,6 @@ export function requestRandomImage(app) {
 
     let imageData;
 
-    // if open
-    // set limit to 1
-    // open in browser
     if (openFlag) {
       console.log("let's take a look - opening the image in your browser")
       limit = 1;

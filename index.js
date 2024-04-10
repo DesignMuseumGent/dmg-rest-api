@@ -22,7 +22,6 @@ import { requestTexts } from "./src/routes/texts.js";
 import { requestArchive } from "./src/routes/archief.js";
 import { requestRandomImage } from "./src/routes/randomImage.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
-import {dataDump} from "./src/routes/data-dump.js";
 import {Dump} from "./src/routes/data-dump.js";
 import {requestConcept} from "./src/routes/thesaurus.js";
 
@@ -51,7 +50,6 @@ async function start() {
   // ROUTES to human-made objects
   requestObjects(app); // request list of all published human-made objects
   requestObject(app); // request individual entity (human-made object) using content-negotiation.
-  dataDump(app); // dump all data into json file. //todo: replace with generic function.
 
   // ROUTE to PRIVATE objects
   requestPrivateObjects(app);
@@ -79,7 +77,6 @@ async function start() {
 
   // ROUTE to DUMP
   Dump(app);
-
 }
 
 start();

@@ -10,8 +10,7 @@
     "start": "node index.js",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "heroku-postbuild": "npm run build",
-    "build": "react-scripts build"
+    "heroku-postbuild": "npm run build"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +36,6 @@
     "yamljs": "^0.3.0"
   },
   "engines": {
-    "node": "19.x"
+    "node": "14.x"
   }
 }

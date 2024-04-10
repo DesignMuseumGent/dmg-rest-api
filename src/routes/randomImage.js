@@ -1,4 +1,4 @@
-import open from "open";
+import fetch from 'node-fetch';
 import {
   fetchAllImages,
   parseBoolean,
@@ -57,10 +57,21 @@ export function requestRandomImage(app) {
       selection.push(colorFilter[index]);
     }
 
-    // Open the first image in the browser if open flag is true
+    // Fetch the first image data if openFlag is true and there is at least one image selected
     if (openFlag && selection.length > 0) {
-      await open(selection[0].resource);
+      try {
+        const response = await fetch(selection[0].resource);
+        const imageBuffer = await response.buffer(); // get image data as buffer
+        // You can now use this buffer to send the image to the client, save it, etc.
+        // For example, to send the image to the client:
+        res.setHeader('Content-Type', 'image/jpeg'); // set the content-type to the correct image type
+        res.send(imageBuffer);
+      } catch (error) {
+        console.error('Error fetching the image:', error);
+        res.status(500).json({ error: 'Error fetching the image' });
+      }
+    } else {
+      res.send(selection); // send the selected images' metadata if not fetching the image data
     }
-    res.send(selection);
   });
 }

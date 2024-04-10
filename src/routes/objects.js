@@ -17,7 +17,7 @@ export function requestObjects(app) {
 
 
     if (idOnly) {
-      console.log("YES");
+      //console.log("YES");
     }
 
     const _objects = [];
@@ -31,8 +31,6 @@ export function requestObjects(app) {
       limit = x.length;
     }
 
-    console.log(limit)
-
     //check max offset.
     const maxOffset = x.length / limit;
     if (offset > maxOffset) {
@@ -41,8 +39,7 @@ export function requestObjects(app) {
 
     // if collection
     // https://stad.gent/id/concept/530010570
-    if (collection) {
-      console.log(collection)
+    if (collection) { //todo
     }
 
     for (let i = 0; i < x.length; i++) {

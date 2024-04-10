@@ -7,7 +7,6 @@ import cors from "cors";
 // import functions to populate API.
 import {
   fetchAllBillboards,
-  populateSupabaseImages,
 } from "./src/utils/parsers.js";
 
 // import routes (API contructors)
@@ -23,7 +22,9 @@ import { requestTexts } from "./src/routes/texts.js";
 import { requestArchive } from "./src/routes/archief.js";
 import { requestRandomImage } from "./src/routes/randomImage.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
-import {dataDump} from "./src/routes/data-dump.js";
+import {Dump} from "./src/routes/data-dump.js";
+import {requestConcept} from "./src/routes/thesaurus.js";
+
 async function start() {
   // setup accept-headers
   const app = express();
@@ -49,7 +50,6 @@ async function start() {
   // ROUTES to human-made objects
   requestObjects(app); // request list of all published human-made objects
   requestObject(app); // request individual entity (human-made object) using content-negotiation.
-  dataDump(app); // dump all data into json file.
 
   // ROUTE to PRIVATE objects
   requestPrivateObjects(app);
@@ -64,7 +64,7 @@ async function start() {
   requestAgents(app);
 
   // ROUTE to concepts (thesaurus)
-  //requestConcepts(app);
+  requestConcept(app);
 
   // ROUTES to archive (posters)
   requestArchive(app);
@@ -75,6 +75,8 @@ async function start() {
   // ROUTE to randomimage
   requestRandomImage(app);
 
+  // ROUTE to DUMP
+  Dump(app);
 }
 
 start();

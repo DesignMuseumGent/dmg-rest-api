@@ -1,8 +1,8 @@
-import {fetchAllConcepts, fetchAuthentication, parseBoolean} from "../utils/parsers.js";
+import {fetchAllConcepts, fetchAuthentication, fetchLDESAllAgents, parseBoolean} from "../utils/parsers.js";
 import {supabase} from "../../supabaseClient.js";
 export function Dump(app)  {
 
-    let types = ["concepts", "objects"]
+    let types = ["concepts", "objects", "agents"]
 
     app.get("/dump/:type", async(req, res)=> {
         // await RES from DB req
@@ -14,6 +14,22 @@ export function Dump(app)  {
             })
         }
 
+        //todo: add dump for agents...
+
+        if (req.params.type==="agents") {
+            const x = await fetchLDESAllAgents()
+            let dump = [];
+            for (let i=0; i<x.length; i++) {
+                dump.push(x[i]["LDES_raw"]["object"])
+            }
+            // set headers to prompt file download
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', 'attachment; filename=dmg-api-agents-dump.json');
+
+            // send JSON data as downloadable file
+            res.send(JSON.stringify(dump, null, 2))
+        }
+
         if (req.params.type==="concepts") {
             const x = await fetchAllConcepts()
             let dump = [];
@@ -22,7 +38,7 @@ export function Dump(app)  {
             }
             // set headers to prompt file download
             res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Content-Disposition', 'attachment; filename=data.json');
+            res.setHeader('Content-Disposition', 'attachment; filename=dmg-api-concepts-dump.json');
 
             // send JSON data as downloadable file
             res.send(JSON.stringify(dump, null, 2))
@@ -53,7 +69,7 @@ export function Dump(app)  {
                     // dump data into JSON file
                     // Set headers to prompt file download
                     res.setHeader('Content-Type', 'application/json');
-                    res.setHeader('Content-Disposition', 'attachment; filename=data.json');
+                    res.setHeader('Content-Disposition', 'attachment; filename=dmg-api-objects-dump.json');
 
                     // start streaming response
                     res.write('[');

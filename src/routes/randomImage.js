@@ -1,3 +1,4 @@
+import open from "open";
 import {
   fetchAllImages,
   parseBoolean,
@@ -6,21 +7,29 @@ import {
 
 export function requestRandomImage(app) {
   app.get("/id/random-image", async (req, res) => {
-    const limit = parseInt(req.query.limit) || 10;
+    let limit = parseInt(req.query.limit) || 10;
     const pd = parseBoolean(req.query.pd) || true;
     const color = req.query.color || "all";
+    const openFlag = parseBoolean(req.query.open) || false
 
-    let x;
+    let imageData;
+
+    // if open
+    // set limit to 1
+    // open in browser
+    if (openFlag) {
+      console.log("let's take a look - opening the image in your browser")
+      limit = 1;
+    }
 
     // await data from GET request (supabase)
     if (pd) {
-      x = await fetchPublicDomainImages();
+      imageData = await fetchPublicDomainImages();
     } else {
-      x = await fetchAllImages();
+      imageData = await fetchAllImages();
     }
 
-    const _objects = []; // init objects
-    const _colorFilter = []; // init collection for filtered objects
+    const objects = []; // init objects
 
     if (limit > 100) {
       res.status(422).json({
@@ -29,56 +38,34 @@ export function requestRandomImage(app) {
       });
     }
     // fetch all objects, and populate bucket to randomize
-    for (let i = 0; i < x.length; i++) {
-      let _randomImage = {};
-      _randomImage["resource"] = x[i]["PURL"];
-      _randomImage["object_number"] = x[i]["object_number"];
-      _randomImage["license"] = x[i]["license"];
-      _randomImage["attribution"] = x[i]["attribution"];
-      _randomImage["color_names"] = x[i]["color_names"];
-      //_randomImage["hex_values"] = x[i]["hex_values"];
-
-      // push new object to API
-      _objects.push(_randomImage);
-    }
+    imageData.forEach(image => {
+      const randomImage = {
+        resource: image.PURL,
+        object_number: image.object_number,
+        license: image.license,
+        attribution: image.attribution,
+        color_names: image.color_names,
+      };
+      objects.push(randomImage);
+    });
 
     // filter on color.
-    if (color != "all") {
-      for (let c = 0; c < _objects.length; c++) {
-        try {
-          let obj = _objects[c]["color_names"];
-          //console.log(obj);
-          for (let o = 0; o < obj.length; o++) {
-            if (obj[o] === color) {
-              _colorFilter.push(_objects[c]);
-            }
-          }
-        } catch (e) {
-          console.log(e);
-        }
-      }
+    const colorFilter = color !== "all" ? objects.filter(obj => obj.color_names.includes(color)) : objects;
+
+    // Select random images
+    const selection = [];
+    for (let i = 0; i < limit && i < colorFilter.length; i++) {
+      const index = Math.floor(Math.random() * colorFilter.length);
+      selection.push(colorFilter[index]);
     }
 
-    // create index subselection (filter in subselection)
-
-    let _subselection = [];
-    for (let s = 0; s < limit; s++) {
-      // generate numbers that range between 0, and the length of the bucket.
-      let _s = Math.floor(Math.random() * x.length - 1);
-      _subselection.push(_s);
+    // Open the first image in the browser if open flag is true
+    if (openFlag && selection.length > 0) {
+      await open(selection[0].resource);
     }
 
-    // populate random images
-    let _selection = [];
-    for (let i = 0; i < limit; i++) {
-      let _o = _objects[_subselection[i]];
-      _selection.push(_o);
-    }
+    res.send(selection);
 
-    if (color != "all") {
-      res.send(_colorFilter);
-    } else {
-      res.send(_selection);
-    }
+
   });
 }

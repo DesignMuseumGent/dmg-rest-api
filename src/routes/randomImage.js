@@ -37,6 +37,7 @@ export function requestRandomImage(app) {
           "to reduce the stress on our servers, the maximum limit per request is set to 100, please try again lowering the limit",
       });
     }
+
     // fetch all objects, and populate bucket to randomize
     imageData.forEach(image => {
       const randomImage = {

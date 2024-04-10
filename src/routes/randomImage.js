@@ -12,7 +12,7 @@ export function requestRandomImage(app) {
     const color = req.query.color || "all";
     const openFlag = parseBoolean(req.query.open) || false
 
-    let x;
+    let imageData;
 
     // if open
     // set limit to 1
@@ -22,15 +22,14 @@ export function requestRandomImage(app) {
       limit = 1;
     }
 
-
     // await data from GET request (supabase)
     if (pd) {
-      x = await fetchPublicDomainImages();
+      imageData = await fetchPublicDomainImages();
     } else {
-      x = await fetchAllImages();
+      imageData = await fetchAllImages();
     }
 
-    const _objects = []; // init objects
+    const objects = []; // init objects
 
     if (limit > 100) {
       res.status(422).json({
@@ -39,21 +38,19 @@ export function requestRandomImage(app) {
       });
     }
     // fetch all objects, and populate bucket to randomize
-    for (let i = 0; i < x.length; i++) {
-      let _randomImage = {};
-      _randomImage["resource"] = x[i]["PURL"];
-      _randomImage["object_number"] = x[i]["object_number"];
-      _randomImage["license"] = x[i]["license"];
-      _randomImage["attribution"] = x[i]["attribution"];
-      _randomImage["color_names"] = x[i]["color_names"];
-      //_randomImage["hex_values"] = x[i]["hex_values"];
-
-      // push new object to API
-      _objects.push(_randomImage);
-    }
+    imageData.forEach(image => {
+      const randomImage = {
+        resource: image.PURL,
+        object_number: image.object_number,
+        license: image.license,
+        attribution: image.attribution,
+        color_names: image.color_names,
+      };
+      objects.push(randomImage);
+    });
 
     // filter on color.
-    const colorFilter = color !== "all" ? _objects.filter(obj => obj.color_names.includes(color)) : _objects;
+    const colorFilter = color !== "all" ? objects.filter(obj => obj.color_names.includes(color)) : objects;
 
     // Select random images
     const selection = [];

@@ -24,6 +24,7 @@
     "express-negotiate": "^0.0.6",
     "fs": "^0.0.1-security",
     "helmet": "^7.0.0",
+    "latest": "^0.2.0",
     "node-cron": "^3.0.2",
     "open": "^10.1.0",
     "react": "^18.2.0",
@@ -35,6 +36,6 @@
     "yamljs": "^0.3.0"
   },
   "engines": {
-    "node": "14.x"
+    "node": "20.x"
   }
 }

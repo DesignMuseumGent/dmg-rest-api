@@ -11,6 +11,7 @@ export function requestRandomImage(app) {
     const pd = parseBoolean(req.query.pd) || true;
     const color = req.query.color || "all";
     const openFlag = parseBoolean(req.query.open) || false
+    const size = req.query.size || "medium"
 
     let imageData;
 
@@ -62,13 +63,27 @@ export function requestRandomImage(app) {
       selection.push(colorFilter[index]);
     }
 
+    const sizes = {
+      "original": "full",
+      "large": "1800,",
+      "medium": "1080,",
+      "small": "750,"
+    }
+
     // Fetch the first image data if openFlag is true and there is at least one image selected
     if (openFlag && selection.length > 0) {
       try {
-        const response = await fetch(selection[0].resource);
+        const selectedImage = selection[0];
+        const resizedImageUrl = selectedImage.resource.replace(/\/full\/[\w-]+/, `/full/${sizes[size]}`);
+        const response = await fetch(resizedImageUrl);
         const imageBuffer = await response.buffer(); // get image data as buffer
         // You can now use this buffer to send the image to the client, save it, etc.
         // For example, to send the image to the client:
+        // Log some metadata to the server console
+        console.log(`Displaying image: ${selectedImage.resource}`);
+        console.log(`Image metadata: Object Number - ${selectedImage.object_number}, License - ${selectedImage.license}, Attribution - ${selectedImage.attribution}`);
+
+
         res.setHeader('Content-Type', 'image/jpeg'); // set the content-type to the correct image type
         res.send(imageBuffer);
       } catch (error) {

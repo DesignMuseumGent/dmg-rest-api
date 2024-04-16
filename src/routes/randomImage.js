@@ -6,7 +6,7 @@ import {
 } from "../utils/parsers.js";
 
 export function requestRandomImage(app) {
-  app.get("/id/random-image", async (req, res) => {
+  app.get("/id/image", async (req, res) => {
     let limit = parseInt(req.query.limit) || 10;
     const pd = parseBoolean(req.query.pd) || true;
     const color = req.query.color || "all";

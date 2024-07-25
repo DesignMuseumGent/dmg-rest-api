@@ -4,7 +4,7 @@ import {fetchAllLDESrecordsObjects} from "../utils/parsers.js";
 
 export function requestByColor(app) {
 
-    app.get('/colors/', async(req, res) => {
+    app.get('/colors/', (req, res) => {
         res.status(200).send(colors_dict)
     })
 

@@ -24,6 +24,7 @@ import { requestRandomImage } from "./src/routes/randomImage.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
 import {Dump} from "./src/routes/data-dump.js";
 import {requestConcept} from "./src/routes/thesaurus.js";
+import {requestByColor} from "./src/routes/colors.js";
 
 async function start() {
   // setup accept-headers
@@ -51,6 +52,9 @@ async function start() {
   requestObjects(app); // request list of all published human-made objects
   requestObject(app); // request individual entity (human-made object) using content-negotiation.
 
+  // ROUTE to COLOR-API
+  requestByColor(app);
+
   // ROUTE to PRIVATE objects
   requestPrivateObjects(app);
 
@@ -73,7 +77,7 @@ async function start() {
   requestTexts(app);
 
   // ROUTE to randomimage
-  requestRandomImage(app);
+  //requestRandomImage(app);
 
   // ROUTE to DUMP
   Dump(app);

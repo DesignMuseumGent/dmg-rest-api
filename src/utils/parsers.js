@@ -44,7 +44,7 @@ export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
 export async function fetchAllLDESrecordsObjects() {
   const { data } = await supabase
     .from("dmg_objects_LDES")
-    .select("objectNumber, iiif_manifest, color_names, HEX_values, LDES_raw");
+    .select("objectNumber, iiif_image_uris, iiif_manifest, color_names, HEX_values, LDES_raw");
   return data;
 }
 

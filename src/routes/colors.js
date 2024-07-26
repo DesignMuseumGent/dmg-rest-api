@@ -8,24 +8,47 @@ export function requestByColor(app) {
         res.status(200).send(colors_dict)
     })
 
-    /*app.get('/color-api/:color', async (req, res) => {
+    app.get('/color-api/:color', async (req, res) => {
 
         // fetch all objects
-        const x = await fetchAllLDESrecordsObjects();
+        const objects = await fetchAllLDESrecordsObjects();
+        const filteredObjects = [];
+        const targetColor = req.params.color.toLowerCase();
 
         // check if color is a css color
+        for (let objIndex = 0; objIndex < objects.length; objIndex++) {
+            const object = objects[objIndex];
+            const colors = object.color_names;
 
+            outer: try {
+                for (let colorIndex = 0; colorIndex < colors.length; colorIndex++) {
+                    const color = colors[colorIndex];
 
-        // search for color in results
-        // if color exists in list: return list of objects
-
-
-
-        // if color doesn't exist in list: return message that there are currently no objects in the collection with that color registered.
-
-        res.status(200).send(x)
-    })*/
-
+                    if(Array.isArray(color)) {
+                        for (let itemIndex = 0; itemIndex < color.length; itemIndex++) {
+                            const item = color[itemIndex];
+                            if(targetColor === item.toLowerCase()) {
+                                // push item into filteredObjects
+                                filteredObjects.push(object);
+                                // Exit from both loops if a match is found
+                                break outer;
+                            }
+                        }
+                    } else {
+                        if(targetColor === color.toLowerCase()) {
+                            // push item into filteredObjects
+                            filteredObjects.push(object);
+                            // Exit from loop if a match is found
+                            break;
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+        res.status(200).send(filteredObjects);
+    })
 }
 
 const colors_dict = {

@@ -7,13 +7,12 @@ import { resolver } from "../utils/resolver.js";
 import {response} from "express";
 
 // constants
-const BASE_URI = "https://data.designmuseumgent.be/";
 const ERROR_410 = "the object is permanently removed from our collection";
 const ERROR_422 = "Oops. the syntax of your request is correct, but data on this object has either not yet been published or we are working on repairing this link."
 const DEFAULT_LIMIT = 10;
 const DEFAULT_OFFSET = 0;
 
-export function requestObjects(app) {
+export function requestObjects(app, BASE_URI) {
   app.get("/id/objects/", async (req, res) => {
     // await data from GET request (supabase)
     const records = await fetchAllLDESrecordsObjects();

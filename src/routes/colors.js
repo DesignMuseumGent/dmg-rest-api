@@ -2,13 +2,13 @@
 
 import {fetchAllLDESrecordsObjects} from "../utils/parsers.js";
 
-export function requestByColor(app) {
+export function requestByColor(app, BASE_URI) {
 
-    app.get('/colors/', (req, res) => {
+    app.get('/v1/colors/', (req, res) => {
         res.status(200).send(colors_dict)
     })
 
-    app.get('/color-api/:color', async (req, res) => {
+    app.get('/v1/color-api/:color', async (req, res) => {
 
         // fetch all objects
         const objects = await fetchAllLDESrecordsObjects();

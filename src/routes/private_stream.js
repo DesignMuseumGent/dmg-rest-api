@@ -3,8 +3,8 @@ import {
   fetchAuthentication,
 } from "../utils/parsers.js";
 
-export function requestPrivateObjects(app) {
-  app.get("/private-objects/", async (req, res) => {
+export function requestPrivateObjects(app, BASE_URI) {
+  app.get("/v1/private-objects/", async (req, res) => {
     // AUTHENTICATION
     let keys = await fetchAuthentication();
     console.log(keys);

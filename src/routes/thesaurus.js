@@ -1,7 +1,7 @@
 import {fetchAllConcepts, fetchConcept} from "../utils/parsers.js";
 
-export function requestConcept(app) {
-    app.get("/id/concept/:id", async(req, res)=> {
+export function requestConcept(app, BASE_URI) {
+    app.get("/v1/id/concept/:id", async(req, res)=> {
         // await data from GET request DB
         let _id = "https://stad.gent/id/concept/"+req.params.id
         console.log(_id)

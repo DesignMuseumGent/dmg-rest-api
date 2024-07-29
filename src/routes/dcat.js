@@ -1,7 +1,7 @@
 import negotiate from "express-negotiate";
 
-export function requestDCAT(app) {
-  app.get("/", (req, res) => {
+export function requestDCAT(app, BASE_URI) {
+  app.get("/v1/", (req, res) => {
     //res.set('Content-Type', 'application/json+ld;charset=utf-8')
     res.send({
       "@context": [
@@ -11,7 +11,7 @@ export function requestDCAT(app) {
           tree: "https://w3id.org/tree#",
         },
       ],
-      "@id": "https://data.designmuseumgent.be/",
+      "@id": BASE_URI,
       "@type": "Datasetcatalogus",
       "Catalogus.titel": {
         "@value": "catalogus Design Museum Gent",
@@ -51,7 +51,7 @@ export function requestDCAT(app) {
       ],
       "Catalogus.heeftDataset": [
         {
-          "@id": "https://data.designmuseumgent.be/id/objects/",
+          "@id": BASE_URI +"objects/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -69,7 +69,7 @@ export function requestDCAT(app) {
             "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
-          "@id": "https://data.designmuseumgent.be/id/exhibitions/",
+          "@id": BASE_URI+"exhibitions/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -87,7 +87,7 @@ export function requestDCAT(app) {
             "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
-          "@id": "https://data.designmuseumgent.be/id/agents/",
+          "@id": BASE_URI+"agents/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -106,7 +106,7 @@ export function requestDCAT(app) {
         },
         {
           "@id":
-            "https://data.designmuseumgent.be/id/exhibitions/billboardseries",
+            BASE_URI+"exhibitions/billboardseries",
           "@type": "Dataset",
           "Dataset.titel": [
             {

@@ -1,17 +1,16 @@
 import {fetchAllExhibitions, fetchLDESrecordsByExhibitionID} from "../utils/parsers.js";
 
-export function requestExhibitions(app) {
-    app.get('/id/exhibitions', async(req, res)=> {
+export function requestExhibitions(app, BASE_URI) {
+    app.get('/v1/id/exhibitions', async(req, res)=> {
         const exh = await fetchAllExhibitions()
         let range = exh.length
         let _exhibitions = []
-        const baseURI = "https://data.designmuseumgent.be/"
 
         for (let i = 0; i < range; i ++) {
             let _exhibition = {}
 
             // generate PURI for exhibition
-            _exhibition["@id"] = baseURI+"id/exhibition/"+exh[i]["exh_PID"]
+            _exhibition["@id"] = BASE_URI+"id/exhibition/"+exh[i]["exh_PID"]
 
             // parse title from LDES feed - if no title available use value "title unknown".
             let _title = "title unknown"
@@ -36,10 +35,10 @@ export function requestExhibitions(app) {
     })
 }
 
-export function requestExhibition(app) {
+export function requestExhibition(app, BASE_URI) {
 
     // FLEMISH URI STANDARD.
-    app.get('/id/exhibition/:exhibitionPID', async (req, res)=> {
+    app.get('/v1/id/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             //res.send(x[0]["LDES_raw"])
@@ -51,7 +50,7 @@ export function requestExhibition(app) {
     })
 
     // ARK
-    app.get('/id/ark:/29417/exhibition/:exhibitionPID', async (req, res)=> {
+    app.get('/v1/id/ark:/29417/exhibition/:exhibitionPID', async (req, res)=> {
         const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
         try{
             const result_cidoc = x[0]["LDES_raw"];

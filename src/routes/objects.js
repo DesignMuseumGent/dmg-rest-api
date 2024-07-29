@@ -13,7 +13,7 @@ const DEFAULT_LIMIT = 10;
 const DEFAULT_OFFSET = 0;
 
 export function requestObjects(app, BASE_URI) {
-  app.get("/id/objects/", async (req, res) => {
+  app.get("/v1/id/objects/", async (req, res) => {
     // await data from GET request (supabase)
     const records = await fetchAllLDESrecordsObjects();
 
@@ -58,8 +58,8 @@ export function requestObjects(app, BASE_URI) {
   })
 }
 
-export function requestObject(app) {
-  app.get("/id/object/:objectNumber.:format?", async (req, res, next) => {
+export function requestObject(app, BASE_URI) {
+  app.get("/v1/id/object/:objectNumber.:format?", async (req, res, next) => {
 
     // 1. resolve to special pages
     if (req.params.objectNumber === "removed") {
@@ -108,11 +108,11 @@ export function requestObject(app) {
     try {
       // redefine - @id to use URIs and PIDs defined by the museum
       result_cidoc[0]["LDES_raw"]["object"]["@id"] =
-          "https://data.designmuseumgent.be/id/object/" +
+          BASE_URI + "id/object/" +
           req.params.objectNumber;
       // assign foaf:pages
       result_cidoc[0]["LDES_raw"]["object"]["foaf:homepage"] =
-          "https://data.designmuseumgent.be/id/object/" +
+          BASE_URI + "id/object/" +
           req.params.objectNumber;
     } catch (error) {
       _error = error;

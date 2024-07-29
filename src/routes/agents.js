@@ -1,7 +1,7 @@
 import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../utils/parsers.js";
 
-export function requestAgents(app) {
-    app.get('/id/agents/', async(req, res) => {
+export function requestAgents(app, BASE_URI) {
+    app.get('/v1/id/agents/', async(req, res) => {
         res.set('Content-Type', 'application/json+ld;charset=utf-8')
         const x = await fetchLDESAllAgents();
 
@@ -22,14 +22,13 @@ export function requestAgents(app) {
 
         for( let i = 0; i < x.length; i ++) {
             let _agent = {}
-            const baseURI = "https://data.designmuseumgent.be/"
 
             _agent["@context"] = [
                 "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/persoon-basis.jsonld",
                 "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-object-ap.jsonld",
                 "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld"
             ]
-            _agent["@id"] = baseURI+"id/agent/"+x[i]["agent_ID"]
+            _agent["@id"] = BASE_URI+"id/agent/"+x[i]["agent_ID"]
             _agent["@type"] = "Persoon"
             _agent["Persoon.identificator"]=[
                 {
@@ -55,7 +54,7 @@ export function requestAgents(app) {
         }
     })
 
-    app.get('/id/agent/:agentPID', async(req, res) => {
+    app.get('/v1/id/agent/:agentPID', async(req, res) => {
         const x = await fetchLDESRecordByAgentID(req.params.agentPID);
         const result_cidoc = x
 

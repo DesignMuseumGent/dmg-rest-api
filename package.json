@@ -12,8 +12,8 @@
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["REST", "rest-API", "GLAM", "design", "heritage", "linked open data"],
+  "author": "Olivier Van D'huynslager",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.4.1",

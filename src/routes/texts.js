@@ -1,6 +1,6 @@
 import {fetchTexts} from "../utils/parsers.js";
 
-export function requestTexts(app) {
+export function requestTexts(app, BASE_URI) {
     app.get('/id/texts/', async(get, res)=> {
         const _texts = await fetchTexts() // connect with Supabase and fetch data.
         const _range=_texts.length
@@ -15,7 +15,7 @@ export function requestTexts(app) {
             let _text = {};
             let catalogueTexts = [];
             let _objectNumber = _texts[text]["object_number"]
-            let _objectID = "https://data.designmuseumgent.be/id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
+            let _objectID = BASE_URI+"id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
 
             //nl
             if (_texts[text]["text_NL"]) {

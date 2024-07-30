@@ -1,5 +1,5 @@
 # DESIGN MUSEUM GENT - REST-API
-This **rest-api** exposes data related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
+This **rest-api** exposes **linked-data** related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
 
 ## QUICK-START
 

@@ -1,5 +1,5 @@
 # DESIGN MUSEUM GENT - REST-API
-This **rest-api** exposes data related to the [museum](https://data.designmuseumgent.be). Ranging from metadata, as well as media related to the collection to information on its programs such as the billboard series, and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and exposed via REST-principles.  
+This **rest-api** exposes data related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
 
 ## QUICK-START
 Top level **data-catalogues** or DCAT are exposed on the top-level of the API and make use of the [OSLO standard](https://joinup.ec.europa.eu/collection/oslo-open-standards-local-administrations-flanders): 
@@ -13,5 +13,10 @@ these include various collections:
 * **agents** (persons and organisations): [https://data.designmuseumgent.be/v1/id/agents](https://data.designmuseumgent.be/v1/id/agents)
 * **thesaurus** (concepts): [https://data.designmuseumgent.be/v1/id/concepts](https://data.designmuseumgent.be/v1/id/concepts)
 
-single **entities** can be fetched using appropriate identifies (which are exposed in the top-level DCATs). 
+single **entities** can be fetched using appropriate identifies (which are exposed in the top-level DCATs) relying on the following syntax: 
+> https://data.designmseumgent.be/v1/id/{type}/{referencenumber}
 
+* **agent** : [https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523](https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523)
+* **object**: [https://data.designmuseumgent.be/v1/id/object/3471](https://data.designmuseumgent.be/v1/id/object/3471.json)
+* **exhibition**: [https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009](https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009)
+* **concept**: [https://data.designmuseumgent.be/v1/concept/]

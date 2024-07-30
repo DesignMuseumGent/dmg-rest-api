@@ -1,5 +1,5 @@
 # DESIGN MUSEUM GENT - REST-API
-This **rest-api** exposes data related to the museum. Ranging from metadata, as well as media related to the collection to information on its programs such as the billboard series, and the exhibition archive. 
+This **rest-api** exposes data related to the [museum](https://data.designmuseumgent.be). Ranging from metadata, as well as media related to the collection to information on its programs such as the billboard series, and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and exposed via REST-principles.  
 
 ## QUICK-START
 Top level **data-catalogues** or DCAT are exposed on the top-level of the API and make use of the [OSLO standard](https://joinup.ec.europa.eu/collection/oslo-open-standards-local-administrations-flanders): 

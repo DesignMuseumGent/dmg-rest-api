@@ -1,31 +1,16 @@
-# Design Museum Gent - RESTful API
-This repository contains the documentation for the RESTful API of the Design Museum Gent. The API allows users to access various data catalogues (DCAT) containing metadata related to the collection and programming of [Design Museum Gent](https://designmuseumgent.be). To ensure a healthy upstream, this API relies on the [dmg-resolver](https://github.com/designmuseumgent/dmg-resolver) service. 
+# DESIGN MUSEUM GENT - REST-API
+This **rest-api** exposes data related to the museum. Ranging from metadata, as well as media related to the collection to information on its programs such as the billboard series, and the exhibition archive. 
 
-![rest-api structure](https://github.com/DesignMuseumGent/dmg-rest-api/assets/43210443/40618cc8-2197-4a12-8d80-0eabec1d40b1)
+## QUICK-START
+Top level **data-catalogues** or DCAT are exposed on the top-level of the API and make use of the OSLO standard:
+```https://data.designmuseumgent.be/v1```
 
-## documentation
-for further documentation on how to use the REST-API and which catalogues are available, a [swagger documentation](https://data.designmuseumgent.be/api-docs) has been setup. 
+these include various collections: 
+* **objects** (published): ```https://data.designmuseumgent.be/v1/id/objects```
+* **objects** (private): ```https://data.designmuseumgent.be/v1/private-objects```
+* **exhibitions** (events): ```https://data.designmuseumgent.be/v1/id/exhibitions```
+* **agents** (persons and organisations): ```https://data.designmuseumgent.be/v1/id/agents```
+* **thesaurus** (concepts): ```https://data.designmuseumgent.be/v1/id/concepts```
 
-## run service 
-to replicat the API service make sure Node is installed on your device.
-**To do so however, you need credentials to fetch data from our postGres DB (which is meant for internal usage only)**
-### clone the repository 
-```
-git clone https://github.com/designmuseumgent/dmg-rest-api/
-```
-
-### install dependencies 
-open the directory where the project was cloned and install dependencies:
-```
-npm install --save
-```
-
-### run the API locally 
-to start the API localy use the following command: 
-```
-node app.js
-```
-
-the api is now running at localhost:PORT (PORT defined in .env)
-for more information please reach out to us via the discussions tab on Github
+single **entities** can be fetched using appropriate identifies (which are exposed in the top-level DCATs). 
 

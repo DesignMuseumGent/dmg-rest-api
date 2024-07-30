@@ -23,7 +23,8 @@ import { requestArchive } from "./src/routes/archief.js";
 import { requestRandomImage } from "./src/routes/randomImage.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
 import {Dump} from "./src/routes/data-dump.js";
-import {requestConcept} from "./src/routes/thesaurus.js";
+import {requestConcepts} from "./src/routes/concepts.js";
+import {requestConcept} from "./src/routes/concept.js";
 import {requestByColor} from "./src/routes/colors.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
@@ -69,6 +70,7 @@ async function start() {
   requestAgents(app, BASE_URI);
 
   // ROUTE to concepts (thesaurus)
+  requestConcepts(app, BASE_URI)
   requestConcept(app, BASE_URI);
 
   // ROUTES to archive (posters)

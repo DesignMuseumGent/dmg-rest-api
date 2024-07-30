@@ -14,7 +14,7 @@ these include various collections:
 * **thesaurus** (concepts): [https://data.designmuseumgent.be/v1/id/concepts](https://data.designmuseumgent.be/v1/id/concepts)
 
 single **entities** can be fetched using appropriate identifies (which are exposed in the top-level DCATs) relying on the following syntax: 
-> https://data.designmseumgent.be/v1/id/{type}/{referencenumber}
+> https://data.designmuseumgent.be/v1/id/{type}/{referencenumber}
 
 * **agent** : [https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523](https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523)
 * **object**: [https://data.designmuseumgent.be/v1/id/object/3471](https://data.designmuseumgent.be/v1/id/object/3471.json)

@@ -27,3 +27,14 @@ single **entities** can be fetched using appropriate identifies (which are expos
 * **object**: [https://data.designmuseumgent.be/v1/id/object/3471](https://data.designmuseumgent.be/v1/id/object/3471.json)
 * **exhibition**: [https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009](https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009)
 * **concept**: [https://data.designmuseumgent.be/v1/id/concept/530006321](https://data.designmuseumgent.be/v1/id/concept/530006321)
+
+____ 
+
+### CURATED COLLECTIONS
+**[studio digitaal](https://digitaal.designmuseumgent.be)** explores new query possibilities on the collection.
+
+#### color-api
+the color-api exposes the collection based on colors that objects have. Exploring different _color systems_, the user has the capability to retrieve data on the collection based on a given **color** and using the following syntax:
+> https://data.designmuseumgent.be/v1/color-api/{color} 
+
+example using "_vanilla_" as input color: https://data.designmuseumgent.be/v1/color-api/vanilla

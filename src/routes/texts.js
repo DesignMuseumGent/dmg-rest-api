@@ -1,7 +1,7 @@
 import {fetchTexts} from "../utils/parsers.js";
 
 export function requestTexts(app, BASE_URI) {
-    app.get('/id/texts/', async(get, res)=> {
+    app.get('/v1/id/texts/', async(get, res)=> {
         const _texts = await fetchTexts() // connect with Supabase and fetch data.
         const _range=_texts.length
         const catalogue = []; // initialize catalogue

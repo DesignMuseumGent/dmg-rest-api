@@ -12,6 +12,7 @@ these include various collections:
 * **objects** (private): [https://data.designmuseumgent.be/v1/id/private-objects](https://data.designmuseumgent.be/v1/id/private-objects)
 * **exhibitions** (events): [https://data.designmuseumgent.be/v1/id/exhibitions](https://data.designmuseumgent.be/v1/id/exhibitions)
 * **billboard series**: [https://data.designmuseumgent.be/v1/id/exhibitions/billboardseries](https://data.designmuseumgent.be/v1/id/exhibitions/billboardseries)
+* **exhibition texts**: [https://data.designmuseumgent.be/v1/id/texts](https://data.designmuseumgent.be/v1/id/texts)
 * **agents** (persons and organisations): [https://data.designmuseumgent.be/v1/id/agents](https://data.designmuseumgent.be/v1/id/agents)
 * **thesaurus** (concepts): [https://data.designmuseumgent.be/v1/id/concepts](https://data.designmuseumgent.be/v1/id/concepts)
 > to remove stress from the server, some of the collections work with pagination.

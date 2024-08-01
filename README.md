@@ -35,11 +35,15 @@ as this is not yet compliant with the flemish URI standard we have also added al
 
 ____ 
 
-### CURATED COLLECTIONS
+## CURATED COLLECTIONS
 **[studio digitaal](https://digitaal.designmuseumgent.be)** explores new query possibilities on the collection.
 
-#### color-api
+### color-api
 the color-api exposes the collection based on colors that objects have. Exploring different _color systems_, the user has the capability to retrieve data on the collection based on a given **color** and using the following syntax:
-> https://data.designmuseumgent.be/v1/color-api/{color} 
+> https://data.designmuseumgent.be/v1/color-api/{color}
 
-example using "_vanilla_" as input color: https://data.designmuseumgent.be/v1/color-api/vanilla
+example using "_vanilla_" as input color: 
+>https://data.designmuseumgent.be/v1/color-api/vanilla
+
+a full list of the used color system is exposed here:
+>https://data.designmuseumgent.be/v1/colors/

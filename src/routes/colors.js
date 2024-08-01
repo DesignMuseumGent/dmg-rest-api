@@ -29,7 +29,8 @@ export function requestByColor(app, BASE_URI) {
                             const item = color[itemIndex];
                             if(targetColor === item.toLowerCase()) {
                                 // push item into filteredObjects
-                                filteredObjects.push(object);
+                                // only show info on the object
+                                filteredObjects.push(object["LDES_raw"]);
                                 // Exit from both loops if a match is found
                                 break outer;
                             }
@@ -37,7 +38,8 @@ export function requestByColor(app, BASE_URI) {
                     } else {
                         if(targetColor === color.toLowerCase()) {
                             // push item into filteredObjects
-                            filteredObjects.push(object);
+                            // only show info on the object
+                            filteredObjects.push(object["LDES_raw"]);
                             // Exit from loop if a match is found
                             break;
                         }
@@ -47,7 +49,25 @@ export function requestByColor(app, BASE_URI) {
                 console.error(e);
             }
         }
-        res.status(200).send(filteredObjects);
+
+
+
+        res.status(200).send({
+            "@context": [
+                "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
+                "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-event/erkendestandaard/2021-04-22/context/cultureel-erfgoed-event-ap.jsonld",
+                "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+                {
+                    cidoc: "https://www.cidoc-crm.org/cidco-crm/"
+                }
+            ],
+            "@type": "GecureerdeCollectie",
+            "@id": `https://data.designmuseumgent.be/v1/id/color-api/${targetColor}`,
+            "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
+            "GecureerdeCollectie.bestaatUit": [
+                filteredObjects
+            ]
+        });
     })
 }
 

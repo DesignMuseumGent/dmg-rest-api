@@ -57,7 +57,7 @@ export function requestExhibition(app, BASE_URI) {
     const exhibitionHandler = async(req, res) => {
         try {
             const x = await fetchLDESrecordsByExhibitionID(req.params.exhibitionPID)
-            res.send({result_cidoc: x[0]["LDES_raw"]})
+            res.send(x[0]["LDES_raw"])
         } catch (e) {
             console.log(e)
             res.status(500).send({error: "Error fetching exhibition data"})

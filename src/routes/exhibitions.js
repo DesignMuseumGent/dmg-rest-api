@@ -9,8 +9,6 @@ const parseIdentification = title => ({
 })
 
 const parseExhibition = (exh, BASE_URI) => {
-
-    // todo add top level (DCAT info)
     let _title = "title unknown";
 
     try{

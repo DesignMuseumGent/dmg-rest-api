@@ -27,6 +27,7 @@ single **entities** can be fetched using appropriate identifies (which are expos
 * **agent** : [https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523](https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523)
 * **object**: [https://data.designmuseumgent.be/v1/id/object/3471](https://data.designmuseumgent.be/v1/id/object/3471.json)
 * **exhibition**: [https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009](https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009)
+* **archive**: [https://data.designmuseumgent.be/v1/id/archive/TE_2003-010_Affiche](https://data.designmuseumgent.be/v1/id/archive/TE_2003-010_Affiche)
 * **concept**: [https://data.designmuseumgent.be/v1/id/concept/530006321](https://data.designmuseumgent.be/v1/id/concept/530006321)
 
 ____ 

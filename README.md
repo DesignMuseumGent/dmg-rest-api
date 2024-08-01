@@ -36,7 +36,7 @@ as this is not yet compliant with the flemish URI standard we have also added al
 ____ 
 
 ## CURATED COLLECTIONS
-**[studio digitaal](https://digitaal.designmuseumgent.be)** explores new query possibilities on the collection.
+**[studio digitaal](https://digitaal.designmuseumgent.be)** explores new query possibilities on the collection and builds prototypes as demonstrators for the APIs. 
 
 ### color-api
 the color-api exposes the collection based on colors that objects have. Exploring different _color systems_, the user has the capability to retrieve data on the collection based on a given **color** and using the following syntax:

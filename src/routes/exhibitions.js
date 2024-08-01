@@ -18,16 +18,8 @@ const parseExhibition = (exh, BASE_URI) => {
             _title = exh["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"];
         }
     } catch (e) {
-        console.log(e)
+        console.error(e)
     }
-
-
-    /*
-    if(["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"]){
-        _title = ["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"];
-    }
-    */
-
 
     return {
         "@id": BASE_URI+"id/exhibition/"+exh["exh_PID"],
@@ -47,7 +39,10 @@ export function requestExhibitions(app, BASE_URI) {
             "@context": [
                 "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
                 "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-event/erkendestandaard/2021-04-22/context/cultureel-erfgoed-event-ap.jsonld",
-                "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld"
+                "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+                {
+                    cidoc: "https://www.cidoc-crm.org/cidco-crm/"
+                }
             ],
             "@type": "GecureerdeCollectie",
             "@id": "https://data.designmuseumgent.be/v1/id/exhibitions",

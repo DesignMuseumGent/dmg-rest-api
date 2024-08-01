@@ -30,6 +30,9 @@ single **entities** can be fetched using appropriate identifies (which are expos
 * **archive**: [https://data.designmuseumgent.be/v1/id/archive/TE_2003-010_Affiche](https://data.designmuseumgent.be/v1/id/archive/TE_2003-010_Affiche)
 * **concept**: [https://data.designmuseumgent.be/v1/id/concept/530006321](https://data.designmuseumgent.be/v1/id/concept/530006321)
 
+as this is not yet compliant with the flemish URI standard we have also added alternative routes, compliant to the EUR standard, making use of ARK. 
+* **exhibition**: [https://data.designmuseumgent.be/v1/id/ark:/29417/exhibition/TE_1993-009](https://data.designmuseumgent.be/v1/id/ark:/29417/exhibition/TE_1993-009)
+
 ____ 
 
 ### CURATED COLLECTIONS

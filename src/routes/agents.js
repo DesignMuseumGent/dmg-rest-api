@@ -43,7 +43,7 @@ export function requestAgents(app, BASE_URI) {
         }
     })
 
-    app.get('/v1/id/agent/:agentPID', async (req, res) => {
+    const agentHandler = async(req, res) => {
         try {
             const agentData = await fetchLDESRecordByAgentID(req.params.agentPID);
             if (!agentData) {
@@ -56,7 +56,10 @@ export function requestAgents(app, BASE_URI) {
             console.error(error);
             return res.status(500).send('Internal server error');
         }
-    });
+    }
+
+    app.get('/v1/id/agent/:agentPID', agentHandler)
+    app.get('/v1/id/ark:/29417/agent/:agentPID', agentHandler)
 }
 
 // ark

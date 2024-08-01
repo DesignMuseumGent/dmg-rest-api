@@ -1,7 +1,7 @@
 import {fetchAllConcepts, fetchConcept} from "../utils/parsers.js";
 
 export function requestConcept(app, BASE_URI) {
-    app.get("/v1/id/concept/:id", async(req, res)=> {
+    const conceptHandler = async(req, res) => {
         // await data from GET request DB
         let _id = "https://stad.gent/id/concept/"+req.params.id
         console.log(_id)
@@ -19,6 +19,9 @@ export function requestConcept(app, BASE_URI) {
                 error: "there is no concept in our catalogue with that id"
             })
         }
-    })
+    }
+
+    app.get("/v1/id/concept/:id", conceptHandler)
+    app.get("/v1/id/ark:/29417/concept/:id", conceptHandler)
 }
 

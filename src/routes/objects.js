@@ -35,7 +35,7 @@ export function requestObjects(app, BASE_URI) {
 
       let object = {};
       object["@context"] = [
-        "https://apidg.gent.be/op…erfgoed-object-ap.jsonld",
+        "https://apidg.gent.be/operfgoed-object-ap.jsonld",
         "https://apidg.gent.be/op…xt/generiek-basis.jsonld",
       ]
 
@@ -59,8 +59,8 @@ export function requestObjects(app, BASE_URI) {
 }
 
 export function requestObject(app, BASE_URI) {
-  app.get("/v1/id/object/:objectNumber.:format?", async (req, res, next) => {
 
+  const objectHandler = async(req, res) => {
     // 1. resolve to special pages
     if (req.params.objectNumber === "removed") {
       return res.status(410).json({
@@ -163,6 +163,7 @@ export function requestObject(app, BASE_URI) {
     } catch (e) {
       res.status(503).send(e);
     }
-
-  });
+  }
+  app.get("/v1/id/object/:objectNumber.:format?",  objectHandler);
+  app.get("/v1/id/ark:/29417/object/:objectNumber.:format?",  objectHandler);
 }

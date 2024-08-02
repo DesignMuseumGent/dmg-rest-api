@@ -42,8 +42,12 @@ ____
 the color-api exposes the collection based on colors that objects have. Exploring different _color systems_, the user has the capability to retrieve data on the collection based on a given **color** and using the following syntax:
 > https://data.designmuseumgent.be/v1/color-api/{color}
 
-example using "_vanilla_" as input color: 
+to fetch and retrieve not the entire object but only a list of images with a reference to the physical object, the following query can be used:
+> https://data.designmuseumgent.be/v1/color-api/{color}?image=true
+
+example using **vanilla** as input color: 
 >https://data.designmuseumgent.be/v1/color-api/vanilla
+>https://data.designmuseumgent.be/v1/color-api/vanilla?image=true
 
 a full list of the used color system is exposed here:
 >https://data.designmuseumgent.be/v1/colors/

@@ -2,6 +2,29 @@
 
 import {fetchAllLDESrecordsObjects} from "../utils/parsers.js";
 
+function addImageUri(filteredObjects, object, BASE_URI) {
+    if (object["iiif_image_uris"]) {
+        object["iiif_image_uris"].forEach(uri => {
+            filteredObjects.push({
+                "@context": [
+                    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+                    {
+                        "cidoc": "http://www.cidoc-crm.org/cidco-crm/"
+                    }
+                ],
+                "@id": uri,
+                "@type": "E38_Image",
+                "cidoc:P1_is_identified_by": uri,
+                "cidoc:P138_represents": {
+                    "@id": `${BASE_URI}id/${object["objectNumber"]}`,
+                    "@type": "E22_Man-Made_Object",
+                    "cidoc:P1_is_identified_by": `${BASE_URI}id/object/${object["objectNumber"]}`
+                }
+            });
+        })
+    }
+}
+
 export function requestByColor(app, BASE_URI) {
 
     app.get('/v1/colors/', (req, res) => {
@@ -10,55 +33,37 @@ export function requestByColor(app, BASE_URI) {
 
     app.get('/v1/color-api/:color', async (req, res) => {
 
-        // fetch all objects
         const objects = await fetchAllLDESrecordsObjects();
         const filteredObjects = [];
         const targetColor = req.params.color.toLowerCase();
 
-        // check if color is a css color
-        for (let objIndex = 0; objIndex < objects.length; objIndex++) {
-            const object = objects[objIndex];
-            const colors = object.color_names;
+        for (let object of objects) {
+            const colors = object.color_names || [];
 
-            outer: try {
-                for (let colorIndex = 0; colorIndex < colors.length; colorIndex++) {
-                    const color = colors[colorIndex];
-
-                    if(Array.isArray(color)) {
-                        for (let itemIndex = 0; itemIndex < color.length; itemIndex++) {
-                            const item = color[itemIndex];
-                            if(targetColor === item.toLowerCase()) {
-                                // push item into filteredObjects
-                                // only show info on the object
-                                filteredObjects.push(object["LDES_raw"]);
-                                // Exit from both loops if a match is found
-                                break outer;
-                            }
-                        }
-                    } else {
-                        if(targetColor === color.toLowerCase()) {
-                            // push item into filteredObjects
-                            // only show info on the object
-                            filteredObjects.push(object["LDES_raw"]);
-                            // Exit from loop if a match is found
-                            break;
-                        }
-                    }
+            // use Array.prototype.some to stop iterating when match is found.
+            const isMatchedColor = colors.some(color=>{
+                if (Array.isArray(colors)) {
+                    return color.some(item=> targetColor === item.toLowerCase());
                 }
-            } catch(e) {
-                console.error(e);
+                return targetColor === color.toLowerCase();
+            })
+
+            if (isMatchedColor) {
+                if(req.query.image) {
+                    addImageUri(filteredObjects, object, BASE_URI);
+                } else {
+                    filteredObjects.push(object["LDES_raw"])
+                }
             }
+
         }
-
-
 
         res.status(200).send({
             "@context": [
-                "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
                 "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-event/erkendestandaard/2021-04-22/context/cultureel-erfgoed-event-ap.jsonld",
                 "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
                 {
-                    cidoc: "https://www.cidoc-crm.org/cidco-crm/"
+                    "cidoc": "http://www.cidoc-crm.org/cidco-crm/"
                 }
             ],
             "@type": "GecureerdeCollectie",

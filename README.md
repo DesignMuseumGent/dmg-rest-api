@@ -46,8 +46,7 @@ to fetch and retrieve not the entire object but only a list of images with a ref
 > https://data.designmuseumgent.be/v1/color-api/{color}?image=true
 
 example using **vanilla** as input color: 
->https://data.designmuseumgent.be/v1/color-api/vanilla
->https://data.designmuseumgent.be/v1/color-api/vanilla?image=true
+> [https://data.designmuseumgent.be/v1/color-api/vanilla](https://data.designmuseumgent.be/v1/color-api/vanilla?image=true)
 
 a full list of the used color system is exposed here:
 >https://data.designmuseumgent.be/v1/colors/

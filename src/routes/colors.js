@@ -6,14 +6,19 @@ function addImageUri(filteredObjects, object, BASE_URI) {
     if (object["iiif_image_uris"]) {
         object["iiif_image_uris"].forEach(uri => {
             filteredObjects.push({
-                "@context": "http://www.cidoc-crm.org/cidoc-crm/",
+                "@context": [
+                    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+                    {
+                        "cidoc": "http://www.cidoc-crm.org/cidco-crm/"
+                    }
+                ],
                 "@id": uri,
                 "@type": "E38_Image",
-                "P1_is_identified_by": uri,
-                "P138_represents": {
+                "cidoc:P1_is_identified_by": uri,
+                "cidoc:P138_represents": {
                     "@id": `${BASE_URI}id/${object["objectNumber"]}`,
                     "@type": "E22_Man-Made_Object",
-                    "P1_is_identified_by": `${BASE_URI}id/object/${object["objectNumber"]}`
+                    "cidoc:P1_is_identified_by": `${BASE_URI}id/object/${object["objectNumber"]}`
                 }
             });
         })
@@ -55,11 +60,10 @@ export function requestByColor(app, BASE_URI) {
 
         res.status(200).send({
             "@context": [
-                "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
                 "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-event/erkendestandaard/2021-04-22/context/cultureel-erfgoed-event-ap.jsonld",
                 "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
                 {
-                    cidoc: "https://www.cidoc-crm.org/cidco-crm/"
+                    "cidoc": "http://www.cidoc-crm.org/cidco-crm/"
                 }
             ],
             "@type": "GecureerdeCollectie",

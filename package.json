@@ -12,7 +12,14 @@
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"
   },
-  "keywords": ["REST", "rest-API", "GLAM", "design", "heritage", "linked open data"],
+  "keywords": [
+    "REST",
+    "rest-API",
+    "GLAM",
+    "design",
+    "heritage",
+    "linked open data"
+  ],
   "author": "Olivier Van D'huynslager",
   "license": "ISC",
   "dependencies": {
@@ -38,5 +45,9 @@
   },
   "engines": {
     "node": "14.x"
+  },
+  "devDependencies": {
+    "jest": "^27.5.1",
+    "supertest": "^7.0.0"
   }
 }

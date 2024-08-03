@@ -20,7 +20,6 @@ import {
 } from "./src/routes/exhibitions.js";
 import { requestTexts } from "./src/routes/texts.js";
 import { requestArchive } from "./src/routes/archief.js";
-import { requestRandomImage } from "./src/routes/randomImage.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
 import {Dump} from "./src/routes/data-dump.js";
 import {requestConcepts} from "./src/routes/concepts.js";
@@ -79,14 +78,12 @@ async function start() {
   // ROUTES to texts that are related to the collection of Design Museum Gent
   requestTexts(app, BASE_URI);
 
-  // ROUTE to randomimage
-  requestRandomImage(app, BASE_URI);
-
   // ROUTE to DUMP
   Dump(app, BASE_URI);
 }
 
 start();
 
+export default app;
 
 //populateSupabaseImages();

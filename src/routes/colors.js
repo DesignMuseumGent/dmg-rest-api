@@ -34,6 +34,7 @@ export function requestByColor(app, BASE_URI) {
     app.get('/v1/color-api/:color', async (req, res) => {
 
         const objects = await fetchAllLDESrecordsObjects();
+        console.log(objects)
         const filteredObjects = [];
         const targetColor = req.params.color.toLowerCase();
 
@@ -43,7 +44,11 @@ export function requestByColor(app, BASE_URI) {
             // use Array.prototype.some to stop iterating when match is found.
             const isMatchedColor = colors.some(color=>{
                 if (Array.isArray(colors)) {
-                    return color.some(item=> targetColor === item.toLowerCase());
+                    return color.some(item => {
+                        let lowerItem = item.toLowerCase();
+                        let lowerTarget = targetColor.toLowerCase();
+                        return req.query.fuzzy ? lowerItem.includes(lowerTarget) : lowerItem === lowerTarget;
+                    });
                 }
                 return targetColor === color.toLowerCase();
             })

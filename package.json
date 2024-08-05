@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm start",
     "populate_images": "node src/utils/populateImages.js",
-    "start": "node app.js",
+    "start": "node server.js",
     "test": "jest",
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"

@@ -3,16 +3,23 @@
   "name": "dmg-rest-api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "dev": "npm start",
     "populate_images": "node src/utils/populateImages.js",
-    "start": "node index.js",
-    "test": "react-scripts test --env=jsdom",
+    "start": "node app.js",
+    "test": "jest",
     "eject": "react-scripts eject",
     "heroku-postbuild": "npm run build"
   },
-  "keywords": ["REST", "rest-API", "GLAM", "design", "heritage", "linked open data"],
+  "keywords": [
+    "REST",
+    "rest-API",
+    "GLAM",
+    "design",
+    "heritage",
+    "linked open data"
+  ],
   "author": "Olivier Van D'huynslager",
   "license": "ISC",
   "dependencies": {
@@ -38,5 +45,10 @@
   },
   "engines": {
     "node": "14.x"
+  },
+  "devDependencies": {
+    "esm": "^3.2.25",
+    "jest": "^27.5.1",
+    "supertest": "^7.0.0"
   }
 }

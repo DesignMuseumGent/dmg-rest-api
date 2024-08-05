@@ -37,6 +37,7 @@ export function requestByColor(app, BASE_URI) {
         const objects = await fetchAllLDESrecordsObjects();
         const filteredObjects = [];
         const targetColor = req.params.color.toLowerCase();
+        const fuzzy = req.query.fuzzy || true;
 
         // pagination
         let { pageNumber = 1, itemsPerPage =  20 } = req.query;
@@ -54,7 +55,7 @@ export function requestByColor(app, BASE_URI) {
                     return color.some(item => {
                         let lowerItem = item.toLowerCase();
                         let lowerTarget = targetColor.toLowerCase();
-                        return req.query.fuzzy ? lowerItem.includes(lowerTarget) : lowerItem === lowerTarget;
+                        return fuzzy ? lowerItem.includes(lowerTarget) : lowerItem === lowerTarget;
                     });
                 }
                 return targetColor === color.toLowerCase();
@@ -101,7 +102,6 @@ export function requestByColor(app, BASE_URI) {
             "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
             "hydra:description": "curated API that allows agents to query objects from the collection of Design Museum Gent based various color systems.",
             "GecureerdeCollectie.bestaatUit": filteredObjects,
-
         });
     })
 }

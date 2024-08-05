@@ -1,5 +1,5 @@
 # DESIGN MUSEUM GENT - REST-API
-This **rest-api** exposes data related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
+This **rest-api** exposes **linked-data** related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
 
 ## QUICK-START
 
@@ -46,8 +46,7 @@ to fetch and retrieve not the entire object but only a list of images with a ref
 > https://data.designmuseumgent.be/v1/color-api/{color}?image=true
 
 example using **vanilla** as input color: 
->https://data.designmuseumgent.be/v1/color-api/vanilla
->https://data.designmuseumgent.be/v1/color-api/vanilla?image=true
+> [https://data.designmuseumgent.be/v1/color-api/vanilla?image=true](https://data.designmuseumgent.be/v1/color-api/vanilla?image=true)
 
 a full list of the used color system is exposed here:
 >https://data.designmuseumgent.be/v1/colors/

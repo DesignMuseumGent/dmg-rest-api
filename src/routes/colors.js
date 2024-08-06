@@ -81,7 +81,7 @@ export function requestByColor(app, BASE_URI) {
             filteredObjects.push(...matchingObjects.slice(startIndex, startIndex + itemsPerPage));
         }
 
-        // return totalpages.
+        // return INFO HYDRA.
         let totalPages = Math.ceil(matchingObjects.length / itemsPerPage);
         const firstPage = 1;
         const lastPage = totalPages;
@@ -102,11 +102,11 @@ export function requestByColor(app, BASE_URI) {
             "hydra:totalItems": matchingObjects.length,
             "hydra:view": {
                 "@id": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${pageNumber}`,
-                "@type": "PartialColletionView",
+                "@type": "PartialCollectionView",
                 "hydra:first": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=1`,
+                "hydra:last": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${totalPages}`,
                 "hydra:previous": previousPage? `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${previousPage}` : null,
                 "hydra:next": nextPage? `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${nextPage}` : null,
-                "hydra:last": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${totalPages}`,
             },
             "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
             "hydra:description": "curated API that allows agents to query objects from the collection of Design Museum Gent based various color systems.",

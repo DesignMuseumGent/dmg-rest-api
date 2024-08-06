@@ -10,17 +10,15 @@ import { requestObject } from "./src/routes/object.js";
 import { requestDCAT } from "./src/routes/dcat.js";
 import { requestAllBillboards } from "./src/routes/billboards.js";
 import { requestAgents } from "./src/routes/agents.js";
-import {
-  requestExhibition,
-  requestExhibitions,
-} from "./src/routes/exhibitions.js";
+import { requestExhibitions } from "./src/routes/exhibitions.js";
+import { requestExhibition } from "./src/routes/exhibition.js";
 import { requestTexts } from "./src/routes/texts.js";
 import { requestArchive } from "./src/routes/archief.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
-import {Dump} from "./src/routes/data-dump.js";
-import {requestConcepts} from "./src/routes/concepts.js";
-import {requestConcept} from "./src/routes/concept.js";
-import {requestByColor} from "./src/routes/colors.js";
+import { Dump } from "./src/routes/data-dump.js";
+import { requestConcepts } from "./src/routes/concepts.js";
+import { requestConcept } from "./src/routes/concept.js";
+import { requestByColor } from "./src/routes/colors.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 

@@ -75,8 +75,6 @@ export function requestByColor(app, BASE_URI) {
             }
         }
 
-        console.log(matchingObjects)
-
         // apply pagination on matching objects and store result in filteredObjects
         let startIndex = (pageNumber - 1) * itemsPerPage;
         if (startIndex < matchingObjects.length) {

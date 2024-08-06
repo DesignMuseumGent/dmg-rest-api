@@ -41,8 +41,8 @@ export function requestByColor(app, BASE_URI) {
 
         // pagination
         let { pageNumber = 1, itemsPerPage =  20 } = req.query;
-        pageNumber = parseInt(pageNumber)
-        itemsPerPage = parseInt(itemsPerPage)
+        pageNumber = Number(pageNumber)
+        itemsPerPage =  Number(itemsPerPage)
 
         let matchingObjects = [] // first extract the color matching
 

@@ -62,15 +62,26 @@ export function requestByColor(app, BASE_URI) {
             })
 
             if (isMatchedColor) {
-                // populate matchingObjectsArray
-                matchingObjects.push(req.query.image ? addImageUri (matchingObjects, object, BASE_URI) : object["LDES_raw"])
+                if(req.query.image) {
+                    let potentialObject = addImageUri(matchingObjects, object, BASE_URI);
+                    if(potentialObject !== undefined) {
+                        matchingObjects.push(potentialObject);
+                    }
+                } else {
+                    if(object["LDES_raw"] !== undefined) {
+                        matchingObjects.push(object["LDES_raw"]);
+                    }
+                }
             }
-
         }
+
+        console.log(matchingObjects)
 
         // apply pagination on matching objects and store result in filteredObjects
         let startIndex = (pageNumber - 1) * itemsPerPage;
-        filteredObjects.push(...matchingObjects.slice(startIndex, startIndex + itemsPerPage))
+        if (startIndex < matchingObjects.length) {
+            filteredObjects.push(...matchingObjects.slice(startIndex, startIndex + itemsPerPage));
+        }
 
         // return totalpages.
         let totalPages = Math.ceil(matchingObjects.length / itemsPerPage);

@@ -5,7 +5,8 @@ import swaggerUI from "swagger-ui-express";
 import cors from "cors";;
 
 // import routes (API contructors)
-import { requestObjects, requestObject } from "./src/routes/objects.js";
+import { requestObjects } from "./src/routes/objects.js";
+import { requestObject } from "./src/routes/object.js";
 import { requestDCAT } from "./src/routes/dcat.js";
 import { requestAllBillboards } from "./src/routes/billboards.js";
 import { requestAgents } from "./src/routes/agents.js";

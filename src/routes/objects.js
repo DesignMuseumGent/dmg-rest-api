@@ -36,7 +36,6 @@ export function requestObjects(app, BASE_URI) {
           },
         }],
       };
-
       filteredObjects.push(object);
     }
 
@@ -44,6 +43,7 @@ export function requestObjects(app, BASE_URI) {
       "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
       "@type": "GecureerdeCollectie",
       "@id": `${BASE_URI}id/objects`,
+      "hydra:totalItems": records.length,
       "hydra:view": {
         "@id": `${BASE_URI}id/objects?pageNumber=${pageNumber}`,
         "@type": "PartialCollectionView",

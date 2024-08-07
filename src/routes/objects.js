@@ -8,6 +8,14 @@ const COMMON_CONTEXT = [
   "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
 ];
 
+const CC_LICENSES = {
+  "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "CC-BY-NC-DC":   "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+  "ALL": "ALL",
+  "IC": "http://rightsstatements.org/vocab/InC/1.0/"
+}
+
+
 export function requestObjects(app, BASE_URI) {
   app.get("/v1/id/objects/", async (req, res) => {
 
@@ -15,15 +23,19 @@ export function requestObjects(app, BASE_URI) {
     const filteredObjects = [];
 
     // pagination
-    let { pageNumber = 1, itemsPerPage = 20 } = req.query
+    let { pageNumber = 1, itemsPerPage = 20, license = "ALL" } = req.query
     pageNumber = Number(pageNumber)
     itemsPerPage = Number(itemsPerPage)
 
-    const totalPages = Math.ceil(records.length / itemsPerPage)
+    let allMatchedRecords = []
 
-    for (let i = (pageNumber - 1) * itemsPerPage; i < pageNumber * itemsPerPage; i++) {
-      if (i >= records.length) break;
+    for (let i = 0; i < records.length; i++) {
       const record = records[i];
+
+      // query for licenses
+      if(license !== "ALL" && (!record["CC_Licenses"] || !record["CC_Licenses"].includes(CC_LICENSES[license]))) {
+        continue;
+      }
 
       let object = {
         "@context": COMMON_CONTEXT,
@@ -36,14 +48,20 @@ export function requestObjects(app, BASE_URI) {
           },
         }],
       };
-      filteredObjects.push(object);
+      allMatchedRecords.push(object);
+    }
+
+    const totalPages = Math.ceil(allMatchedRecords.length / itemsPerPage);
+    for(let j = (pageNumber - 1) * itemsPerPage; j < pageNumber * itemsPerPage; j++) {
+      if (j >= allMatchedRecords.length) break;
+      filteredObjects.push(allMatchedRecords[j]);
     }
 
     res.status(200).json({
       "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
       "@type": "GecureerdeCollectie",
       "@id": `${BASE_URI}id/objects`,
-      "hydra:totalItems": records.length,
+      "hydra:totalItems": allMatchedRecords.length,
       "hydra:view": {
         "@id": `${BASE_URI}id/objects?pageNumber=${pageNumber}`,
         "@type": "PartialCollectionView",

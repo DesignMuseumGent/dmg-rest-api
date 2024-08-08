@@ -10,7 +10,8 @@ const COMMON_CONTEXT = [
 
 const CC_LICENSES = {
   "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
-  "CC-BY-NC-DC":   "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+  "CC-BY-NC-ND":   "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+  "CC-BY-SA": "",
   "ALL": "ALL",
   "IC": "http://rightsstatements.org/vocab/InC/1.0/"
 }
@@ -60,15 +61,15 @@ export function requestObjects(app, BASE_URI) {
     res.status(200).json({
       "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
       "@type": "GecureerdeCollectie",
-      "@id": `${BASE_URI}id/objects`,
+      "@id": `${BASE_URI}id/objects?license=${license}`,
       "hydra:totalItems": allMatchedRecords.length,
       "hydra:view": {
-        "@id": `${BASE_URI}id/objects?pageNumber=${pageNumber}`,
+        "@id": `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber}`,
         "@type": "PartialCollectionView",
-        "hydra:first": `${BASE_URI}id/objects?pageNumber=1`,
-        "hydra:last": `${BASE_URI}id/objects?pageNumber=${totalPages}`,
-        "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/objects?pageNumber=${pageNumber - 1}` : null,
-        "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/objects?pageNumber=${pageNumber + 1}` : null,
+        "hydra:first": `${BASE_URI}id/objects?license=${license}&pageNumber=1`,
+        "hydra:last": `${BASE_URI}id/objects?license=${license}&pageNumber=${totalPages}`,
+        "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber - 1}` : null,
+        "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber + 1}` : null,
       },
       "GecureerdeCollectie.curator": "Design Museum Gent",
       "GecureerdeCollectie.bestaatUit": filteredObjects

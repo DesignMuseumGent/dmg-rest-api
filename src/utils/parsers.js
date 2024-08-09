@@ -92,7 +92,6 @@ export async function fetchLDESAllAgents(start, end) {
   const { data } = await supabase
       .from("dmg_personen_LDES")
       .select("*")
-      .range(start, end);
   return data;
 }
 

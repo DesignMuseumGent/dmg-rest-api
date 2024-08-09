@@ -19,6 +19,7 @@ import { Dump } from "./src/routes/data-dump.js";
 import { requestConcepts } from "./src/routes/concepts.js";
 import { requestConcept } from "./src/routes/concept.js";
 import { requestByColor } from "./src/routes/colors.js";
+import {requestAgent} from "./src/routes/agent.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 
@@ -52,6 +53,7 @@ requestExhibitions(app, BASE_URI); // request single exhibition
 
 // ROUTES to agent (authority list) data
 requestAgents(app, BASE_URI);
+requestAgent(app, BASE_URI);
 
 // ROUTE to concepts (thesaurus)
 requestConcepts(app, BASE_URI)

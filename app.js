@@ -5,20 +5,21 @@ import swaggerUI from "swagger-ui-express";
 import cors from "cors";;
 
 // import routes (API contructors)
-import { requestObjects } from "./src/routes/objects.js";
-import { requestObject } from "./src/routes/object.js";
+import { requestObjects } from "./src/routes/collections/objects.js";
+import { requestObject } from "./src/routes/entities/object.js";
 import { requestDCAT } from "./src/routes/dcat.js";
-import { requestAllBillboards } from "./src/routes/billboards.js";
-import { requestAgents } from "./src/routes/agents.js";
-import { requestExhibitions } from "./src/routes/exhibitions.js";
-import { requestExhibition } from "./src/routes/exhibition.js";
-import { requestTexts } from "./src/routes/texts.js";
-import { requestArchive } from "./src/routes/archief.js";
+import { requestAllBillboards } from "./src/routes/collections/billboards.js";
+import { requestAgents } from "./src/routes/collections/agents.js";
+import { requestExhibitions } from "./src/routes/collections/exhibitions.js";
+import { requestExhibition } from "./src/routes/entities/exhibition.js";
+import { requestTexts } from "./src/routes/collections/texts.js";
+import { requestArchive } from "./src/routes/entities/archief.js";
 import { requestPrivateObjects } from "./src/routes/private_stream.js";
 import { Dump } from "./src/routes/data-dump.js";
-import { requestConcepts } from "./src/routes/concepts.js";
-import { requestConcept } from "./src/routes/concept.js";
+import { requestConcepts } from "./src/routes/collections/concepts.js";
+import { requestConcept } from "./src/routes/entities/concept.js";
 import { requestByColor } from "./src/routes/colors.js";
+import {requestAgent} from "./src/routes/entities/agent.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 
@@ -52,6 +53,7 @@ requestExhibitions(app, BASE_URI); // request single exhibition
 
 // ROUTES to agent (authority list) data
 requestAgents(app, BASE_URI);
+requestAgent(app, BASE_URI);
 
 // ROUTE to concepts (thesaurus)
 requestConcepts(app, BASE_URI)

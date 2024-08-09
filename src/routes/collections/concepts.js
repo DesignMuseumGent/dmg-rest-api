@@ -1,4 +1,4 @@
-import {fetchAllConcepts} from "../utils/parsers.js";
+import {fetchAllConcepts} from "../../utils/parsers.js";
 
 export function requestConcepts(app, BASE_URI) {
     app.get("/v1/id/concepts/", async(req, res) => {

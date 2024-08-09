@@ -1,5 +1,5 @@
-import {fetchLDESRecordByObjectNumber} from "../utils/parsers.js";
-import {resolver} from "../utils/resolver.js";
+import {fetchLDESRecordByObjectNumber} from "../../utils/parsers.js";
+import {resolver} from "../../utils/resolver.js";
 
 // constants
 const ERROR_410 = "the object is permanently removed from our collection";

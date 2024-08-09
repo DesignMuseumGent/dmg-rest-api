@@ -56,7 +56,7 @@ export function requestAgents(app, BASE_URI) {
             "GecureerdeCollectie.bestaatUit": filteredAgentsData
         })
 
-        if (agents.length === 0) {
+        if (filteredAgentsData.length === 0) {
             return res.status(404).send('No agents found')
         }
 

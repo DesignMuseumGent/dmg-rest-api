@@ -1,4 +1,4 @@
-import {fetchLDESrecordsByExhibitionID} from "../utils/parsers.js";
+import {fetchLDESrecordsByExhibitionID} from "../../utils/parsers.js";
 
 export function requestExhibition(app, BASE_URI) {
 

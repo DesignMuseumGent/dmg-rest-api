@@ -1,4 +1,4 @@
-import {fetchAllBillboards} from "../utils/parsers.js";
+import {fetchAllBillboards} from "../../utils/parsers.js";
 export function requestAllBillboards(app, BASE_URI) {
     app.get('/v1/id/exhibitions/billboardseries/', async (req, res) => {
         // ASYNC FUNCTION THAT AWAITS fetch from Supabase.

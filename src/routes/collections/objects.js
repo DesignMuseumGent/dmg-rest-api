@@ -1,6 +1,6 @@
 import {
   fetchAllLDESrecordsObjects,
-} from "../utils/parsers.js";
+} from "../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
   "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",

@@ -1,5 +1,5 @@
 // API generator for Archives of Design Museum Gent
-import {fetchArchiveByObjectNumber} from "../utils/parsers.js";
+import {fetchArchiveByObjectNumber} from "../../utils/parsers.js";
 
 export function requestArchive(app, BASE_URI) {
     const archiveHandler = async(req, res) => {

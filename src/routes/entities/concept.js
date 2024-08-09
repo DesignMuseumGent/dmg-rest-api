@@ -1,4 +1,4 @@
-import {fetchAllConcepts, fetchConcept} from "../utils/parsers.js";
+import {fetchAllConcepts, fetchConcept} from "../../utils/parsers.js";
 
 export function requestConcept(app, BASE_URI) {
     const conceptHandler = async(req, res) => {

@@ -1,4 +1,4 @@
-import {fetchTexts} from "../utils/parsers.js";
+import {fetchTexts} from "../../utils/parsers.js";
 
 export function requestTexts(app, BASE_URI) {
     app.get('/v1/id/texts/', async(get, res)=> {

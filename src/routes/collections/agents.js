@@ -1,4 +1,4 @@
-import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../utils/parsers.js";
+import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../../utils/parsers.js";
 import * as console from "node:console";
 
 const COMMON_CONTEXT = [

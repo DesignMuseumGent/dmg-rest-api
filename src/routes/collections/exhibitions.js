@@ -1,4 +1,4 @@
-import {fetchAllExhibitions, fetchLDESrecordsByExhibitionID} from "../utils/parsers.js";
+import {fetchAllExhibitions, fetchLDESrecordsByExhibitionID} from "../../utils/parsers.js";
 
 const parseIdentification = title => ({
     "@type": "cidoc:E33_E41_Linguistic_Appelation",

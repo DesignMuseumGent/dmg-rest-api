@@ -1,7 +1,7 @@
 // color API
 
-import {fetchAllLDESrecordsObjects} from "../utils/parsers.js";
-import {colors_dict} from "../utils/colors_dict.js";
+import {fetchAllLDESrecordsObjects} from "../../utils/parsers.js";
+import {colors_dict} from "../../utils/colors_dict.js";
 
 function addImageUri(filteredObjects, object, BASE_URI) {
     if (object["iiif_image_uris"]) {

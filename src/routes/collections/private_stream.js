@@ -15,6 +15,7 @@ export function requestPrivateObjects(app) {
 
     let keys = await fetchAuthentication();
     let apiKey = req.query.apiKey || "none";
+    let filteredObjects = [];
 
     if(!keys.some((item) => item.key === apiKey)){
       return res.status(401).json({
@@ -22,13 +23,33 @@ export function requestPrivateObjects(app) {
       });
     }
 
-
     const records = await fetchAllPrivateLDESrecordsObjects()
 
+    // pagination
+    let { pageNumber = 1, itemsPerPage = 20, license = "ALL" } = req.query
+    pageNumber = Number(pageNumber)
+    itemsPerPage = Number(itemsPerPage)
+
+    const totalPages = Math.ceil(allMatchedRecords.length / itemsPerPage);
+    for(let j = (pageNumber - 1) * itemsPerPage; j < pageNumber * itemsPerPage; j++) {
+      if (j >= allMatchedRecords.length) break;
+      filteredObjects.push(allMatchedRecords[j]);
+    }
 
     res.status(200).json({
       "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
+      "@type": "GecureerdeCollectie",
+      "@id": `${BASE_URI}/id/private-objects`,
+      "hydra:view": {
+        "@id": `${BASE_URI}id/private-objects?pageNumber=${pageNumber}`,
+        "@type": "PartialCollectionView",
+        "hydra:first": `${BASE_URI}id/private-objects?pageNumber=1`,
+        "hydra:last": `${BASE_URI}id/private-objects?pageNumber=${totalPages}`,
+        "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/private-objects?pageNumber=${pageNumber - 1}` : null,
+        "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/private-objects?pageNumber=${pageNumber + 1}` : null,
+      },
+      "GecureerdeCollectie.curator": "Design Museum Gent",
+      "GecureerdeCollectie.bestaatUit": filteredObjects
     })
-
   });
 }

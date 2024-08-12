@@ -37,7 +37,6 @@ export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
   const { data } = await supabase
     .from("dmg_private_objects_LDES")
     .select("objectNumber, LDES_raw")
-    .range(rangeStart, rangeEnd);
   return data;
 }
 

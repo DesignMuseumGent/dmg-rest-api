@@ -14,11 +14,11 @@ import { requestExhibitions } from "./src/routes/collections/exhibitions.js";
 import { requestExhibition } from "./src/routes/entities/exhibition.js";
 import { requestTexts } from "./src/routes/collections/texts.js";
 import { requestArchive } from "./src/routes/entities/archief.js";
-import { requestPrivateObjects } from "./src/routes/private_stream.js";
-import { Dump } from "./src/routes/data-dump.js";
+import { requestPrivateObjects } from "./src/routes/collections/private_stream.js";
+import { Dump } from "./src/routes/collections/data-dump.js";
 import { requestConcepts } from "./src/routes/collections/concepts.js";
 import { requestConcept } from "./src/routes/entities/concept.js";
-import { requestByColor } from "./src/routes/colors.js";
+import { requestByColor } from "./src/routes/curated/colors.js";
 import {requestAgent} from "./src/routes/entities/agent.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";

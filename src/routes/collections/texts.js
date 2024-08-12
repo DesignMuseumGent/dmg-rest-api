@@ -1,59 +1,80 @@
 import {fetchTexts} from "../../utils/parsers.js";
 
+const CONTEXT = [
+    "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld",
+    "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-object-ap.jsonld"
+]
+
+const COMMON_CONTEXT = [
+    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-event/erkendestandaard/2021-04-22/context/cultureel-erfgoed-event-ap.jsonld",
+    "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
+];
+
+
+const languages = {"NL": "nl", "EN": "en", "FR": "fr"}
+
 export function requestTexts(app, BASE_URI) {
-    app.get('/v1/id/texts/', async(get, res)=> {
-        const _texts = await fetchTexts() // connect with Supabase and fetch data.
-        const _range=_texts.length
+    app.get('/v1/id/texts/', async(req, res)=> {
+        const texts = await fetchTexts() // connect with Supabase and fetch data.
         const catalogue = []; // initialize catalogue
+        const filteredtexts = []
 
-        const _context = [
-            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld",
-            "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-object-ap.jsonld"
-        ]
+        let {pageNumber = 1, itemsPerPage = 20} = req.query
+        pageNumber = Number(pageNumber)
+        itemsPerPage = Number(itemsPerPage)
 
-        for (let text=0; text<_range; text++) {
-            let _text = {};
+        for (let i=0; i < texts.length; i++) {
+
             let catalogueTexts = [];
-            let _objectNumber = _texts[text]["object_number"]
+            let _objectNumber = texts[i]["object_number"]
             let _objectID = BASE_URI+"id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
 
-            //nl
-            if (_texts[text]["text_NL"]) {
-                const _textNL = {
-                    "text": _texts[text]["text_NL"],
-                    "@lang": "nl"
+            for (let language in languages) {
+                let text = texts[i][`text_${language}`]
+                if (text) {
+                    let textObject = {
+                        //todo: check if there are better CIDOC properties to describe a text.
+                        "text": text,
+                        "@lang": languages[language]
+                    }
+                    catalogueTexts.push(textObject)
                 }
-                catalogueTexts.push(_textNL);
             }
 
-            //en
-            if (_texts[text]["text_EN"]) {
-                const _textEN = {
-                    "text": _texts[text]["text_EN"],
-                    "@lang": "en"
-                }
-                catalogueTexts.push(_textEN);
+            let text = {
+                "@context": CONTEXT,
+                "@type": "InformatieObject",
+                "InformatieObject.gaatOver": {
+                    "@id": _objectID, // PURI
+                    "@type": "MensgemaaktObject"
+                },
+                "InformatieObject.omvat": catalogueTexts
             }
-
-            //fr
-            if (_texts[text]["text_FR"]) {
-                const _textFR = {
-                    "text": _texts[text]["text_FR"],
-                    "@lang": "fr"
-                }
-                catalogueTexts.push(_textFR);
-            }
-
-            _text["@context"] = _context
-            _text["@type"] = "InformatieObject";
-            _text["InformatieObject.gaatOver"] = {
-                // todo: or refers to?
-                "@id": _objectID,
-                "@type": "MensgemaaktObject"
-            };
-            _text["InformatieObject.omvat"] = catalogueTexts;
-            catalogue.push(_text);
+            catalogue.push(text);
         }
-        res.send({catalogue})
+
+        const totalPages = Math.ceil(texts.length / itemsPerPage);
+        for(let j = (pageNumber - 1) * itemsPerPage; j < pageNumber * itemsPerPage; j++) {
+            if (j >= texts.length) break;
+            filteredtexts.push(catalogue[j]);
+        }
+
+        res.status(200).json({
+            "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
+            "@type": "GecureerdeCollectie",
+            "@id": `${BASE_URI}id/texts/`,
+            "hydra:totalItems": catalogue.length,
+            "hydra:view": {
+                "@id": `${BASE_URI}id/texts?pageNumber=${pageNumber}`,
+                "@type": "PartialCollectionView",
+                "hydra:first": `${BASE_URI}id/texts?pageNumber=1`,
+                "hydra:last": `${BASE_URI}id/texts?pageNumber=${totalPages}`,
+                "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/texts?pageNumber=${pageNumber - 1}` : null,
+                "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/texts?pageNumber=${pageNumber + 1}` : null,
+            },
+            "GecureerdeCollectie.curator": "Design Museum Gent",
+            "GecureerdeCollectie.bestaatUit": catalogue
+        })
     })
 }

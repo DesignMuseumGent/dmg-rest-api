@@ -4,8 +4,8 @@ import {
     fetchAuthentication,
     fetchLDESAllAgents,
     parseBoolean
-} from "../utils/parsers.js";
-import {supabase} from "../../supabaseClient.js";
+} from "../../utils/parsers.js";
+import {supabase} from "../../../supabaseClient.js";
 export function Dump(app, BASE_URI)  {
 
     let types = ["concepts", "objects", "agents", "exhibitions"]

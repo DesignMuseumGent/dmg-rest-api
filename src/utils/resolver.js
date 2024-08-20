@@ -11,15 +11,14 @@ export function resolver(VERSION, PURL, _route, res, req) {
             };
         } else {
             let result;
+            let objectnumber = _route.split('/')[2]
             req.negotiate(req.params.format, {
                 'json': function() {
-                    let trimmedRoute = _route.replace('/id/object/', ''); // Remove leading slashes, if any.
-                    let _jsonRoute = '/' + trimmedRoute + '.json';
+                    let _jsonRoute = '/' + objectnumber + '.json';
                     result = { redirect: _jsonRoute };
                 },
                 'default': function() {
-                    let trimmedRoute = _route.replace('/id/object/', ''); // Remove leading slashes, if any.
-                    result = { redirect: '/' + trimmedRoute };
+                    result = { redirect: '/' + objectnumber };
                 }
             });
 

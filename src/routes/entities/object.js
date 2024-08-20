@@ -115,7 +115,6 @@ export function requestObject(app, BASE_URI) {
                         res.redirect(_redirect);
                     },
                     default: function () {
-                        //send html anyway.
                         res.redirect(result_cidoc[0]["LDES_raw"]["object"]);
                     },
                 });

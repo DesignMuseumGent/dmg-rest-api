@@ -1,0 +1,96 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+dist/
+build/
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE/Editor files
+.vscode/
+.idea/
+
+# MacOS
+.DS_Store
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+*.stackdump
+
+# Dependency directories created by package managers (e.g. "npm" or "yarn")
+**/node_modules
+
+# Coverage
+coverage/
+
+# Sensitive files
+*.pem
+*.p8
+*.key
+*.crt
+*.cer
+
+# Temporary files
+tmp/
+temp/
+
+# Asset directories
+**/assets
+
+# Transpiled files
+*.map
+
+# OS generated files
+*.swp
+*.swo
+.project
+
+# Compiled source
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+
+# Ruby
+*.gem
+*.log
+**/.bundle
+.seed/
+.rvmrc
+
+# PHP
+vendor/
+
+# Go
+vendor/
+*.exe
+*.test

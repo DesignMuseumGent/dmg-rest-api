@@ -31,16 +31,26 @@ export function requestObject(app, BASE_URI) {
             let _route = x[0]["RESOLVES_TO"];
             let _PURL = x[0]["PURI"];
 
+            console.log(`Before resolver, _route: ${_route}, _PURL: ${_PURL}`);
+
+
             // resolver
-            let resolverResult = resolver(_PURL, _route, res, req, BASE_URI);
-            if (resolverResult.continue) {
-                result_cidoc = x;
-            }
-            else if(resolverResult.error){
-                return res.status(422).json({"error": resolverResult.error});
-            }
-            else if(resolverResult.redirect){
-                return res.redirect(resolverResult.redirect);
+            let resolverResult = resolver("v1",_PURL, _route, res, req);
+           // Validate the resolverResult
+            if (resolverResult) {
+                console.log(`After resolver, resolverResult: ${JSON.stringify(resolverResult)}`);
+
+                if (resolverResult.continue) {
+                    result_cidoc = x;
+                } else if (resolverResult.error) {
+                    return res.status(422).json({"error": resolverResult.error});
+                } else if (resolverResult.redirect) {
+                    console.log(resolverResult.redirect)
+                    return res.redirect(resolverResult.redirect);
+                }
+            } else {
+                // Handle the situation where resolverResult is null or undefined
+                return res.status(500).json({"error": "Internal Server Error: Resolver result is undefined."});
             }
         }
 

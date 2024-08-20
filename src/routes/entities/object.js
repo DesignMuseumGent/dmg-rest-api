@@ -32,10 +32,18 @@ export function requestObject(app, BASE_URI) {
             let _PURL = x[0]["PURI"];
 
             // resolver
-            if (resolver(_PURL, _route, res, req)) {
+            let resolverResult = resolver(_PURL, _route, res, req, BASE_URI);
+            if (resolverResult.continue) {
                 result_cidoc = x;
             }
+            else if(resolverResult.error){
+                return res.status(422).json({"error": resolverResult.error});
+            }
+            else if(resolverResult.redirect){
+                return res.redirect(resolverResult.redirect);
+            }
         }
+
 
         function parseBoolean(string) {
             return string === "true"

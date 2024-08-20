@@ -13,15 +13,17 @@ export function resolver(VERSION, PURL, _route, res, req) {
             let result;
             req.negotiate(req.params.format, {
                 'json': function() {
-                    let trimmedRoute = _route.replace(/^\/+/, ''); // Remove leading slashes, if any.
+                    let trimmedRoute = _route.replace('/id/object/', ''); // Remove leading slashes, if any.
                     let _jsonRoute = '/' + trimmedRoute + '.json';
                     result = { redirect: _jsonRoute };
                 },
                 'default': function() {
-                    let trimmedRoute = _route.replace(/^\/+/, ''); // Remove leading slashes, if any.
+                    let trimmedRoute = _route.replace('/id/object/', ''); // Remove leading slashes, if any.
                     result = { redirect: '/' + trimmedRoute };
                 }
             });
+
+            console.log(result)
 
             console.log(`Generated redirect: ${result ? result.redirect : 'undefined'}`);
 

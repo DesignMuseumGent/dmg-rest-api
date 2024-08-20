@@ -1,6 +1,4 @@
 export function resolver(VERSION, PURL, _route, res, req) {
-    console.log(`resolver PURL: ${PURL}`);
-    console.log(`resolver _route: ${_route}`);
 
     if (_route === PURL) {
         return { continue: true };

@@ -40,8 +40,8 @@ export function requestByColor(app, BASE_URI) {
         const fuzzy = req.query.fuzzy || true;
 
         // pagination
-        let { pageNumber = 1, itemsPerPage =  20 } = req.query;
-        pageNumber = Number(pageNumber)
+        let { page = 1, itemsPerPage =  20 } = req.query;
+        page = Number(page)
         itemsPerPage =  Number(itemsPerPage)
 
         let matchingObjects = [] // first extract the color matching
@@ -76,7 +76,7 @@ export function requestByColor(app, BASE_URI) {
         }
 
         // apply pagination on matching objects and store result in filteredObjects
-        let startIndex = (pageNumber - 1) * itemsPerPage;
+        let startIndex = (page - 1) * itemsPerPage;
         if (startIndex < matchingObjects.length) {
             filteredObjects.push(...matchingObjects.slice(startIndex, startIndex + itemsPerPage));
         }
@@ -85,8 +85,8 @@ export function requestByColor(app, BASE_URI) {
         let totalPages = Math.ceil(matchingObjects.length / itemsPerPage);
         const firstPage = 1;
         const lastPage = totalPages;
-        const previousPage = pageNumber > firstPage ? pageNumber - 1 : null;
-        const nextPage = pageNumber < lastPage ? pageNumber + 1 : null;
+        const previousPage = page > firstPage ? page - 1 : null;
+        const nextPage = page < lastPage ? page + 1 : null;
 
         res.status(200).send({
             "@context": [
@@ -101,12 +101,12 @@ export function requestByColor(app, BASE_URI) {
             "@id": `${BASE_URI}color-api/${targetColor}?image=true`,
             "hydra:totalItems": matchingObjects.length,
             "hydra:view": {
-                "@id": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${pageNumber}`,
+                "@id": `${BASE_URI}color-api/${targetColor}?image=true&page=${page}`,
                 "@type": "PartialCollectionView",
-                "hydra:first": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=1`,
-                "hydra:last": `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${totalPages}`,
-                "hydra:previous": previousPage? `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${previousPage}` : null,
-                "hydra:next": nextPage? `${BASE_URI}color-api/${targetColor}?image=true&pageNumber=${nextPage}` : null,
+                "hydra:first": `${BASE_URI}color-api/${targetColor}?image=true&page=1`,
+                "hydra:last": `${BASE_URI}color-api/${targetColor}?image=true&page=${totalPages}`,
+                "hydra:previous": previousPage? `${BASE_URI}color-api/${targetColor}?image=true&page=${previousPage}` : null,
+                "hydra:next": nextPage? `${BASE_URI}color-api/${targetColor}?image=true&page=${nextPage}` : null,
             },
             "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
             "hydra:description": "curated API that allows agents to query objects from the collection of Design Museum Gent based various color systems.",

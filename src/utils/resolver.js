@@ -12,8 +12,8 @@ export function resolver(VERSION, PURL, _route, res, req) {
             let objectnumber = _route.split('/')[2]
             req.negotiate(req.params.format, {
                 'json': function() {
-                    let _jsonRoute = '/' + objectnumber + '.json';
-                    result = { redirect: _jsonRoute };
+                    //let _jsonRoute = '/' + objectnumber;
+                    result = { redirect: _route };
                 },
                 'default': function() {
                     result = { redirect: '/' + objectnumber };

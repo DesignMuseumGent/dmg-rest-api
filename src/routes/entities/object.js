@@ -27,33 +27,21 @@ export function requestObject(app, BASE_URI) {
         let result_cidoc;
 
         // define path to resolve to
-        if (x[0]["RESOLVES_TO"]) {
-            let _route = x[0]["RESOLVES_TO"];
-            let _PURL = x[0]["PURI"];
-
-            console.log(`Before resolver, _route: ${_route}, _PURL: ${_PURL}`);
-
-
-            // resolver
-            let resolverResult = resolver("v1",_PURL, _route, res, req);
-           // Validate the resolverResult
-            if (resolverResult) {
-                console.log(`After resolver, resolverResult: ${JSON.stringify(resolverResult)}`);
-
-                if (resolverResult.continue) {
-                    result_cidoc = x;
-                } else if (resolverResult.error) {
-                    return res.status(422).json({"error": resolverResult.error});
-                } else if (resolverResult.redirect) {
-                    console.log(resolverResult.redirect)
-                    return res.redirect(resolverResult.redirect);
+        try {
+            if (x[0]["RESOLVES_TO"]) {
+                const objectnumber = x[0]["RESOLVES_TO"].replace("id/object/", "");
+                if (objectnumber.includes("ROOD")) {
+                    console.log(objectnumber)
+                    return res.status(410).json({"error":"this object has been permanently removed"})
+                } else {
+                    const resolve  = await fetchLDESRecordByObjectNumber(objectnumber);
+                    res.send(resolve);
                 }
-            } else {
-                // Handle the situation where resolverResult is null or undefined
-                return res.status(500).json({"error": "Internal Server Error: Resolver result is undefined."});
-            }
-        }
 
+            }
+        } catch(e) {
+            return res.status(500).json({"error": "the syntax is correct, but this object is not published or doesn`t exist"});
+        }
 
         function parseBoolean(string) {
             return string === "true"

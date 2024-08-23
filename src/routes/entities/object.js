@@ -35,7 +35,7 @@ export function requestObject(app, BASE_URI) {
                     return res.status(410).json({"error":"this object has been permanently removed"})
                 } else {
                     const resolve  = await fetchLDESRecordByObjectNumber(objectnumber);
-                    res.send(resolve);
+                    res.send(resolve[0]["LDES_raw"]["object"]);
                 }
 
             }
@@ -114,6 +114,7 @@ export function requestObject(app, BASE_URI) {
                 });
             }
         } catch (e) {
+
             res.status(503).send(e);
         }
     }

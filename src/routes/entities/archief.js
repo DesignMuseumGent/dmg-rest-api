@@ -10,7 +10,7 @@ export function requestArchive(app, BASE_URI) {
         const exh_PURI = `${BASE_URI}id/exhibition/${PID}`
 
         //todo: remove when in LDES.
-        object[0]["LDES_raw"]["object"]["http://purl.org/dc/terms/isPartOf"]["cidoc:P16_used_specific_object"]["@id"] = exh_PUR
+        object[0]["LDES_raw"]["object"]["http://purl.org/dc/terms/isPartOf"]["cidoc:P16_used_specific_object"]["@id"] = exh_PURI
         res.send(object[0]["LDES_raw"])
     }
     app.get('/v1/id/archive/:objectNumber',archiveHandler)

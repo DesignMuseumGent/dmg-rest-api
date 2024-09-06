@@ -27,8 +27,16 @@ export function requestAllArchive(app, BASE_URI) {
                     "Identificator.identificator": {
                         "@value": record["objectNumber"]
                     }
-                }]
+                }],
                 //todo: add representations
+                "cidoc:P129i_is_subject_of": {
+                    "@id": record["iiif_manifest"],
+                    "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object",
+                    "http://purl.org/dc/terms/conformsTo": {
+                        "@id": "https://iiif.io/api/presentation",
+                        "@type": "cidoc:E73_Information_Object"
+                    }
+                },
             }
             filteredData.push(object)
         }

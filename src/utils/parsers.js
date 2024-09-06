@@ -8,7 +8,7 @@ export async function fetchAuthentication() {
 export async function fetchAllArchive() {
   const {data} = await supabase
     .from("dmg_archief_LDES")
-    .select("objectNumber, iiif_manifest")
+    .select("objectNumber, iiif_manifest, iiif_image")
   return data
 }
 

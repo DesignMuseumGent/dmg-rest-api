@@ -2,7 +2,7 @@ import {fetchAllArchive} from "../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
     "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
-    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld"
 ];
 
 export function requestAllArchive(app, BASE_URI) {
@@ -19,7 +19,13 @@ export function requestAllArchive(app, BASE_URI) {
         for (let i = ( pageNumber - 1 ) * itemsPerPage; i < pageNumber * itemsPerPage;  i++) {
             const record = archiveData[i]
             let object = {
-                "@context": COMMON_CONTEXT,
+                "@context":  [
+                    "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
+                    "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
+                    {
+                        "cidoc": "http://www.cidoc-crm.org/cidco-crm/"
+                    }
+                ],
                 "@id": `${BASE_URI}id/archive/${record["objectNumber"]}`,
                 "@type": "MensgemaaktObject",
                 "Object.identificator": [{

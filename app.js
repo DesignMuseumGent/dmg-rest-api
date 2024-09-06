@@ -14,6 +14,7 @@ import { requestExhibitions } from "./src/routes/collections/exhibitions.js";
 import { requestExhibition } from "./src/routes/entities/exhibition.js";
 import { requestTexts } from "./src/routes/collections/texts.js";
 import { requestArchive } from "./src/routes/entities/archief.js";
+import { requestAllArchive } from "./src/routes/collections/archief.js";
 import { requestPrivateObjects } from "./src/routes/collections/private_stream.js";
 import { Dump } from "./src/routes/collections/data-dump.js";
 import { requestConcepts } from "./src/routes/collections/concepts.js";
@@ -61,6 +62,7 @@ requestConcept(app, BASE_URI);
 
 // ROUTES to archive (posters)
 requestArchive(app, BASE_URI);
+requestAllArchive(app, BASE_URI);
 
 // ROUTES to texts that are related to the collection of Design Museum Gent
 requestTexts(app, BASE_URI);

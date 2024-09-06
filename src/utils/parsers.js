@@ -5,6 +5,13 @@ export async function fetchAuthentication() {
   return data;
 }
 
+export async function fetchAllArchive() {
+  const {data} = await supabase
+    .from("dmg_archief_LDES")
+    .select("objectNumber")
+  return data
+}
+
 export async function fetchArchiveByObjectNumber(_On) {
   const { data } = await supabase
     .from("dmg_archief_LDES")

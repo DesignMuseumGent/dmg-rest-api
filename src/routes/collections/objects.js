@@ -48,6 +48,10 @@ export function requestObjects(app, BASE_URI) {
             "@value": record["objectNumber"],
           },
         }],
+        "cidoc:P129i_is_subject_of": {
+          "@id": record["iiif_image_uris"] ? record["iiif_image_uris"][0] : "no image",
+          "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object"
+        },
       };
       allMatchedRecords.push(object);
     }

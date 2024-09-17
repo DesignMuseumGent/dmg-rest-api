@@ -35,7 +35,7 @@ export async function fetchAllBillboards() {
 export async function fetchLDESRecordByObjectNumber(_On) {
   const { data } = await supabase
     .from("dmg_objects_LDES")
-    .select("LDES_raw, RESOLVES_TO, PURI")
+    .select("*")
     .eq("objectNumber", _On);
   return data;
 }

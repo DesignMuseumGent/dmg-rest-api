@@ -24,7 +24,7 @@ export function requestObjects(app, BASE_URI) {
     const filteredObjects = [];
 
     // pagination
-    let { pageNumber = 1, itemsPerPage = 20, license = "ALL" } = req.query
+    let { pageNumber = 1, itemsPerPage = 20, license = "ALL" , fullRecord = true} = req.query
     pageNumber = Number(pageNumber)
     itemsPerPage = Number(itemsPerPage)
 
@@ -38,22 +38,26 @@ export function requestObjects(app, BASE_URI) {
         continue;
       }
 
-      let object = {
-        "@context": COMMON_CONTEXT,
-        "@id": `${BASE_URI}id/object/${record["objectNumber"]}`,
-        "@type": "MensgemaaktObject",
-        "Object.identificator": [{
-          "@type": "Identificator",
-          "Identificator.identificator": {
-            "@value": record["objectNumber"],
+      if (!fullRecord) {
+        let object = {
+          "@context": COMMON_CONTEXT,
+          "@id": `${BASE_URI}id/object/${record["objectNumber"]}`,
+          "@type": "MensgemaaktObject",
+          "Object.identificator": [{
+            "@type": "Identificator",
+            "Identificator.identificator": {
+              "@value": record["objectNumber"],
+            },
+          }],
+          "cidoc:P129i_is_subject_of": {
+            "@id": record["iiif_image_uris"] ? record["iiif_image_uris"][0] : "no image",
+            "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object"
           },
-        }],
-        "cidoc:P129i_is_subject_of": {
-          "@id": record["iiif_image_uris"] ? record["iiif_image_uris"][0] : "no image",
-          "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object"
-        },
-      };
-      allMatchedRecords.push(object);
+        };
+        allMatchedRecords.push(object);
+      } else {
+        allMatchedRecords.push(record["LDES_raw"])
+      }
     }
 
     const totalPages = Math.ceil(allMatchedRecords.length / itemsPerPage);

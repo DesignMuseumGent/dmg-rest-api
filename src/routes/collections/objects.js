@@ -28,6 +28,8 @@ export function requestObjects(app, BASE_URI) {
     pageNumber = Number(pageNumber)
     itemsPerPage = Number(itemsPerPage)
 
+    console.log(fullRecord)
+
     let allMatchedRecords = []
 
     for (let i = 0; i < records.length; i++) {
@@ -38,7 +40,7 @@ export function requestObjects(app, BASE_URI) {
         continue;
       }
 
-      if (!fullRecord) {
+      if (fullRecord == "false") {
         let object = {
           "@context": COMMON_CONTEXT,
           "@id": `${BASE_URI}id/object/${record["objectNumber"]}`,

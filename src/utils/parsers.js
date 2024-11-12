@@ -40,6 +40,13 @@ export async function fetchLDESRecordByObjectNumber(_On) {
   return data;
 }
 
+export async function fetchAllEasyObjects(){
+  const {data, error} = await supabase
+    .from("dmg_easy_objects")
+    .select("*")
+  return data;
+}
+
 export async function fetchAllPrivateLDESrecordsObjects(rangeStart, rangeEnd) {
   const { data } = await supabase
     .from("dmg_private_objects_LDES")

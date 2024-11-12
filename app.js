@@ -21,6 +21,7 @@ import { requestConcepts } from "./src/routes/collections/concepts.js";
 import { requestConcept } from "./src/routes/entities/concept.js";
 import { requestByColor } from "./src/routes/curated/colors.js";
 import {requestAgent} from "./src/routes/entities/agent.js";
+import {requestEasyObjects} from "./src/routes/collections/easy.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 
@@ -40,6 +41,7 @@ requestDCAT(app, BASE_URI);
 // ROUTES to human-made objects
 requestObjects(app, BASE_URI); // request list of all published human-made objects
 requestObject(app, BASE_URI); // request individual entity (human-made object) using content-negotiation.
+requestEasyObjects(app, BASE_URI) // request easyobjects
 
 // ROUTE to COLOR-API
 requestByColor(app, BASE_URI);

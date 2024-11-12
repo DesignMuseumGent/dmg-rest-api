@@ -22,7 +22,8 @@ export function requestEasyObjects(app, BASE_URI){
                 "materials": record["MATERIALS"],
                 "types": record["TYPES"],
                 "images": record["MEDIA"],
-                "licences": record["LICENSES"]
+                "licences": record["LICENSES"],
+                "colors": record["COLORS"]
             }
             allMatchedRecords.push(object);
         }
@@ -45,7 +46,7 @@ export function requestEasyObjects(app, BASE_URI){
                 "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/easy?pageNumber=${pageNumber - 1}` : null,
                 "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/easy?pageNumber=${pageNumber + 1}` : null,
               },
-            "GecureerdeCollectie.curator": "Olivier Van D'huynsslager",
+            "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
             "GecureerdeCollectie.bestaatUit": filteredObjects
         })
 

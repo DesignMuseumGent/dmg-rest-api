@@ -16,13 +16,13 @@ export function requestEasyObjects(app, BASE_URI){
             let object = {
                 "@id": `${BASE_URI}id/object/${record["OBJECTNUMBER"]}`,
                 "objectnumber": record["OBJECTNUMBER"],
-                "title": record["TITLE"],
-                "description": record["DESCRIPTIONS"],
+                "title": record["TITLE_NL"],
+                "description": record["DESCRIPTION_NL"],
                 "agents": record["AGENTS"],
                 "materials": record["MATERIALS"],
                 "types": record["TYPES"],
                 "images": record["MEDIA"],
-                "licences": record["LICENSES"],
+                "licences": record["LICENSE"],
                 "colors": record["COLORS"]
             }
             allMatchedRecords.push(object);

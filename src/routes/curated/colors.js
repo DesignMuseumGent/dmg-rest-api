@@ -21,7 +21,7 @@ function addImageUri(filteredObjects, object, BASE_URI) {
                     "@id": `${BASE_URI}id/${object["objectNumber"]}`,
                     "@type": "E22_Man-Made_Object",
                     "cidoc:P1_is_identified_by": `${BASE_URI}id/object/${object["objectNumber"]}`
-                }
+                },
             });
         })
     }

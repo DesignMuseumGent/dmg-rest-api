@@ -15,8 +15,6 @@ const CC_LICENSES = {
   "ALL": "ALL",
   "IC": "http://rightsstatements.org/vocab/InC/1.0/"
 }
-
-
 export function requestObjects(app, BASE_URI) {
   app.get("/v1/id/objects/", async (req, res) => {
 

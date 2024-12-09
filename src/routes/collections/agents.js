@@ -1,5 +1,5 @@
 import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../../utils/parsers.js";
-import * as console from "node:console";
+
 
 const COMMON_CONTEXT = [
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/persoon-basis.jsonld",

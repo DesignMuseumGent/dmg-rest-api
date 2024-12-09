@@ -5,10 +5,345 @@ info:
 
   version: 1.0.0
 servers:
-  - url: https://data.designmuseumgent.be
+  - url: https://data.designmuseumgent.be/v1/
     description: Main (production server)
 paths:
-  #random-image
+
+  #objects
+  /v1/id/objects:
+    get:
+      summary: API ENDPOINT to GET a list of objects from the collection of Design Museum Gent.
+      description: a list of data describing objects from the collection of Design Museum Gent
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: set the limit for number objects to be shown on the page. set limit to none to fetch all records.
+          example: 10
+
+        - in: query
+          name: offset
+          schema:
+            type: integer
+          description: set the offset of the get request (recursively move through paginated objects based on the limit)
+          example: 2
+
+#        - in: query
+#          name: idOnly
+#          schema:
+#            type: boolean
+#          description: if true, return ids only (object numbers).
+#          example: true;
+
+      responses:
+        "200": #status code
+          description: a json array of all the unique objects published from the collection of Design Museum Gent
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@context":
+                      type: array
+                    "@id":
+                      type: string
+                      maxItems: 1
+                    "@type":
+                      type: string
+                      maxItems: 1
+                    "Object.identificator":
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          "@type":
+                            type: string
+                          "Identificator.identificator":
+                            type: object
+                            properties:
+                              "@value":
+                                type: string
+  /v1/id/object/{id}:
+    get:
+      summary: API ENDPOINT to GET metadata on a specific object from the collection of Design Museum Gent.
+      description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: api query to fetch a specific object based on the input ID (object number).
+          example: 1987-0942
+        - in: query
+          name: manifest
+          required: false
+          schema:
+            type: boolean
+          description: api query to return only manifest as result.
+          example: false
+      #      - in: query
+      #        name: format
+      #        required: false
+      #        schema:
+      #          type: string
+      #          enum:
+      #            - json
+      #            - html
+      #        description: define format for content negotiation.
+
+      responses:
+        "200": #status code
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/id/exhibitions:
+    get:
+      summary: API ENDPOINT to GET a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
+      description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
+      responses:
+        "200":
+          description: array of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@id":
+                      type: string
+                      maxItems: 1
+                    "cidoc:P1_is_identified_by":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                        "inhoud":
+                          type: object
+                          properties:
+                            "@value":
+                              type: string
+                            "@language":
+                              type: string
+  /v1/id/exhibition/{id}: #exhibitions
+    get:
+      summary: API ENDPOINT to GET metadata on a specific exhibition
+      description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: id to fetch specific exhibition data
+          example: TE_2021-008
+
+      responses:
+        "200": # status code
+          description: an object containing metadata on a specific exhibition
+  /id/exhibitions/billboardseries/: #billboards
+    get:
+      summary: API ENDPOINT to GET a list of all billboards displayed at Design Museum Gent
+      description: a list of all billboards hosted by Design Museum Gent in JSON-LD
+      responses:
+        "200": #status code
+          description: a JSON array of metadata on billboards organized by 019 and hosted by Design Museum Gent
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    "@type":
+                      type: string
+                      maxItems: 1
+
+                    # context
+                    context:
+                      type: object
+                      properties:
+                        la:
+                          type: string
+                          maxItems: 1
+                        cest:
+                          type: string
+                          maxItems: 1
+                        foaf:
+                          type: string
+                          maxItems: 1
+                        prov:
+                          type: string
+                          maxItems: 1
+                        skos:
+                          type: string
+                          maxItems: 1
+                        cidoc:
+                          type: string
+                          maxItems: 1
+                        label:
+                          type: string
+                          maxItems: 1
+                        inhoud:
+                          type: string
+                          maxItems: 1
+                        "foaf:page":
+                          type: object
+                          properties:
+                            "@type":
+                              type: string
+                              maxItems: 1
+                        "opmerking":
+                          type: string
+                          maxItems: 1
+                        equivalent:
+                          type: object
+                          properties:
+                            "@id":
+                              type: string
+                              maxItems: 1
+                            "@type":
+                              type: string
+                              maxItems: 1
+                        "dcterms:isVersionOf":
+                          type: object
+                          properties:
+                            "@type":
+                              type: string
+                              maxItems: 1
+
+                      # entiteit.type
+                    "Entiteit.type":
+                      type: object
+                      properties:
+                        "@id":
+                          type: string
+                          maxItems: 1
+                        "skos.prefLabel":
+                          type: object
+                          properties:
+                            "@value":
+                              type: string
+                            "@language":
+                              type: string
+
+                    #gebeurtenis.tijd
+                    "Gebeurtenis.tijd":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        "@value":
+                          type: string
+
+                    #gebeurtenis.plaats
+                    "gebeurtenis.plaats":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        equivalent:
+                          type: object
+                          properties:
+                            "@id":
+                              type: string
+                              maxItems: 1
+                            "skos.prefLabel":
+                              type: object
+                              properties:
+                                "@value":
+                                  type: string
+                                "@language":
+                                  type: string
+
+                    #activiteit.gebruiktObject
+                    "activiteit.gebruiktObject":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                          maxItems: 1
+                        "MaterieelDing.productie":
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              "Activiteit.uitgevoerdDoor":
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    "@type":
+                                      type: string
+                                      maxItems: 1
+                                    equivalent:
+                                      type: object
+                                      properties:
+                                        "@id":
+                                          type: string
+                                          maxItems: 1
+                                        "@type":
+                                          type: string
+                                          maxItems: 1
+                                        label:
+                                          type: object
+                                          properties:
+                                            value:
+                                              type: string
+                                            language:
+                                              type: string
+                        "MensgemaaktObject.titel":
+                          type: string
+                        "MensegemaaktObject.beschrijving":
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              "@value":
+                                type: string
+                              "@language":
+                                type: string
+  /id/agents: # agent list
+    get:
+      summary: API ENDPOINT to GET a list of agents related to the collection and program of Design Museum Gent
+      description: a list of agents associated with objects from which the data has been published by Design Museum Gent
+      responses:
+        "200":
+          description: a JSON array of metadata on agents associated with objects from which the data has been published by Design Museum Gent
+  /id/agent/{id}: #exhibitions
+    get:
+      summary: API ENDPOINT to GET metadata on a specific agent related to the collection and program of Design Museum Gent
+      description: metadata on a specific agent that is associated with objects from which data has been published by Design Museum Gent
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: id to fetch specific agent data
+          example: DMG-A-00028
+
+      responses:
+        "200": # status code
+          description: an object containing metadata on a specific agent
+  /id/texts:
+    get:
+      summary: API ENDPOINT to GET a list of texts related to objects and the program of Design Museum Gent
+      description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
+      responses:
+        "200":
+          description: a JSON array of texts (in different languages) associated with objects from which the data has been published by Design Museum Gent.
+
+  #curated sets
   /id/random-image:
     get:
       summary: API ENDPOINT to generate a list of random images of works from within the collection of Design Museum Gent.
@@ -939,343 +1274,3 @@ paths:
                     "attribution":
                       type: string
                       maxItems: 1
-
-  #objects
-  /id/objects:
-    get:
-      summary: API ENDPOINT to GET a list of objects from the collection of Design Museum Gent.
-      description: a list of data describing objects from the collection of Design Museum Gent
-      parameters:
-        - in: query
-          name: limit
-          schema:
-            type: integer
-          description: set the limit for number objects to be shown on the page. set limit to none to fetch all records.
-          example: 10
-
-        - in: query
-          name: offset
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated objects based on the limit)
-          example: 2
-
-#        - in: query
-#          name: idOnly
-#          schema:
-#            type: boolean
-#          description: if true, return ids only (object numbers).
-#          example: true;
-
-      responses:
-        "200": #status code
-          description: a json array of all the unique objects published from the collection of Design Museum Gent
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    "@context":
-                      type: array
-                    "@id":
-                      type: string
-                      maxItems: 1
-                    "@type":
-                      type: string
-                      maxItems: 1
-                    "Object.identificator":
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          "@type":
-                            type: string
-                          "Identificator.identificator":
-                            type: object
-                            properties:
-                              "@value":
-                                type: string
-  /id/object/{id}:
-    get:
-      summary: API ENDPOINT to GET metadata on a specific object from the collection of Design Museum Gent.
-      description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
-      produces:
-        - application/json
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-          description: api query to fetch a specific object based on the input ID (object number).
-          example: 1987-0942
-        - in: query
-          name: manifest
-          required: false
-          schema:
-            type: boolean
-          description: api query to return only manifest as result.
-          example: false
-      #      - in: query
-      #        name: format
-      #        required: false
-      #        schema:
-      #          type: string
-      #          enum:
-      #            - json
-      #            - html
-      #        description: define format for content negotiation.
-
-      responses:
-        "200": #status code
-          content:
-            application/json:
-              schema:
-                type: object
-
-  /id/exhibitions:
-    get:
-      summary: API ENDPOINT to GET a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
-      description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
-      responses:
-        "200":
-          description: array of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent
-          content:
-            "application/json":
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    "@id":
-                      type: string
-                      maxItems: 1
-                    "cidoc:P1_is_identified_by":
-                      type: object
-                      properties:
-                        "@type":
-                          type: string
-                        "inhoud":
-                          type: object
-                          properties:
-                            "@value":
-                              type: string
-                            "@language":
-                              type: string
-
-  /id/exhibition/{id}: #exhibitions
-    get:
-      summary: API ENDPOINT to GET metadata on a specific exhibition
-      description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-          required: true
-          description: id to fetch specific exhibition data
-          example: TE_2021-008
-
-      responses:
-        "200": # status code
-          description: an object containing metadata on a specific exhibition
-
-  /id/exhibitions/billboardseries/: #billboards
-    get:
-      summary: API ENDPOINT to GET a list of all billboards displayed at Design Museum Gent
-      description: a list of all billboards hosted by Design Museum Gent in JSON-LD
-      responses:
-        "200": #status code
-          description: a JSON array of metadata on billboards organized by 019 and hosted by Design Museum Gent
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    "@type":
-                      type: string
-                      maxItems: 1
-
-                    # context
-                    context:
-                      type: object
-                      properties:
-                        la:
-                          type: string
-                          maxItems: 1
-                        cest:
-                          type: string
-                          maxItems: 1
-                        foaf:
-                          type: string
-                          maxItems: 1
-                        prov:
-                          type: string
-                          maxItems: 1
-                        skos:
-                          type: string
-                          maxItems: 1
-                        cidoc:
-                          type: string
-                          maxItems: 1
-                        label:
-                          type: string
-                          maxItems: 1
-                        inhoud:
-                          type: string
-                          maxItems: 1
-                        "foaf:page":
-                          type: object
-                          properties:
-                            "@type":
-                              type: string
-                              maxItems: 1
-                        "opmerking":
-                          type: string
-                          maxItems: 1
-                        equivalent:
-                          type: object
-                          properties:
-                            "@id":
-                              type: string
-                              maxItems: 1
-                            "@type":
-                              type: string
-                              maxItems: 1
-                        "dcterms:isVersionOf":
-                          type: object
-                          properties:
-                            "@type":
-                              type: string
-                              maxItems: 1
-
-                      # entiteit.type
-                    "Entiteit.type":
-                      type: object
-                      properties:
-                        "@id":
-                          type: string
-                          maxItems: 1
-                        "skos.prefLabel":
-                          type: object
-                          properties:
-                            "@value":
-                              type: string
-                            "@language":
-                              type: string
-
-                    #gebeurtenis.tijd
-                    "Gebeurtenis.tijd":
-                      type: object
-                      properties:
-                        "@type":
-                          type: string
-                          maxItems: 1
-                        "@value":
-                          type: string
-
-                    #gebeurtenis.plaats
-                    "gebeurtenis.plaats":
-                      type: object
-                      properties:
-                        "@type":
-                          type: string
-                          maxItems: 1
-                        equivalent:
-                          type: object
-                          properties:
-                            "@id":
-                              type: string
-                              maxItems: 1
-                            "skos.prefLabel":
-                              type: object
-                              properties:
-                                "@value":
-                                  type: string
-                                "@language":
-                                  type: string
-
-                    #activiteit.gebruiktObject
-                    "activiteit.gebruiktObject":
-                      type: object
-                      properties:
-                        "@type":
-                          type: string
-                          maxItems: 1
-                        "MaterieelDing.productie":
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              "Activiteit.uitgevoerdDoor":
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    "@type":
-                                      type: string
-                                      maxItems: 1
-                                    equivalent:
-                                      type: object
-                                      properties:
-                                        "@id":
-                                          type: string
-                                          maxItems: 1
-                                        "@type":
-                                          type: string
-                                          maxItems: 1
-                                        label:
-                                          type: object
-                                          properties:
-                                            value:
-                                              type: string
-                                            language:
-                                              type: string
-                        "MensgemaaktObject.titel":
-                          type: string
-                        "MensegemaaktObject.beschrijving":
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              "@value":
-                                type: string
-                              "@language":
-                                type: string
-
-  /id/agents: # agent list
-    get:
-      summary: API ENDPOINT to GET a list of agents related to the collection and program of Design Museum Gent
-      description: a list of agents associated with objects from which the data has been published by Design Museum Gent
-      responses:
-        "200":
-          description: a JSON array of metadata on agents associated with objects from which the data has been published by Design Museum Gent
-
-  /id/agent/{id}: #exhibitions
-    get:
-      summary: API ENDPOINT to GET metadata on a specific agent related to the collection and program of Design Museum Gent
-      description: metadata on a specific agent that is associated with objects from which data has been published by Design Museum Gent
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-          required: true
-          description: id to fetch specific agent data
-          example: DMG-A-00028
-
-      responses:
-        "200": # status code
-          description: an object containing metadata on a specific agent
-
-  /id/texts:
-    get:
-      summary: API ENDPOINT to GET a list of texts related to objects and the program of Design Museum Gent
-      description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
-      responses:
-        "200":
-          description: a JSON array of texts (in different languages) associated with objects from which the data has been published by Design Museum Gent.

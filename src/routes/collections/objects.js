@@ -56,7 +56,8 @@ export function requestObjects(app, BASE_URI) {
         };
         allMatchedRecords.push(object);
       } else {
-        allMatchedRecords.push(record["LDES_raw"])
+        console.log(record["LDES_raw"])
+        allMatchedRecords.push(record["LDES_raw"]["object"])
       }
     }
 

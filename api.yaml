@@ -36,6 +36,13 @@ paths:
           description: filter the objects based on their creative commons license (default all)
           example: "CC0"
 
+        - in: query
+          name: fullRecord
+          schema:
+            type: boolean
+          description: show full records, containing all metadata per object or a limited view (default False)
+          example: true
+
       responses:
         "200": #status code
           description: a json array of all the unique objects published from the collection of Design Museum Gent
@@ -67,8 +74,12 @@ paths:
                         type: string
                       "hydra:next" :
                         type: string
-
-
+                  "GecureerdeCollectie.curator":
+                    type: string
+                  "GecureerdeCollectie.bestaatUit":
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObjectRecord'
 
 #
 #  /id/object/{id}:
@@ -348,3 +359,14 @@ paths:
 #      responses:
 #        "200":
 #          description: a JSON array of texts (in different languages) associated with objects from which the data has been published by Design Museum Gent.
+
+components:
+  schemas:
+    ObjectRecord:
+      type: object
+      properties:
+        "@id":
+          type: string
+        "@context":
+          type: array
+          

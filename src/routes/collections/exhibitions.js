@@ -65,9 +65,7 @@ export function requestExhibitions(app, BASE_URI) {
                 "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/exhibitions?pageNumber=${pageNumber + 1}` : null,
             },
             "GecureerdeCollectie.curator": "Design Museum Gent",
-            "GecureerdeCollectie.bestaatUit": [
-                filteredExhibitions
-            ]
+            "GecureerdeCollectie.bestaatUit": filteredExhibitions
         });
     });
 }

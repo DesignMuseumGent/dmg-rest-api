@@ -1,50 +1,51 @@
 openapi: 3.0.0
 
 info:
-  title: Design Museum Gent REST API Swagger Documentation
+  title: Design Museum Gent REST API
   version: 1.0.0
 servers:
   - url: https://data.designmuseumgent.be/v1/
     description: Main (production server)
-paths:
 
-  #objects
+externalDocs:
+  url: https://digitaal.designmuseumgent.be/api-documentation/
+  description: find more information here
+
+paths:
+  # OBJECTS
   /id/objects:
     get:
-      summary: API ENDPOINT to GET a list of objects from the collection of Design Museum Gent.
+      #summary: API ENDPOINT to GET a LIST OF OBJECTS from the collection of Design Museum Gent.
       description: a list of data describing objects from the collection of Design Museum Gent
+      tags:
+        - collections
       parameters:
-
         - in: query
           name: pageNumber
           schema:
             type: integer
           description: set the offset of the get request (recursively move through paginated objects based on the limit)
           example: 2
-
         - in: query
           name: itemsPerPage
           schema:
             type: integer
           description: set the number of objects to return per page (default is 20)
-          example: 10
-
+          example: 1
         - in: query
           name: license
           schema:
-            type: varstring
+            type: string  # Corrected from varstring to string
           description: filter the objects based on their creative commons license (default all)
-          example: "CC0"
-
+          example: CC0
         - in: query
           name: fullRecord
           schema:
             type: boolean
           description: show full records, containing all metadata per object or a limited view (default False)
           example: true
-
       responses:
-        "200": #status code
+        "200":
           description: a json array of all the unique objects published from the collection of Design Museum Gent
           content:
             application/json:
@@ -66,13 +67,13 @@ paths:
                         type: string
                       "@type":
                         type: string
-                      "hydra:first" :
+                      "hydra:first":
                         type: string
-                      "hydra:last" :
+                      "hydra:last":
                         type: string
-                      "hydra:previous" :
+                      "hydra:previous":
                         type: string
-                      "hydra:next" :
+                      "hydra:next":
                         type: string
                   "GecureerdeCollectie.curator":
                     type: string
@@ -81,284 +82,111 @@ paths:
                     items:
                       $ref: '#/components/schemas/ObjectRecord'
 
-#
-#  /id/object/{id}:
-#    get:
-#      summary: API ENDPOINT to GET metadata on a specific object from the collection of Design Museum Gent.
-#      description: metadata on a specific object that has been digitized and published from the collection of Design Museum Gent.
-#      produces:
-#        - application/json
-#      parameters:
-#        - in: path
-#          name: id
-#          required: true
-#          schema:
-#            type: string
-#          description: api query to fetch a specific object based on the input ID (object number).
-#          example: 1987-0942
-#        - in: query
-#          name: manifest
-#          required: false
-#          schema:
-#            type: boolean
-#          description: api query to return only manifest as result.
-#          example: false
-#
-#      #      - in: query
-#      #        name: format
-#      #        required: false
-#      #        schema:
-#      #          type: string
-#      #          enum:
-#      #            - json
-#      #            - html
-#      #        description: define format for content negotiation.
-#
-#      responses:
-#        "200": #status code
-#          content:
-#            application/json:
-#              schema:
-#                type: object
-#  /id/exhibitions:
-#    get:
-#      summary: API ENDPOINT to GET a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
-#      description: a list of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent.
-#      responses:
-#        "200":
-#          description: array of exhibitions documented by the museum and related to published objects from the collection of Design Museum Gent
-#          content:
-#            "application/json":
-#              schema:
-#                type: array
-#                items:
-#                  type: object
-#                  properties:
-#                    "@id":
-#                      type: string
-#                      maxItems: 1
-#                    "cidoc:P1_is_identified_by":
-#                      type: object
-#                      properties:
-#                        "@type":
-#                          type: string
-#                        "inhoud":
-#                          type: object
-#                          properties:
-#                            "@value":
-#                              type: string
-#                            "@language":
-#                              type: string
-#  /id/exhibition/{id}: #exhibitions
-#    get:
-#      summary: API ENDPOINT to GET metadata on a specific exhibition
-#      description: metadata on a specific exhibition that is associated with objects from which data has been published by Design Museum Gent
-#      parameters:
-#        - in: path
-#          name: id
-#          schema:
-#            type: string
-#          required: true
-#          description: id to fetch specific exhibition data
-#          example: TE_2021-008
-#
-#      responses:
-#        "200": # status code
-#          description: an object containing metadata on a specific exhibition
-#  /id/exhibitions/billboardseries/: #billboards
-#    get:
-#      summary: API ENDPOINT to GET a list of all billboards displayed at Design Museum Gent
-#      description: a list of all billboards hosted by Design Museum Gent in JSON-LD
-#      responses:
-#        "200": #status code
-#          description: a JSON array of metadata on billboards organized by 019 and hosted by Design Museum Gent
-#          content:
-#            application/json:
-#              schema:
-#                type: array
-#                items:
-#                  type: object
-#                  properties:
-#                    "@type":
-#                      type: string
-#                      maxItems: 1
-#
-#                    # context
-#                    context:
-#                      type: object
-#                      properties:
-#                        la:
-#                          type: string
-#                          maxItems: 1
-#                        cest:
-#                          type: string
-#                          maxItems: 1
-#                        foaf:
-#                          type: string
-#                          maxItems: 1
-#                        prov:
-#                          type: string
-#                          maxItems: 1
-#                        skos:
-#                          type: string
-#                          maxItems: 1
-#                        cidoc:
-#                          type: string
-#                          maxItems: 1
-#                        label:
-#                          type: string
-#                          maxItems: 1
-#                        inhoud:
-#                          type: string
-#                          maxItems: 1
-#                        "foaf:page":
-#                          type: object
-#                          properties:
-#                            "@type":
-#                              type: string
-#                              maxItems: 1
-#                        "opmerking":
-#                          type: string
-#                          maxItems: 1
-#                        equivalent:
-#                          type: object
-#                          properties:
-#                            "@id":
-#                              type: string
-#                              maxItems: 1
-#                            "@type":
-#                              type: string
-#                              maxItems: 1
-#                        "dcterms:isVersionOf":
-#                          type: object
-#                          properties:
-#                            "@type":
-#                              type: string
-#                              maxItems: 1
-#
-#                      # entiteit.type
-#                    "Entiteit.type":
-#                      type: object
-#                      properties:
-#                        "@id":
-#                          type: string
-#                          maxItems: 1
-#                        "skos.prefLabel":
-#                          type: object
-#                          properties:
-#                            "@value":
-#                              type: string
-#                            "@language":
-#                              type: string
-#
-#                    #gebeurtenis.tijd
-#                    "Gebeurtenis.tijd":
-#                      type: object
-#                      properties:
-#                        "@type":
-#                          type: string
-#                          maxItems: 1
-#                        "@value":
-#                          type: string
-#
-#                    #gebeurtenis.plaats
-#                    "gebeurtenis.plaats":
-#                      type: object
-#                      properties:
-#                        "@type":
-#                          type: string
-#                          maxItems: 1
-#                        equivalent:
-#                          type: object
-#                          properties:
-#                            "@id":
-#                              type: string
-#                              maxItems: 1
-#                            "skos.prefLabel":
-#                              type: object
-#                              properties:
-#                                "@value":
-#                                  type: string
-#                                "@language":
-#                                  type: string
-#
-#                    #activiteit.gebruiktObject
-#                    "activiteit.gebruiktObject":
-#                      type: object
-#                      properties:
-#                        "@type":
-#                          type: string
-#                          maxItems: 1
-#                        "MaterieelDing.productie":
-#                          type: array
-#                          items:
-#                            type: object
-#                            properties:
-#                              "Activiteit.uitgevoerdDoor":
-#                                type: array
-#                                items:
-#                                  type: object
-#                                  properties:
-#                                    "@type":
-#                                      type: string
-#                                      maxItems: 1
-#                                    equivalent:
-#                                      type: object
-#                                      properties:
-#                                        "@id":
-#                                          type: string
-#                                          maxItems: 1
-#                                        "@type":
-#                                          type: string
-#                                          maxItems: 1
-#                                        label:
-#                                          type: object
-#                                          properties:
-#                                            value:
-#                                              type: string
-#                                            language:
-#                                              type: string
-#                        "MensgemaaktObject.titel":
-#                          type: string
-#                        "MensegemaaktObject.beschrijving":
-#                          type: array
-#                          items:
-#                            type: object
-#                            properties:
-#                              "@value":
-#                                type: string
-#                              "@language":
-#                                type: string
-#  /id/agents: # agent list
-#    get:
-#      summary: API ENDPOINT to GET a list of agents related to the collection and program of Design Museum Gent
-#      description: a list of agents associated with objects from which the data has been published by Design Museum Gent
-#      responses:
-#        "200":
-#          description: a JSON array of metadata on agents associated with objects from which the data has been published by Design Museum Gent
-#  /id/agent/{id}: #exhibitions
-#    get:
-#      summary: API ENDPOINT to GET metadata on a specific agent related to the collection and program of Design Museum Gent
-#      description: metadata on a specific agent that is associated with objects from which data has been published by Design Museum Gent
-#      parameters:
-#        - in: path
-#          name: id
-#          schema:
-#            type: string
-#          required: true
-#          description: id to fetch specific agent data
-#          example: DMG-A-00028
-#
-#      responses:
-#        "200": # status code
-#          description: an object containing metadata on a specific agent
-#  /id/texts:
-#    get:
-#      summary: API ENDPOINT to GET a list of texts related to objects and the program of Design Museum Gent
-#      description: a list of texts describing objects and exhibitions related to the collection of Design Museum Gent
-#      responses:
-#        "200":
-#          description: a JSON array of texts (in different languages) associated with objects from which the data has been published by Design Museum Gent.
+  /id/object/{objectNumber}:
+    get:
+      #summary: API endpoint to GET a SINGLE OBJECT from the collection of Design Museum Gent.
+      description: API endpoint to GET a SINGLE OBJECT from the collectio of Design Museum Gent using the internal identifier.
+      tags:
+        - single entities
+      parameters:
+        - in: path
+          name: objectNumber
+          schema:
+            type: string
+          description: set the identifier for the record that needs to e retrieved.
+          example: 1990-0008
+
+        - in: query
+          name: easy
+          schema:
+            type: boolean
+          description: switch between FULL RECORD containing ALL METADATA or an abstracted, simplified view of the RECORD. (default FALSE)
+          expample: false
+
+      responses:
+        "200":
+          description: Returns a JSON-LD object containing exhaustive metadata on a single object from the collection of Design Museum Gent. The metadata exposes relationships to other data objects that are published by the museum such as other objects, agents, concepts, exhibitions, etc. Based on the parameters, this will be a complex object or an easy abstraction of the metadata of the object.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/ObjectRecord'
+                  - $ref: '#/components/schemas/ObjectRecordEasy'
+        "410":
+          description:
+          content:
+            application/json:
+              schema:
+                "410": "the object is permanently removed from our collection"
+
+        "422":
+          description: response when the syntax of the request is correct, but the object record doesn't exist.
+          content:
+            application/json:
+              schema:
+                "422": "Oops. the syntax of your request is correct, but data on this object has either not yet been published or we are working on repairing this link."
+
+        "500":
+          description:
+          content:
+            application/json:
+              schema:
+                "error": "Error fetching object data"
+
+  /id/exhibitions:
+    get:
+      #summary: API ENDPOINT to GET a LIST OF EXHIBITONS related to the collection of Design Museum Gent.
+      description: a list of data describing exhibitions related to, and exposing relations with the the collection of Design Museum Gent. To retrieve all metadata on a given exhibtion or on all exhibitions, follow the link in the @id property, which exposes the URL for the API endpoint of that specific exhibition.
+      tags:
+        - collections
+      parameters:
+        - in: query
+          name: pageNumber
+          schema:
+            type: integer
+          description: set the offset of the get request (recursively move through paginated objects based on the limit)
+          example: 2
+        - in: query
+          name: itemsPerPage
+          schema:
+            type: integer
+          description: set the number of objects to return per page (default is 20)
+          example: 1
+      responses:
+        "200":
+          description: a json-ld object containing exhibitions related to the collection and program of the museum.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/exhibitions'
+
+  /id/exhibition/{exhibitionPID}:
+    get:
+      tags:
+        - single entities
+      parameters:
+        - in: path
+          name: exhibitionPID
+          schema:
+            type: string
+          description: set the identifier for the record of the exhibtion that needs to be retrieved.
+          example: TE_1993-009
+      responses:
+        "200":
+          description: a json-ld object containing metadata on a single exhibition related to the collection and program of the museum.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/exhibition'
+
+        "500":
+          description:
+          content:
+            application/json:
+              schema:
+                error: "Error fetching exhibition data"
+
+## list of components.
 
 components:
   schemas:
@@ -367,6 +195,518 @@ components:
       properties:
         "@id":
           type: string
+          description: "The unique identifier for the object."
+        "@context":
+          type: object
+        "prov:generatedAtTime":
+          type: string  # Corrected type from date to string
+        "http://xmlns.com/foaf/0.1/page":
+          type: object
+          properties:
+            "@id":
+              type: string
+        "http://purl.org/dc/terms/isPartOf":
+          type: array
+          items:
+            type: object
+            properties:
+              "http://www.cidoc-crm.org/cidoc-crm/P16_used_specific_object":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                    type: object
+                    properties:
+                      "@id":
+                        type: string
+                  "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
+                    type: object
+                    properties:
+                      "@language":
+                        type: string
+                      "@value":
+                        type: string
+                  "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
+                    type: object
+                    properties:
+                      "@type":
+                        type: string
+                      "@value":
+                        type: string
+        "http://purl.org/dc/terms/isVersionOf":
+          type: object
+          properties:
+            "@id":
+              type: string
+        "http://www.w3.org/ns/adms#identifier":
+          type: array
+          items:
+            type: object
+            properties:
+              "@type":
+                type: string
+              "skos:notation":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  "@value":
+                    type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                type: object
+                properties:
+                  "@id":
+                    type: string
+                  "label":
+                    type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
+          type: object
+          properties:
+            "@value":
+              type: string
+            "@language":
+              type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P102_has_title":
+          type: object
+          properties:
+            "@value":
+              type: string
+            "@language":
+              type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P45_consists_of":
+          type: object
+          properties:
+            "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+              type: array
+              items:
+                type: object
+                properties:
+                  "@id":
+                    type: string
+                  "label":
+                    type: string
+                  "skos:prefLabel":
+                    type: object
+                    properties:
+                      "@value":
+                        type: string
+                      "@language":
+                        type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P43_has_dimension":
+          type: array
+          items:
+            type: object
+            properties:
+              "@type":
+                type: string
+              "https://schema.org/value":
+                type: object
+                properties:
+                  "@id":
+                    type: string
+              "https://schema.org/unitText":
+                type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                type: object
+                properties:
+                  "@id":
+                    type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P46i_forms_part_of":
+          type: array
+          items:
+            type: object
+            properties:
+              "@id":
+                type: string
+              "@type":
+                type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                type: object
+                properties:
+                  "@id":
+                    type: string
+                  "label":
+                    type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
+                type: object
+                properties:
+                  "@id":
+                    type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "@type":
+              type: string
+            "http://purl.org/dc/terms/conformsTo":
+              type: object
+              properties:
+                "@id":
+                  type: string
+                "@type":
+                  type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P108i_was_produced_by":
+          type: array
+          items:
+            type: object
+            properties:
+              "@type":
+                type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  "@value":
+                    type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by":
+                type: object
+                properties:
+                  "equivalent":
+                    type: object
+                    properties:
+                      "@id":
+                        type: string
+                      "label":
+                        type: object
+                        properties:
+                          "@value":
+                            type: string
+                          "@language":
+                            type: string
+              "http://www.cidoc-crm.org/cidoc-crm/P32_used_general_technique":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                    type: array
+                    items:
+                      oneOf:
+                      - type: object
+                        properties:
+                          "@id":
+                            type: string
+                          "label":
+                            type: string
+                      - type: object
+                        properties:
+                          "@id":
+                            type: string
+                          "skos:prefLabel":
+                            type: object
+                            properties:
+                              "@value":
+                                type: string
+                              "@language":
+                                type: string
+        "http://www.cidoc-crm.org/cidoc-crm/P67i_is_reffered_to_by":
+          type: object
+          properties:
+            "@type":
+              type: string
+            "http://www.cidoc-crm.org/cidoc-crm/P94i_was_created_by":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
+                  type: object
+                  properties:
+                    "@type":
+                      type: string
+                    "@value":
+                      type: string
+                "http://www.cidoc-crm.org/cidoc-crm/P7_took_place_at":
+                  type: object
+                "http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by":
+                  type: object
+                  properties:
+                    "equivalent":
+                      type: object
+                      properties:
+                        "@id":
+                          type: string
+                        "@label":
+                          type: object
+                          properties:
+                            "@value":
+                              type: string
+                            "@language":
+                              type: string
+
+        "http://www.cidoc-crm.org/cidoc-crm/P55_has_current_location":
+          type: object
+          properties:
+            "opmerking":
+              type: string
+
+        "http://www.cidoc-crm.org/cidoc-crm/P24i_changed_ownership_through":
+          type: object
+          properties:
+            "@type":
+              type: text
+            "http://wwww.cidoc-crm.org/cidoc-crm/P4_has_time-span":
+              type: object
+              properties:
+                "@type":
+                  type: text
+                "http://data.europa.eu/m8g/endTime":
+                  type: object
+                  properties:
+                    "@type":
+                      type: string
+                    "@value":
+                      type: string
+                "http://data.europa.eu/m8g/startTime":
+                  type: object
+                  properties:
+                    "@type":
+                      type: string
+                    "@value":
+                      type: string
+            "http://www.cidoc-crm.org/cidoc-crm/P7_took_place_at":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
+                  type: array
+                  items:
+                    oneOf:
+                      - type: object
+                        properties:
+                          "@id":
+                            type: string
+                          "label":
+                            type: string
+                      - type: object
+                        properties:
+                          "@id":
+                            type: string
+                          "skos:prefLabel":
+                            type: object
+                            properties:
+                               "@value":
+                                  type: string
+                               "@language":
+                                  type: string
+
+    ObjectRecordEasy:
+      type: object
+      description: data model of the easy representation of an object from the collection.
+      properties:
+        "@id":
+          type: string
+        "media":
+          type: array
+        "title":
+          type: string
+        "description":
+          type: string
+        "objectNumber":
+          type: string
+
+    # EXHIBITION
+    exhibition:
+      type: object
+      properties:
+        "@id":
+          type: string
+        "@type":
+          type: string
+        "@context":
+          type: object
+          properties:
+            "la":
+              type: string
+            "cest":
+              type: string
+            "foaf":
+              type: string
+            "prov":
+              type: string
+            "skos":
+              type: string
+            "cidoc":
+              type: string
+            "label":
+              type: string
+            "inhoud":
+              type: string
+            "foaf:page":
+              type: object
+              properties:
+                "@type":
+                  type: string
+            "opmerking":
+              type: string
+            "equivalent":
+              type: object
+              properties:
+                "@id":
+                  type: string
+                "@type":
+                  type: string
+            "dcterms:isVersionOf":
+              type: object
+              properties:
+                "@type":
+                  type: string
+        "foaf:page":
+          type: string
+        "cidoc:P2_has_type":
+          type: object
+          properties:
+            "@id":
+              type: string
+        "prov:generatedAtTime":
+          type: string
+        "cidoc:P4_has_time-span":
+          type: object
+          properties:
+            "@type":
+              type: string
+            "@language":
+              type: string
+        "cidoc:P7_took_place_at":
+          type: object
+          properties:
+            "@type":
+              type: string
+            "equivalent":
+              type: object
+              properties:
+                "@id":
+                  type: string
+                "skos:prefLabel":
+                  type: object
+                  properties:
+                    "@value":
+                      type: string
+                    "@language":
+                      type: string
+        "cidoc:P1_is_identified_by":
+          "@type":
+            type: string
+          "inhoud":
+            type: object
+            properties:
+              "@value":
+                type: string
+              "@language":
+                type: string
+        "cidoc:P16_used_specific_object":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "@type":
+              type: string
+            "cidoc:P102_has_title":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "@value":
+                  type: string
+            "http://www.w3.org/ns/adms#identifier":
+              type: array
+              items:
+                type: object
+                properties:
+                  "skos:notation":
+                    type: object
+                    properties:
+                      "@type":
+                        type: string
+                      "@value":
+                        type: string
+        "http://purl.org/dc/terms/isVersionOf":
+          type: object
+          properties:
+            "@id":
+              type: string
+        "http://www.w3.org/ns/adms#identifier":
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  "@type":
+                    type: string
+                  "skos:notation":
+                    type: object
+                    properties:
+                      "@type":
+                        type: string
+                      "@value":
+                        type: string
+              - type: object
+                properties:
+                  "skos:notation":
+                    type: object
+                    properties:
+                      "@type":
+                        type: string
+                      "@value":
+                        type: string
+
+    # EXHIBITIONS
+    exhibitions:
+      type: object
+      properties:
         "@context":
           type: array
-          
+          items:
+            type: object
+            properties:
+              "cidoc":
+                type: string
+              "hydra":
+                type: string
+        "@type":
+          type: string
+        "@id":
+          type: string
+        "hydra:view":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "@type":
+              type: string
+            "hydra:first":
+              type: string
+            "hydra:last":
+              type: string
+            "hydra:previous":
+              type: string
+            "hydra:next":
+              type: string
+        "GecureerdeCollectie.curator":
+          type: string
+        "GecureerdeCollectie.bestaatUit":
+          type: array
+          items:
+            type: object
+            properties:
+              "@id":
+                type: string
+              "@type":
+                type: string
+              "cidoc:P1_is_identified_by":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+                  "inhoud":
+                    type: object
+                    properties:
+                      "@value":
+                        type: string
+                      "@language":
+                        type: string
+

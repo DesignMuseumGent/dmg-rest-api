@@ -12,10 +12,8 @@ export function requestObject(app, BASE_URI) {
 
         console.log(req.query.easy)
 
-
-
-
         // 1. resolve to special pages
+
         if (req.params.objectNumber === "removed") {
             return res.status(410).json({
                 410: ERROR_410,
@@ -37,10 +35,8 @@ export function requestObject(app, BASE_URI) {
         let result_cidoc;
         let _easy = false;
 
-        if (req.query.easy) {
-            console.log("——— ___ yaay ___ ———");
-            console.log(x[0])
-            return res.json(x[0]["EASY"]); // Return and stop further execution
+        if (req.query.easy) { 
+           return res.json(x[0]["EASY"]); // Return and stop further execution
         }
 
         // define path to resolve to

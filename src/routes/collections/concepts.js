@@ -7,27 +7,34 @@ export function requestConcepts(app, BASE_URI) {
         const filteredConcepts = [];
 
         // pagination
-        let { pageNumber = 1, itemsPerPage = 20 } = req.query;
+        let { pageNumber = 1, itemsPerPage = 20, full=false } = req.query;
         pageNumber = Number(pageNumber)
         itemsPerPage = Number(itemsPerPage)
 
         const totalPages = Math.ceil(concepts.length / itemsPerPage);
 
         for (let i = (pageNumber - 1) * itemsPerPage; i < pageNumber * itemsPerPage; i++) {
+
             if (i < concepts.length) {
 
-                let concept = {
-                    "@context": [
-                        {
-                            "skos": "http://www.w3.org/2004/02/skos/core#",
-                        }
-                    ],
-                    "@id": `${BASE_URI}id/concept/${concepts[i].id}`,
-                    "@type": "skos:concept",
-                    "skos:preLabel": concepts[i]["LDES_raw"]["object"]["skos:prefLabel"]
+                if (req.query.full) {
+                    filteredConcepts.push(concepts[i]["LDES_raw"]["object"])
+                } else {
+                    let concept = {
+                        "@context": [
+                            {
+                                "skos": "http://www.w3.org/2004/02/skos/core#",
+                            }
+                        ],
+                        "@id": `${BASE_URI}id/concept/${concepts[i].id}`,
+                        "@type": "skos:concept",
+                        "skos:preLabel": concepts[i]["LDES_raw"]["object"]["skos:prefLabel"]
+                    }
+
+                    filteredConcepts.push(concept);
                 }
 
-                filteredConcepts.push(concept);
+
             }
         }
 

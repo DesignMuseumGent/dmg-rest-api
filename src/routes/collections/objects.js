@@ -18,6 +18,10 @@ const CC_LICENSES = {
 export function requestObjects(app, BASE_URI) {
   app.get("/v1/id/objects/", async (req, res) => {
 
+    // set Headers
+    res.setHeader('Content-type', 'application/ld+json');
+    res.setHeader('Content-Dispositon', 'inline');
+
     const records = await fetchAllLDESrecordsObjects();
     const filteredObjects = [];
 

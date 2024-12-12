@@ -1,5 +1,8 @@
 import {fetchLDESrecordsByExhibitionID} from "../../utils/parsers.js";
 
+// todo: set correct header-type
+
+
 export function requestExhibition(app, BASE_URI) {
 
     // handler for both routes.

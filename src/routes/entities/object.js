@@ -1,5 +1,5 @@
 import { fetchLDESRecordByObjectNumber } from "../../utils/parsers.js";
-import { resolver } from "../../utils/resolver.js";
+// todo: set correct header-type
 
 // constants
 const ERROR_410 = "the object is permanently removed from our collection";
@@ -10,8 +10,11 @@ export function requestObject(app, BASE_URI) {
 
     const objectHandler = async (req, res) => {
 
-        console.log(req.query.easy)
+        // set Headers
+        res.setHeader('Content-type', 'application/ld+json');
+        res.setHeader('Content-Dispositon', 'inline');
 
+        // console.log(req.query.easy)
         // 1. resolve to special pages
 
         if (req.params.objectNumber === "removed") {

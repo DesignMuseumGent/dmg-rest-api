@@ -46,9 +46,9 @@ paths:
           example: true
       responses:
         "200":
-          description: a json array of all the unique objects published from the collection of Design Museum Gent
+          description: Succesful response containing a paginated collection of all the objects (metadata + digital reproduction) in JSON-LD format making use of Linked Art and Cidoc-CRM.
           content:
-            application/json:
+            application/ld+json:
               schema:
                 type: object
                 properties:
@@ -107,7 +107,7 @@ paths:
         "200":
           description: Returns a JSON-LD object containing exhaustive metadata on a single object from the collection of Design Museum Gent. The metadata exposes relationships to other data objects that are published by the museum such as other objects, agents, concepts, exhibitions, etc. Based on the parameters, this will be a complex object or an easy abstraction of the metadata of the object.
           content:
-            application/json:
+            application/ld+json:
               schema:
                 anyOf:
                   - $ref: '#/components/schemas/ObjectRecord'
@@ -131,7 +131,14 @@ paths:
           content:
             application/json:
               schema:
-                
+                object:
+                properties:
+                  status:
+                    description: HTTP response code of the error
+                    type: string
+                  error:
+                    description: description of the error
+                    type: string
 
         "500":
           description:

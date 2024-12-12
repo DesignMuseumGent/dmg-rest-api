@@ -1,8 +1,4 @@
 import {fetchAllExhibitions, fetchLDESrecordsByExhibitionID} from "../../utils/parsers.js";
-
-
-// todo: set correct header-type
-
 const parseIdentification = title => ({
     "@type": "cidoc:E33_E41_Linguistic_Appelation",
     "inhoud": {
@@ -31,6 +27,11 @@ const parseExhibition = (exh, BASE_URI) => {
 
 export function requestExhibitions(app, BASE_URI) {
     app.get('/v1/id/exhibitions', async(req, res)=> {
+
+        // set Headers
+        res.setHeader('Content-type', 'application/ld+json');
+        res.setHeader('Content-Dispositon', 'inline');
+
         const exhibitions = await fetchAllExhibitions()
         const filteredExhibitions = [];
 

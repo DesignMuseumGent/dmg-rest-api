@@ -1,5 +1,6 @@
 import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../../utils/parsers.js";
 
+// todo: set correct header-type
 
 const COMMON_CONTEXT = [
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/persoon-basis.jsonld",
@@ -9,6 +10,11 @@ const COMMON_CONTEXT = [
 
 export function requestAgents(app, BASE_URI) {
     app.get('/v1/id/agents/', async(req, res) => {
+
+        res.setHeader('Content-type', 'application/ld+json');
+        res.setHeader('Content-Dispositon', 'inline');
+        
+
 
         const agentsData = await fetchLDESAllAgents()
         const filteredAgentsData = [];

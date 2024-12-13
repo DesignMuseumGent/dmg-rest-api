@@ -2,7 +2,6 @@ import {fetchLDESRecordByAgentID} from "../../utils/parsers.js";
 import console from "node:console";
 
 export function requestAgent(app, BASE_URI) {
-
     const agentHandler = async(req, res) => {
 
         // set Headers

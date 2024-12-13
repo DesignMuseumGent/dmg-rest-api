@@ -1,7 +1,4 @@
 import {fetchLDESAllAgents, fetchLDESRecordByAgentID} from "../../utils/parsers.js";
-
-// todo: set correct header-type
-
 const COMMON_CONTEXT = [
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/persoon-basis.jsonld",
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-object-ap.jsonld",
@@ -13,34 +10,37 @@ export function requestAgents(app, BASE_URI) {
 
         res.setHeader('Content-type', 'application/ld+json');
         res.setHeader('Content-Dispositon', 'inline');
-        
-
 
         const agentsData = await fetchLDESAllAgents()
         const filteredAgentsData = [];
 
         // pagination
-        let { pageNumber = 1, itemsPerPage = 20, license = "ALL" } = req.query
+        let { pageNumber = 1, itemsPerPage = 20, fullRecord = true} = req.query
         pageNumber = Number(pageNumber)
         itemsPerPage = Number(itemsPerPage)
+        fullRecord = Boolean(fullRecord)
 
         const totalPages = Math.ceil(agentsData.length / itemsPerPage);
 
         for (let i = ( pageNumber - 1 ) * itemsPerPage; i < pageNumber * itemsPerPage;  i++) {
             if (i < agentsData.length) {
-                let agent = {
-                    "@context": COMMON_CONTEXT,
-                    "@id": `${BASE_URI}id/agent/${agentsData[i]["agent_ID"]}`,
-                    "@type": "Persoon",
-                    "Persoon.identificator": [{
-                        "@type": "Identificator",
-                        "Identificator.identificator": {
-                            "@value": agentsData[i]["agent_ID"]
-                        }
-                    }]
-                }
 
-                filteredAgentsData.push(agent)
+                if (!fullRecord) {
+                    let agent = {
+                        "@context": COMMON_CONTEXT,
+                        "@id": `${BASE_URI}id/agent/${agentsData[i]["agent_ID"]}`,
+                        "@type": "Persoon",
+                        "Persoon.identificator": [{
+                            "@type": "Identificator",
+                            "Identificator.identificator": {
+                                "@value": agentsData[i]["agent_ID"]
+                            }
+                        }]
+                    }
+                    filteredAgentsData.push(agent)
+                } else {
+                    filteredAgentsData.push(agentsData[i]["LDES_raw"]["object"])
+                }
             }
 
         }
@@ -65,9 +65,7 @@ export function requestAgents(app, BASE_URI) {
         if (filteredAgentsData.length === 0) {
             return res.status(404).send('No agents found')
         }
-
     })
-
 }
 
 // ark

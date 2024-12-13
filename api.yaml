@@ -46,7 +46,7 @@ paths:
           example: true
       responses:
         "200":
-          description: Succesful response containing a paginated collection of all the objects (metadata + digital reproduction) in JSON-LD format making use of Linked Art and Cidoc-CRM.
+          description: Succesful request containing a paginated collection of all the objects (metadata + digital reproduction) in JSON-LD format making use of Linked Art and Cidoc-CRM.
           content:
             application/ld+json:
               schema:
@@ -170,7 +170,7 @@ paths:
         "200":
           description: a json-ld object containing exhibitions related to the collection and program of the museum.
           content:
-            application/json:
+            application/ld+json:
               schema:
                 $ref: '#/components/schemas/exhibitions'
 
@@ -189,7 +189,7 @@ paths:
         "200":
           description: a json-ld object containing metadata on a single exhibition related to the collection and program of the museum.
           content:
-            application/json:
+            application/ld+json:
               schema:
                 $ref: '#/components/schemas/exhibition'
 
@@ -199,6 +199,70 @@ paths:
             application/json:
               schema:
                 error: "Error fetching exhibition data"
+
+  /id/agents/:
+    get:
+      tags:
+        - collections
+      parameters:
+        - in: query
+          name: pageNumber
+          schema:
+            type: integer
+          description: set the offset of the get request (recursively move through paginated objects based on the limit)
+          example: 2
+        - in: query
+          name: itemsPerPage
+          schema:
+            type: integer
+          description: set the number of objects to return per page (default is 20)
+          example: 1
+        - in: query
+          name: fullRecord
+          schema:
+            type: boolean
+          description: show full records, containing all metadata per object or a limited view (default False)
+          example: true
+
+      responses:
+        "200":
+          description: Succesful request containing a paginated collection of all the agents related to the programming and collection of Design Museum Gent in JSON-LD format making use of Linked Art and Cidoc-CRM.
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                properties:
+                  "@context":
+                    type: array
+                  "@type":
+                    type: string
+                  "@id":
+                    type: string
+                  "hydra:totalItems":
+                    type: integer
+                  "hydra:view":
+                    type: object
+                    properties:
+                      "@id":
+                        type: string
+                      "@type":
+                        type: string
+                      "hydra:first":
+                        type: string
+                      "hydra:last":
+                        type: string
+                      "hydra:previous":
+                        type: string
+                      "hydra:next":
+                        type: string
+                  "GecureerdeCollectie.curator":
+                    type: string
+                  "GecureerdeCollectie.bestaatUit":
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/agent-record'
+
+
 
 ## list of components.
 
@@ -724,3 +788,167 @@ components:
                       "@language":
                         type: string
 
+    # AGENT
+    agent-record:
+      type: object
+      properties:
+        "@id":
+          type: string
+          description: the persistent uniform rescource indicator (PURI) for the record.
+        "@type":
+          type: string
+          description: type of the object described (oragnisation or person)
+        "@context":
+          type: object
+          description: context files used to describe the object.
+          properties:
+            "@owl":
+              type: string
+            "skos":
+              type: string
+            "opmerking":
+              type: string
+            "owl:sameAs":
+              type: object
+              properties:
+                "@type":
+                  type: string
+            "skos:inScheme":
+              type: object
+              properties:
+                "@type":
+                  type: string
+            "dcterms:isVersionOf":
+                type: object
+                properties:
+                  "@type":
+                    type: string
+        "skos:inScheme":
+          type: string
+        "http://purl.org/dc/terms/isVersionOf":
+          type: object
+          properties:
+            "@id":
+              type: string
+              description: object from which tbis record is a version (a moment in time).
+        "https://wwww.w3.org/ns/adms/#identifier":
+          type: array
+          description: list of identifiers used to describe this object in different databases / catalogues.
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  "@id":
+                    type: string
+                  "@type":
+                    type: string
+                  "skos:notation":
+                    type: object
+                    properties:
+                      "@type":
+                        type: string
+                      "@value":
+                        #database identifier
+                        type: string
+                        description: identifier used in the collection registration system (database).
+              - type: object
+                properties :
+                   "@id":
+                      type: string
+                   "skos:notation":
+                      type: object
+                      properties:
+                        "@type":
+                          type: string
+                        "@value":
+                          #persistent identifier
+                          type: string
+                          description: identifier used to identify the agent (PURI).
+        "http://www.w3.org/ns/prov#generatedAtTime":
+          type: string
+          description: timestamp when the versioned object was generated.
+        "http://www.w3.org/ns/prov#wasAttributedTo":
+          type: object
+          description: other records, subject pages, that refer to the same object
+          properties:
+              "@id":
+                type: string
+                description: PURL to the record, that refers to the same entity. (fe. Wikidata, Ulan, AAT, TNG, ..)
+        "https://data.vlaanderen.be/ns/persoon#geslacht":
+          type: object
+          properties:
+            "@type":
+              type: string
+            "@value":
+              #persistent identifier
+              type: string
+              description: assigned sex to the person in the database (this might no be up to date, we advise double chacking before using this).
+        "https://data.vlaanderen.be/ns/persoon#heeftGeboorte":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "@type":
+              type: string
+            "https://data.vlaanderen.be/ns/persoon#datum":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "@value":
+                  type: string
+                  description: birthdate of the agent.
+            "https://data.vlaanderen.be/ns/persoon#plaats":
+              type: object
+              properties:
+                "@id":
+                  description: URI to the birthplaces in TGN
+                  type: string
+                "@type":
+                  type: string
+        "https://data.vlaanderen.be/ns/persoon#heeftOverlijden":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "@type":
+              type: string
+            "https://data.vlaanderen.be/ns/persoon#datum":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "@value":
+                  type: string
+                  description: date of decease of the agent.
+            "https://data.vlaanderen.be/ns/persoon#plaats":
+              type: object
+              properties:
+                "@id":
+                  description: place of decease of the agent.
+                  type: string
+                "@type":
+                  type: string
+        "http://xmlns.com/foaf/0.1/familyName":
+          type: string
+          description: family name of the agent
+        "http://xmlns.com/foaf/0.1/givenName":
+          type: string
+          description: sirname of the agent.
+        "https://data.vlaanderen.be/ns/persoon#volledigeNaam":
+          type: string
+          description: full name of the agent.
+        "https://data.vlaanderen.be/ns/persoon#heeftNationaliteit":
+          "@id":
+            type: string
+          "@type":
+            type: string
+          "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
+            type: object
+            properties:
+              "@value":
+                type: string
+                description: nationality of the agent
+              "language":
+                type: string
+                description: language of the label.

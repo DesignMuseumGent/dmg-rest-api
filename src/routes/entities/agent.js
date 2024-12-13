@@ -3,11 +3,12 @@ import console from "node:console";
 
 export function requestAgent(app, BASE_URI) {
 
-    // set Headers
-    res.setHeader('Content-type', 'application/ld+json');
-    res.setHeader('Content-Dispositon', 'inline');
-
     const agentHandler = async(req, res) => {
+
+        // set Headers
+        res.setHeader('Content-type', 'application/ld+json');
+        res.setHeader('Content-Dispositon', 'inline');
+
         try {
             const agentData = await fetchLDESRecordByAgentID(req.params.agentPID);
             if (!agentData) {

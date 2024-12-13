@@ -1,5 +1,4 @@
 import { fetchLDESRecordByObjectNumber } from "../../utils/parsers.js";
-// todo: set correct header-type
 
 // constants
 const ERROR_410 = "the object is permanently removed from our collection";

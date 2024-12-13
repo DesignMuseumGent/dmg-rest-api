@@ -1,9 +1,12 @@
 import {fetchLDESRecordByAgentID} from "../../utils/parsers.js";
 import console from "node:console";
 
-// todo: set correct header-type
-
 export function requestAgent(app, BASE_URI) {
+
+    // set Headers
+    res.setHeader('Content-type', 'application/ld+json');
+    res.setHeader('Content-Dispositon', 'inline');
+
     const agentHandler = async(req, res) => {
         try {
             const agentData = await fetchLDESRecordByAgentID(req.params.agentPID);
@@ -11,11 +14,11 @@ export function requestAgent(app, BASE_URI) {
                 return res.status(404).send('Agent not found');
             }
 
-            return res.status(200).json(agentData["LDES_raw"])
+            return res.status(200).json(agentData["LDES_raw"]["object"])
 
         } catch (error) {
             console.error(error);
-            return res.status(500).send('Internal server error');
+            return res.status(500).send('Error fetching agent data');
         }
     }
 

@@ -261,7 +261,32 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/agent-record'
+  # agent
+  /id/agent/{agentPID}:
+    get:
+      tags:
+        - single entities
+      parameters:
+         - in: path
+           name: agentPID
+           schema:
+             type: string
+           description: set the identifier for the record of the agent/organisation that needs to be retrieved.
+           example: DMG-A-03483
 
+      responses:
+        "200":
+          description: Succesful request containing a record of an agent related to the programming and collection of Design Museum Gent in JSON-LD format making use of Linked Art and Cidoc-CRM.
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/agent-record'
+        "500":
+          description:
+          content:
+            application/json:
+              schema:
+                error: "Error fetching agent data"
 
 
 ## list of components.
@@ -874,6 +899,11 @@ components:
               "@id":
                 type: string
                 description: PURL to the record, that refers to the same entity. (fe. Wikidata, Ulan, AAT, TNG, ..)
+        "owl:sameAs":
+          type: array
+          description: list of PURLs to other resources describing this object (cf. RKD, Wikidata, Flanders architecture, ULAN, ...)
+          items:
+            type: string
         "https://data.vlaanderen.be/ns/persoon#geslacht":
           type: object
           properties:

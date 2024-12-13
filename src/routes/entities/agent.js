@@ -1,6 +1,8 @@
 import {fetchLDESRecordByAgentID} from "../../utils/parsers.js";
 import console from "node:console";
 
+// todo: set correct header-type
+
 export function requestAgent(app, BASE_URI) {
     const agentHandler = async(req, res) => {
         try {
@@ -9,7 +11,7 @@ export function requestAgent(app, BASE_URI) {
                 return res.status(404).send('Agent not found');
             }
 
-            return res.status(200).json(agentData)
+            return res.status(200).json(agentData["LDES_raw"])
 
         } catch (error) {
             console.error(error);

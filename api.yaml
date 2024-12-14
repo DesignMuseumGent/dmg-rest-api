@@ -288,7 +288,6 @@ paths:
               schema:
                 error: "Error fetching agent data"
 
-
 ## list of components.
 
 components:

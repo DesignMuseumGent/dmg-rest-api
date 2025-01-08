@@ -3,6 +3,7 @@ import express from "express";
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";
 import cors from "cors";;
+import {rateLimit} from "express-rate-limit";
 
 // import routes (API contructors)
 import { requestObjects } from "./src/routes/collections/objects.js";
@@ -28,6 +29,18 @@ const BASE_URI = "https://data.designmuseumgent.be/v1/";
 // setup accept-headers
 const app = express();
 
+const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // one minute
+    limit: 10, // limit public requests to 10 per minute
+    message: {
+        status: 429,
+        message: "Too many requests, please slow down."
+    },
+    legacyHeaders: false,
+    standardHeaders: 'draft-8',
+})
+
+app.use(limiter);
 app.use(cors());
 app.use(express.static("public"));
 

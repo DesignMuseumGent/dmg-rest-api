@@ -288,6 +288,73 @@ paths:
               schema:
                 error: "Error fetching agent data"
 
+  # concepts (collections)
+  /id/concepts:
+    get:
+      description: a list of dataobjects describing concepts related to, and exposing relations with the the collection of Design Museum Gent.
+      tags:
+        - collections
+      parameters:
+        - in: query
+          name: pageNumber
+          schema:
+            type: integer
+          description: set the offset of the get request (recursively move through paginated concepts based on the limit)
+          example: 2
+        - in: query
+          name: itemsPerPage
+          schema:
+            type: integer
+          description: set the number of concepts to return per page (default is 20)
+          example: 1
+        - in: query
+          name: full
+          schema:
+            type: boolean
+          description: fetch full record or abstracted version (with link to full record)
+          example: true
+      responses:
+        "200":
+          description: Succesful request containing a paginated collection of all the concepts
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                properties:
+                  "@context":
+                    type: array
+                  "@type":
+                    type: string
+                  "@id":
+                    type: string
+                  "hydra:totalItems":
+                    type: integer
+                  "hydra:view":
+                    type: object
+                    properties:
+                      "@id":
+                        type: string
+                      "@type":
+                        type: string
+                      "hydra:first":
+                        type: string
+                      "hydra:last":
+                        type: string
+                      "hydra:previous":
+                        type: string
+                      "hydra:next":
+                        type: string
+                  "GecureerdeCollectie.curator":
+                    type: "string"
+                  "GecureerdeCollectie.bestaatUit":
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConceptRecord'
+
+
+
+
+
 ## list of components.
 
 components:
@@ -811,6 +878,103 @@ components:
                         type: string
                       "@language":
                         type: string
+    # CONCEPT
+    ConceptRecord:
+      type: object
+      properties:
+        "@id":
+          type: string
+          description: id for the version object
+        "@type":
+          type: string
+          description: type of the object -> skos:Concept
+        "@context":
+          type: object
+          properties:
+            "owl":
+              type: string
+            "skos":
+              type: string
+            "opmerking":
+              type: string
+            "owl:sameAs":
+              type: object
+              properties:
+                "@type":
+                  type: string
+            "skos:inScheme":
+              type: object
+              properties:
+                "@type":
+                  type: string
+            "dcterms:isVersionOf":
+              type: object
+              properties:
+                "@type":
+                  type: string
+        "opmerking":
+          description: type of object in the database, (material, objectname, onderwerp, ...)
+          type: array
+          items:
+            type: object
+            properties:
+              "@value":
+                type: string
+              "@language":
+                type: string
+        "owl:sameAs":
+          type: string
+        "skos:broader":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "skos.prefLabel":
+              type: object
+              properties:
+                "@value":
+                  type: string
+                "@language":
+                  type: string
+        "skos:inScheme":
+          type: string
+        "skos:narrower":
+          type: object
+          properties:
+            "@id":
+              type: string
+            "skos.prefLabel":
+              type: object
+              properties:
+                "@value":
+                  type: string
+                "@language":
+                  type: string
+        "skos.prefLabel":
+          type: object
+          properties:
+            "@value":
+              type: string
+            "@language":
+              type:
+        "skos:scopeNote":
+          type: string
+        "http://purl.org/dc/terms/isVersionOf":
+          type: string
+        "http://www.w3.org/ns/adms#identifier":
+          type: object
+          properties:
+            "@type":
+              type: string
+            "skos:notation":
+              type: object
+              properties:
+                "@type":
+                  type: string
+                "@value":
+                  type: string
+        "http://www.w3.org/ns/prov#generatedAtTime":
+          type: string
 
     # AGENT
     agent-record:

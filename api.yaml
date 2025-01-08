@@ -373,10 +373,10 @@ paths:
 
   # COLORS (curated sets)
   /color-api/{color}:
-    description: an API built to retrieve objects from the collection of Design Museum Gent based on a give color
     get:
+      description: curated API that allows agents to query objects from the collection of Design Museum Gent based various color systems.
       tags:
-      - curated sets
+        - curated sets
       parameters:
         - in: path
           name: color
@@ -390,6 +390,18 @@ paths:
             type: boolean
           description: set fuzzy search or not
           example: false
+        - in: query
+          name: pageNumber
+          schema:
+            type: integer
+          description: set the offset of the get request (recursively move through paginated concepts based on the limit)
+          example: 2
+        - in: query
+          name: itemsPerPage
+          schema:
+            type: integer
+          description: set the number of concepts to return per page (default is 20)
+          example: 1
       responses:
         "200":
           description:
@@ -419,11 +431,13 @@ paths:
                     "hydra:next":
                       type: string
                 "GecureerdeCollectie.curator":
-                  type: "string"
-
-
-
-
+                  type: string
+                "hydra:description":
+                  type: string
+                "GecureerdeCollectie.bestaatUit":
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ObjectRecord'
 
 ## list of components.
 

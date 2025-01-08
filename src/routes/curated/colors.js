@@ -41,8 +41,8 @@ export function requestByColor(app, BASE_URI) {
         const fuzzy = req.query.fuzzy || true;
 
         // pagination
-        let { page = 1, itemsPerPage =  20 } = req.query;
-        page = Number(page)
+        let { pageNumber = 1, itemsPerPage =  20 } = req.query;
+        page = Number(pageNumber)
         itemsPerPage =  Number(itemsPerPage)
 
         let matchingObjects = [] // first extract the color matching

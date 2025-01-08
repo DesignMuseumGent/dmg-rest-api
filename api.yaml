@@ -371,6 +371,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConceptRecord'
 
+  # COLORS (curated sets)
+  /color-api/{color}:
+    description: an API built to retrieve objects from the collection of Design Museum Gent based on a give color
+    get:
+      tags:
+      - curated sets
+      parameters:
+        - in: path
+          name: color
+          schema:
+            type: string
+          description: target color to fetch items from the colletion from.
+          example: vanilla
+        - in: query
+          name: fuzzy
+          schema:
+            type: boolean
+          description: set fuzzy search or not
+          example: false
+      responses:
+        "200":
+          description:
+            application/ld+json:
+              schema:
+                "@context":
+                  type: array
+                "@type":
+                  type: string
+                "@id":
+                  type: string
+                "hydra:totalItems":
+                  type: integer
+                "hydra:view":
+                  type: object
+                  properties:
+                    "@id":
+                      type: string
+                    "@type":
+                      type: string
+                    "hydra:first":
+                      type: string
+                    "hydra:last":
+                      type: string
+                    "hydra:previous":
+                      type: string
+                    "hydra:next":
+                      type: string
+                "GecureerdeCollectie.curator":
+                  type: "string"
+
+
+
 
 
 ## list of components.

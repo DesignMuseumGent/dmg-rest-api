@@ -11,7 +11,7 @@ export function requestConcept(app, BASE_URI) {
         // todo add limit, range and offset
 
         if (x){
-            res.send(x[0]["LDES_raw"])
+            res.send(x[0]["LDES_raw"]["object"])
         }
 
         if (!x) {

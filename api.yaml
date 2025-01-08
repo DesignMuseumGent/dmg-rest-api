@@ -85,7 +85,7 @@ paths:
   /id/object/{objectNumber}:
     get:
       #summary: API endpoint to GET a SINGLE OBJECT from the collection of Design Museum Gent.
-      description: API endpoint to GET a SINGLE OBJECT from the collectio of Design Museum Gent using the internal identifier.
+      description: API endpoint to GET a SINGLE OBJECT from the collection of Design Museum Gent using the internal identifier.
       tags:
         - single entities
       parameters:
@@ -101,7 +101,7 @@ paths:
           schema:
             type: boolean
           description: switch between FULL RECORD containing ALL METADATA or an abstracted, simplified view of the RECORD. (default FALSE)
-          expample: false
+          example: false
 
       responses:
         "200":

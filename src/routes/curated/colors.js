@@ -70,7 +70,7 @@ export function requestByColor(app, BASE_URI) {
                     }
                 } else {
                     if(object["LDES_raw"] !== undefined) {
-                        matchingObjects.push(object["LDES_raw"]);
+                        matchingObjects.push(object["LDES_raw"]["object"]);
                     }
                 }
             }

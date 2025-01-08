@@ -351,7 +351,25 @@ paths:
                     items:
                       $ref: '#/components/schemas/ConceptRecord'
 
-
+  # CONCEPT (single entitity)
+  /id/concept/{id}:
+    get:
+      tags:
+        - single entities
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          description: set the identifier (priref) for the record tof the agent/organisation
+          example: 530009310
+      responses:
+        "200":
+          description: succesful request of a record on a concept
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/ConceptRecord'
 
 
 

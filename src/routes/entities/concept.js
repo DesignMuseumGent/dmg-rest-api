@@ -2,9 +2,13 @@ import {fetchAllConcepts, fetchConcept} from "../../utils/parsers.js";
 
 export function requestConcept(app, BASE_URI) {
     const conceptHandler = async(req, res) => {
+
+        // set Headers
+        res.setHeader('Content-type', 'application/ld+json');
+        res.setHeader('Content-Dispositon', 'inline');
+
         // await data from GET request DB
         let _id = "https://stad.gent/id/concept/"+req.params.id
-        console.log(_id)
         const x = await fetchConcept(_id);
 
         // iterate over concepts

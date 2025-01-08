@@ -9,7 +9,7 @@ import {rateLimit} from "express-rate-limit";
 import { requestObjects } from "./src/routes/collections/objects.js";
 import { requestObject } from "./src/routes/entities/object.js";
 import { requestDCAT } from "./src/routes/dcat.js";
-import { requestAllBillboards } from "./src/routes/collections/billboards.js";
+import { requestAllBillboards } from "./src/routes/curated/billboards.js";
 import { requestAgents } from "./src/routes/collections/agents.js";
 import { requestExhibitions } from "./src/routes/collections/exhibitions.js";
 import { requestExhibition } from "./src/routes/entities/exhibition.js";

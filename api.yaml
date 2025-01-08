@@ -439,6 +439,22 @@ paths:
                   items:
                     $ref: '#/components/schemas/ObjectRecord'
 
+  /billboardseries:
+    get:
+      description: API containing metadata on all the billboards shown during the billboardseries.
+      tags:
+        - curated sets
+      responses:
+        "200":
+          description: succesful request
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                properties:
+                  "@context":
+                    type: array
+
 ## list of components.
 
 components:

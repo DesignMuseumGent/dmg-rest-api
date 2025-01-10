@@ -8,7 +8,7 @@ export function requestLostInDiffusion(app, BASE_URI) {
         let objects = []
 
         // pagination
-        let { pageNumber = 1, itemsPerPage =  20 , type} = req.query;
+        let { pageNumber = 1, itemsPerPage =  20 , type = "all"} = req.query;
         let page = Number(pageNumber)
         itemsPerPage =  Number(itemsPerPage)
         type = String(type)
@@ -32,6 +32,10 @@ export function requestLostInDiffusion(app, BASE_URI) {
                 case "genImgDesc":
                     // generated text (description)
                     diffusedObjectType = "description";
+                    output = {
+                        "@language": "en",
+                        "@value": diffusedObject["output"]
+                    }
                     break
                 case "png":
                     // image
@@ -48,14 +52,20 @@ export function requestLostInDiffusion(app, BASE_URI) {
                     // 3D model
                     diffusedObjectType = "3D model"
                     output = {
-
+                        'cidoc:P106_is_composed_of': [
+                            {
+                                "@type": "crm:D1_Digital_Object",
+                                "schema:name": `model for 3D object ${diffusedObject["lid-id"]}`,
+                                "schema:contentUrl": `https://lost-in-diffusion.s3.eu-west-3.amazonaws.com/${diffusedObject["lid-id"]}.obj`,
+                                "cidoc:P2_has_type": "Point Cloud"
+                            }
+                        ]
                     }
 
                 default:
                     // default
                     diffusedObjectType = "unknown"
             }
-
 
             let object = {
                 "@context": {

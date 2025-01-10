@@ -82,7 +82,7 @@ export function requestLostInDiffusion(app, BASE_URI) {
                 "@id": `${BASE_URI}lost-in-diffusion/entity/${diffusedObject["lid-id"]}`,
                 "@type": "schema:CreativeWork",
                 "schema:name": `AI Generated ${diffusedObjectType}`,
-                "prov:wasDerivedFrom": `https://data.designmuseum.be/id/object/${diffusedObject["original-id"]}`,
+                "prov:wasDerivedFrom": `https://data.designmuseum.be/v1/id/object/${diffusedObject["original-id"]}`,
                 "prov:generatedAtTime": diffusedObject["created_at"],
                 "http://www.w3.org/ns/adms#identifier": diffusedObject["lid-id"],
                 output,

@@ -5,6 +5,13 @@ export async function fetchAuthentication() {
   return data;
 }
 
+export async function fetchAllLostInDiffusion() {
+  const {data} = await supabase
+      .from("dmg_lost_in_diffusion")
+      .select("*")
+  return data
+}
+
 export async function fetchAllArchive() {
   const {data} = await supabase
     .from("dmg_archief_LDES")

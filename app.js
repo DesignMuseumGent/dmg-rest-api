@@ -23,6 +23,7 @@ import { requestConcept } from "./src/routes/entities/concept.js";
 import { requestByColor } from "./src/routes/curated/colors.js";
 import {requestAgent} from "./src/routes/entities/agent.js";
 import {requestEasyObjects} from "./src/routes/collections/easy.js";
+import {requestLostInDiffusion} from "./src/routes/curated/lost-in-diffusion.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 
@@ -58,6 +59,9 @@ requestEasyObjects(app, BASE_URI) // request easyobjects
 
 // ROUTE to COLOR-API
 requestByColor(app, BASE_URI);
+
+// ROUTE to LOST-IN-DIFFUSION
+requestLostInDiffusion(app, BASE_URI);
 
 // ROUTE to PRIVATE objects
 requestPrivateObjects(app, BASE_URI);

@@ -446,7 +446,24 @@ paths:
         - curated sets
       responses:
         "200":
-          description: succesful request
+          description: successful request
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                properties:
+                  "@context":
+                    type: array
+
+
+  /lost-in-diffusion:
+    get:
+      description: API containing ML generated content from the "Lost In Diffusion" project (2024-2025)
+      tags:
+        - curated sets
+      resonses:
+        "200":
+          description: successful request
           content:
             application/ld+json:
               schema:

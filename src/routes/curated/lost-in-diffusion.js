@@ -67,10 +67,8 @@ export function requestLostInDiffusion(app, BASE_URI) {
                             }
                         ]
                     }
-
                 default:
                     // default
-                    diffusedObjectType = "unknown"
             }
 
             let object = {

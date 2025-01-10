@@ -58,6 +58,12 @@ export function requestLostInDiffusion(app, BASE_URI) {
                                 "schema:name": `model for 3D object ${diffusedObject["lid-id"]}`,
                                 "schema:contentUrl": `https://lost-in-diffusion.s3.eu-west-3.amazonaws.com/${diffusedObject["lid-id"]}.obj`,
                                 "cidoc:P2_has_type": "Point Cloud"
+                            },
+                            {
+                                "@type": "crm:D1_Digital_Object",
+                                "schema:name": `texture for 3D object ${diffusedObject["lid-id"]}`,
+                                "schema:contentUrl": `https://lost-in-diffusion.s3.eu-west-3.amazonaws.com/${diffusedObject["lid-id"]}.mtl`,
+                                "cidoc:P2_has_type": "Texture file"
                             }
                         ]
                     }

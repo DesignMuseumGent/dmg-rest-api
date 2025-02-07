@@ -9,13 +9,13 @@ const COMMON_CONTEXT = [
   "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
 ];
 
-export function requestPrivateObjects(app) {
-  app.get("id/private-objects/", async (req, res) => {
+export function requestPrivateObjects(app, BASE_URI) {
+  app.get("/v1/id/private-objects/", async (req, res) => {
     // AUTHENTICATION
 
     let keys = await fetchAuthentication();
     let apiKey = req.query.apiKey || "none";
-    let filteredObjects = [];
+    let filteredObjects = []
 
     if(!keys.some((item) => item.key === apiKey)){
       return res.status(401).json({
@@ -24,16 +24,18 @@ export function requestPrivateObjects(app) {
     }
 
     const records = await fetchAllPrivateLDESrecordsObjects()
+    console.timeEnd("fetchAllPrivateLDESrecordsObjects_time");
+
 
     // pagination
     let { pageNumber = 1, itemsPerPage = 20, license = "ALL" } = req.query
     pageNumber = Number(pageNumber)
     itemsPerPage = Number(itemsPerPage)
 
-    const totalPages = Math.ceil(allMatchedRecords.length / itemsPerPage);
+    const totalPages = Math.ceil(records.length / itemsPerPage);
     for(let j = (pageNumber - 1) * itemsPerPage; j < pageNumber * itemsPerPage; j++) {
-      if (j >= allMatchedRecords.length) break;
-      filteredObjects.push(allMatchedRecords[j]);
+      if (j >= records.length) break;
+      filteredObjects.push(records[j]);
     }
 
     res.status(200).json({

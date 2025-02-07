@@ -54,12 +54,19 @@ export async function fetchAllEasyObjects(){
   return data;
 }
 
-export async function fetchAllPrivateLDESrecordsObjects() {
-  const { data } = await supabase
+export async function fetchPrivateObjectsWithPagination(from, to) {
+  const { data, count, error } = await supabase
       .from("dmg_private_objects_LDES")
-      .select("objectNumber, LDES_raw")
-      .eq("duplicate", "FALSE")
-  return data;
+      .select("LDES_raw->object", { count: "exact" }) // Fetch only the required field and total row count
+      .eq("duplicate", false) // Filter rows where 'duplicate' is FALSE
+      .range(from, to); // Fetch paginated results
+
+  if (error) {
+    console.error("Error fetching data from Supabase:", error);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count };
 }
 
 export async function fetchAllLDESrecordsObjects() {

@@ -69,6 +69,51 @@ export async function fetchPrivateObjectsWithPagination(from, to) {
   return { data, total: count };
 }
 
+export async function fetchPaginatedConcepts(from, to) {
+  // Query: Adjust the table and fields as per your database schema
+  const { data, error, count } = await supabase
+      .from("dmg_thesaurus_LDES") // Replace with your actual table name
+      .select("LDES_raw->object, id", { count: "exact" }) // Fetch minimal fields required
+      .range(from, to); // Pagination: Fetch only required rows based on range
+
+  if (error) {
+    console.error("Error fetching paginated concepts from Supabase:", error);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count };
+}
+
+export async function fetchPaginatedExhibitions(from, to) {
+  // Replace "dmg_exhibitions_LDES" with your actual table name
+  const { data, error, count } = await supabase
+      .from("dmg_tentoonstellingen_LDES") // Main table or view for exhibitions
+      .select("LDES_raw->object, exh_PID", { count: "exact" }) // Adjust fields as necessary
+      .range(from, to); // Fetch only the required range of records
+
+  if (error) {
+    console.error(`Error fetching paginated exhibitions: ${error.message}`);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count }; // Paginated data and total count
+}
+
+export async function fetchPaginatedAgents(from, to) {
+  // Query: Adjust the table and fields as per your database schema
+  const { data, error, count } = await supabase
+    .from("dmg_personen_LDES") // Replace with your actual table name
+    .select("LDES_raw->object, agent_ID", { count: "exact" }) // Fetch minimal fields needed
+    .range(from, to); // Pagination - fetch only the required range of rows
+
+  if (error) {
+    console.error("Error fetching paginated agents from Supabase:", error);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count };
+}
+
 
 export async function fetchFilteredLDESRecords({ from, to, license = null }) {
   let query = supabase

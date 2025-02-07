@@ -1,6 +1,4 @@
-import {
-  fetchAllLDESrecordsObjects,
-} from "../../utils/parsers.js";
+import { fetchFilteredLDESRecords } from "../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
   "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
@@ -10,83 +8,93 @@ const COMMON_CONTEXT = [
 
 const CC_LICENSES = {
   "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
-  "CC-BY-NC-ND":   "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+  "CC-BY-NC-ND": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
   "CC-BY-SA": "",
   "ALL": "ALL",
-  "IC": "http://rightsstatements.org/vocab/InC/1.0/"
-}
+  "IC": "http://rightsstatements.org/vocab/InC/1.0/",
+};
+
 export function requestObjects(app, BASE_URI) {
   app.get("/v1/id/objects/", async (req, res) => {
+    try {
+      // Step 1: Set headers
+      res.setHeader("Content-type", "application/ld+json");
+      res.setHeader("Content-Disposition", "inline");
 
-    // set Headers
-    res.setHeader('Content-type', 'application/ld+json');
-    res.setHeader('Content-Dispositon', 'inline');
+      // Step 2: Get query parameters
+      let { pageNumber = 1, itemsPerPage = 20, license = "ALL", fullRecord = true } =
+          req.query;
+      pageNumber = Math.max(Number(pageNumber), 1);
+      itemsPerPage = Math.max(Number(itemsPerPage), 1);
+      fullRecord = fullRecord === "true"; // Convert "true"/"false" to boolean
 
-    const records = await fetchAllLDESrecordsObjects();
-    const filteredObjects = [];
+      const from = (pageNumber - 1) * itemsPerPage;
+      const to = pageNumber * itemsPerPage - 1;
 
-    // pagination
-    let { pageNumber = 1, itemsPerPage = 20, license = "ALL" , fullRecord = true} = req.query
-    pageNumber = Number(pageNumber)
-    itemsPerPage = Number(itemsPerPage)
+      // Step 3: Fetch filtered and paginated records directly
+      const { data: records, total } = await fetchFilteredLDESRecords({
+        from,
+        to,
+        license: license !== "ALL" ? CC_LICENSES[license] : null,
+      });
 
-    console.log(fullRecord)
-
-    let allMatchedRecords = []
-
-    for (let i = 0; i < records.length; i++) {
-      const record = records[i];
-
-      // query for licenses
-      if(license !== "ALL" && (!record["CC_Licenses"] || !record["CC_Licenses"].includes(CC_LICENSES[license]))) {
-        continue;
+      if (!records || records.length === 0) {
+        return res.status(404).json({ error: "No data found for the requested page." });
       }
 
-      if (fullRecord == "false") {
-        let object = {
-          "@context": COMMON_CONTEXT,
-          "@id": `${BASE_URI}id/object/${record["objectNumber"]}`,
-          "@type": "MensgemaaktObject",
-          "Object.identificator": [{
-            "@type": "Identificator",
-            "Identificator.identificator": {
-              "@value": record["objectNumber"],
+      // Step 4: Process records into the required structure (if fullRecord is false)
+      const filteredObjects = fullRecord
+          ? records.map((record) => record.LDES_raw.object)
+          : records.map((record) => ({
+            "@context": COMMON_CONTEXT,
+            "@id": `${BASE_URI}id/object/${record.objectNumber}`,
+            "@type": "MensgemaaktObject",
+            "Object.identificator": [
+              {
+                "@type": "Identificator",
+                "Identificator.identificator": {
+                  "@value": record.objectNumber,
+                },
+              },
+            ],
+            "cidoc:P129i_is_subject_of": {
+              "@id": record.iiif_image_uris ? record.iiif_image_uris[0] : "no image",
+              "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object",
             },
-          }],
-          "cidoc:P129i_is_subject_of": {
-            "@id": record["iiif_image_uris"] ? record["iiif_image_uris"][0] : "no image",
-            "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object"
-          },
-        };
-        allMatchedRecords.push(object);
-      } else {
-        //console.log(record["LDES_raw"])
-        allMatchedRecords.push(record["LDES_raw"]["object"])
-      }
+          }));
+
+      // Step 5: Compute pagination metadata
+      const totalPages = Math.ceil(total / itemsPerPage);
+
+      // Step 6: Build the response
+      res.status(200).json({
+        "@context": [
+          ...COMMON_CONTEXT,
+          { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
+        ],
+        "@type": "GecureerdeCollectie",
+        "@id": `${BASE_URI}id/objects?license=${license}`,
+        "hydra:totalItems": total,
+        "hydra:view": {
+          "@id": `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber}`,
+          "@type": "PartialCollectionView",
+          "hydra:first": `${BASE_URI}id/objects?license=${license}&pageNumber=1`,
+          "hydra:last": `${BASE_URI}id/objects?license=${license}&pageNumber=${totalPages}`,
+          "hydra:previous":
+              pageNumber > 1
+                  ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber - 1}`
+                  : null,
+          "hydra:next":
+              pageNumber < totalPages
+                  ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber + 1}`
+                  : null,
+        },
+        "GecureerdeCollectie.curator": "Design Museum Gent",
+        "GecureerdeCollectie.bestaatUit": filteredObjects,
+      });
+    } catch (error) {
+      console.error("Error in requestObjects:", error);
+      res.status(500).json({ error: "Internal server error." });
     }
-
-    const totalPages = Math.ceil(allMatchedRecords.length / itemsPerPage);
-    for(let j = (pageNumber - 1) * itemsPerPage; j < pageNumber * itemsPerPage; j++) {
-      if (j >= allMatchedRecords.length) break;
-      filteredObjects.push(allMatchedRecords[j]);
-    }
-
-    res.status(200).json({
-      "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
-      "@type": "GecureerdeCollectie",
-      "@id": `${BASE_URI}id/objects?license=${license}`,
-      "hydra:totalItems": allMatchedRecords.length,
-      "hydra:view": {
-        "@id": `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber}`,
-        "@type": "PartialCollectionView",
-        "hydra:first": `${BASE_URI}id/objects?license=${license}&pageNumber=1`,
-        "hydra:last": `${BASE_URI}id/objects?license=${license}&pageNumber=${totalPages}`,
-        "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber - 1}` : null,
-        "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber + 1}` : null,
-      },
-      "GecureerdeCollectie.curator": "Design Museum Gent",
-      "GecureerdeCollectie.bestaatUit": filteredObjects
-    });
-
-  })
+  });
 }

@@ -69,6 +69,28 @@ export async function fetchPrivateObjectsWithPagination(from, to) {
   return { data, total: count };
 }
 
+
+export async function fetchFilteredLDESRecords({ from, to, license = null }) {
+  let query = supabase
+      .from("dmg_objects_LDES") // Replace with the actual table name
+      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris", { count: "exact" }) // Fetch only necessary fields
+      .range(from, to);
+
+  // Apply license filter if provided
+  if (license) {
+    query = query.contains("CC_Licenses", [license]); // Filter for specific licenses
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error("Error fetching filtered LDES records from Supabase:", error);
+    return { data: [], total: 0 };
+  }
+
+  return { data, total: count };
+}
+
 export async function fetchAllLDESrecordsObjects() {
   const { data } = await supabase
     .from("dmg_objects_LDES")

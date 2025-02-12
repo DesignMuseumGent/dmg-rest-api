@@ -43,9 +43,10 @@ export function requestObject(app, BASE_URI) {
 
         // define path to resolve to
         try {
+            //console.log(x[0]["RESOLVES_TO"])
             if (x[0]["RESOLVES_TO"]) {
                 const objectnumber = x[0]["RESOLVES_TO"].replace("id/object/", "");
-                if (objectnumber.includes("ROOD")) {
+                if (objectnumber.includes("REMOVED")) {
                     console.log(objectnumber);
                     return res.status(410).json({ error: "this object has been permanently removed" }); // Stop execution
                 } else {

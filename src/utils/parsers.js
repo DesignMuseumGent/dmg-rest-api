@@ -119,12 +119,16 @@ export async function fetchFilteredLDESRecords({ from, to, license = null }) {
   let query = supabase
       .from("dmg_objects_LDES") // Replace with the actual table name
       .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris", { count: "exact" }) // Fetch only necessary fields
+      .eq("STATUS", "HEALTHY")
+      .neq("RESOLVES_TO", "id/object/REMOVED")
       .range(from, to);
 
   // Apply license filter if provided
   if (license) {
     query = query.contains("CC_Licenses", [license]); // Filter for specific licenses
   }
+
+
 
   const { data, error, count } = await query;
 

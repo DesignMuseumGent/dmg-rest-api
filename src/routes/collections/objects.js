@@ -26,7 +26,6 @@ export function requestObjects(app, BASE_URI) {
           req.query;
       pageNumber = Math.max(Number(pageNumber), 1);
       itemsPerPage = Math.max(Number(itemsPerPage), 1);
-      fullRecord = fullRecord === "true"; // Convert "true"/"false" to boolean
 
       const from = (pageNumber - 1) * itemsPerPage;
       const to = pageNumber * itemsPerPage - 1;
@@ -42,9 +41,11 @@ export function requestObjects(app, BASE_URI) {
         return res.status(404).json({ error: "No data found for the requested page." });
       }
 
+      // console.log(fullRecord)
+
       // Step 4: Process records into the required structure (if fullRecord is false)
       const filteredObjects = fullRecord
-          ? records.map((record) => record.LDES_raw.object)
+          ? records.map((record) => record.object)
           : records.map((record) => ({
             "@context": COMMON_CONTEXT,
             "@id": `${BASE_URI}id/object/${record.objectNumber}`,

@@ -74,20 +74,20 @@ export function requestObjects(app, BASE_URI) {
           { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
         ],
         "@type": "GecureerdeCollectie",
-        "@id": `${BASE_URI}id/objects?license=${license}`,
+        "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}`,
         "hydra:totalItems": total,
         "hydra:view": {
-          "@id": `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber}`,
+          "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&pageNumber=${pageNumber}`,
           "@type": "PartialCollectionView",
-          "hydra:first": `${BASE_URI}id/objects?license=${license}&pageNumber=1`,
-          "hydra:last": `${BASE_URI}id/objects?license=${license}&pageNumber=${totalPages}`,
+          "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&pageNumber=1`,
+          "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&pageNumber=${totalPages}`,
           "hydra:previous":
               pageNumber > 1
-                  ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber - 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&pageNumber=${pageNumber - 1}`
                   : null,
           "hydra:next":
               pageNumber < totalPages
-                  ? `${BASE_URI}id/objects?license=${license}&pageNumber=${pageNumber + 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&pageNumber=${pageNumber + 1}`
                   : null,
         },
         "GecureerdeCollectie.curator": "Design Museum Gent",

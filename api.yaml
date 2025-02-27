@@ -42,7 +42,7 @@ paths:
           name: fullRecord
           schema:
             type: boolean
-          description: show full records, containing all metadata per object or a limited view (default False)
+          description: show full records, containing all metadata per object or a limited view (default True)
           example: true
       responses:
         "200":
@@ -166,6 +166,13 @@ paths:
             type: integer
           description: set the number of objects to return per page (default is 20)
           example: 1
+        - in: query
+          name: fullRecord
+          schema:
+            type: boolean
+          description: show full records, containing all metadata per exhibition or a limited view (default true)
+          example: true
+
       responses:
         "200":
           description: a json-ld object containing exhibitions related to the collection and program of the museum.

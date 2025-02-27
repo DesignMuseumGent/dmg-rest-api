@@ -87,8 +87,8 @@ export async function fetchPaginatedConcepts(from, to) {
 export async function fetchPaginatedExhibitions(from, to) {
   // Replace "dmg_exhibitions_LDES" with your actual table name
   const { data, error, count } = await supabase
-      .from("dmg_tentoonstellingen_LDES") // Main table or view for exhibitions
-      .select("LDES_raw->object, exh_PID", { count: "exact" }) // Adjust fields as necessary
+      .from("dmg_tentoonstelling_LDES") // Main table or view for exhibitions
+      .select("LDES_raw, exh_PID", { count: "exact" }) // Adjust fields as necessary
       .range(from, to); // Fetch only the required range of records
 
   if (error) {

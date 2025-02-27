@@ -33,9 +33,10 @@ export function requestExhibitions(app, BASE_URI) {
             res.setHeader("Content-Disposition", "inline");
 
             // Step 2: Extract query parameters
-            let { pageNumber = 1, itemsPerPage = 20 } = req.query;
+            let { pageNumber = 1, itemsPerPage = 20 , fullRecord= true} = req.query;
             pageNumber = Math.max(Number(pageNumber), 1); // Ensure positive page numbers
             itemsPerPage = Math.max(Number(itemsPerPage), 1); // Ensure positive items per page
+            fullRecord = fullRecord === "true" // explicitely check if true
 
             const from = (pageNumber - 1) * itemsPerPage;
             const to = pageNumber * itemsPerPage - 1;
@@ -48,7 +49,12 @@ export function requestExhibitions(app, BASE_URI) {
             }
 
             // Step 4: Parse exhibitions
-            const filteredExhibitions = exhibitions.map((exh) => parseExhibition(exh, BASE_URI));
+            let filteredExhibitions = []
+            if (!fullRecord) {
+                filteredExhibitions = exhibitions.map((exh) => parseExhibition(exh, BASE_URI));
+            } else {
+                filteredExhibitions = exhibitions.map((exh) => exh["LDES_raw"]["object"]);
+            }
 
             // Step 5: Compute pagination metadata
             const totalPages = Math.ceil(total / itemsPerPage);

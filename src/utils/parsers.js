@@ -73,7 +73,7 @@ export async function fetchPaginatedConcepts(from, to) {
   // Query: Adjust the table and fields as per your database schema
   const { data, error, count } = await supabase
       .from("dmg_thesaurus_LDES") // Replace with your actual table name
-      .select("LDES_raw->object, id", { count: "exact" }) // Fetch minimal fields required
+      .select("LDES_raw, id", { count: "exact" }) // Fetch minimal fields required
       .range(from, to); // Pagination: Fetch only required rows based on range
 
   if (error) {
@@ -103,7 +103,7 @@ export async function fetchPaginatedAgents(from, to) {
   // Query: Adjust the table and fields as per your database schema
   const { data, error, count } = await supabase
     .from("dmg_personen_LDES") // Replace with your actual table name
-    .select("LDES_raw->object, agent_ID", { count: "exact" }) // Fetch minimal fields needed
+    .select("LDES_raw, agent_ID", { count: "exact" }) // Fetch minimal fields needed
     .range(from, to); // Pagination - fetch only the required range of rows
 
   if (error) {
@@ -212,8 +212,12 @@ export async function fetchPublicDomainImages() {
   return data;
 }
 
-export async function filterColor(color, objects) {
-  // function that filters objects based on their color.
+export async function fetchColor(color) {
+  const {data} = await supabase
+      .from("dmg_index_colors")
+      .select("*")
+      .eq("color", color)
+  return data;
 }
 
 export async function populateSupabaseImages() {

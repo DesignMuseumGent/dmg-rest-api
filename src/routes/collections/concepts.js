@@ -4,10 +4,10 @@ export function requestConcepts(app, BASE_URI) {
     app.get("/v1/id/concepts/", async (req, res) => {
         try {
             // Step 1: Extract query parameters
-            let { pageNumber = 1, itemsPerPage = 20, full = false } = req.query;
+            let { pageNumber = 1, itemsPerPage = 20, fullRecord = true } = req.query;
             pageNumber = Math.max(Number(pageNumber), 1); // Ensure positive page number
             itemsPerPage = Math.max(Number(itemsPerPage), 1); // Ensure positive items per page
-            full = full === "true"; // Convert string to boolean
+            fullRecord = fullRecord === "true"; // Convert string to boolean
 
             const from = (pageNumber - 1) * itemsPerPage;
             const to = pageNumber * itemsPerPage - 1;

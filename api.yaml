@@ -315,7 +315,7 @@ paths:
           description: set the number of concepts to return per page (default is 20)
           example: 1
         - in: query
-          name: full
+          name: fullRecord
           schema:
             type: boolean
           description: fetch full record or abstracted version (with link to full record)

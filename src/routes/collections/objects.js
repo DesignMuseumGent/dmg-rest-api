@@ -22,7 +22,7 @@ export function requestObjects(app, BASE_URI) {
       res.setHeader("Content-Disposition", "inline");
 
       // Step 2: Get query parameters
-      let { pageNumber = 1, itemsPerPage = 20, license = "ALL", fullRecord = true } =
+      let { pageNumber = 1, itemsPerPage = 20, license = "ALL", fullRecord = true, category="none" } =
           req.query;
       pageNumber = Math.max(Number(pageNumber), 1);
       itemsPerPage = Math.max(Number(itemsPerPage), 1);
@@ -35,7 +35,10 @@ export function requestObjects(app, BASE_URI) {
         from,
         to,
         license: license !== "ALL" ? CC_LICENSES[license] : null,
+        category: category !== "none" ? category : null,
       });
+
+      //console.log(records)
 
       if (!records || records.length === 0) {
         return res.status(404).json({ error: "No data found for the requested page." });

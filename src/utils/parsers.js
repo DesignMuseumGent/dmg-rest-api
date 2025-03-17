@@ -115,10 +115,10 @@ export async function fetchPaginatedAgents(from, to) {
 }
 
 
-export async function fetchFilteredLDESRecords({ from, to, license = null }) {
+export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null}) {
   let query = supabase
       .from("dmg_objects_LDES") // Replace with the actual table name
-      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris", { count: "exact" }) // Fetch only necessary fields
+      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification", { count: "exact" }) // Fetch only necessary fields
       .eq("STATUS", "HEALTHY")
       .neq("RESOLVES_TO", "id/object/REMOVED")
       .range(from, to);
@@ -128,15 +128,37 @@ export async function fetchFilteredLDESRecords({ from, to, license = null }) {
     query = query.contains("CC_Licenses", [license]); // Filter for specific licenses
   }
 
+  if (category) {
+    const { data, error, count } = await query;
+    console.log(data.length)
+    let catFilter = []
+    for (let i = 0; i < data.length; i++) {
+      //console.log(typeof data[i]["index_classification"])
+      try {
+        if (data[i]["index_classification"]) {
+          let cat = data[i]["index_classification"]
+          for (let j = 0; j < cat.length; j++) {
+            //console.log(cat[j])
+            //console.log(category)
+            if(cat[j] === category){
+              catFilter.push(data[i])
+            }
+          }
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+    //console.log(catFilter)
+    return { data: catFilter, total: catFilter.length}
+  }
 
-
-  const { data, error, count } = await query;
 
   if (error) {
     console.error("Error fetching filtered LDES records from Supabase:", error);
     return { data: [], total: 0 };
   }
-
+  const { data, error, count } = await query;
   return { data, total: count };
 }
 

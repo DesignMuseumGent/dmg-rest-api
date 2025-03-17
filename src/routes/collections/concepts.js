@@ -21,7 +21,7 @@ export function requestConcepts(app, BASE_URI) {
 
             // Step 3: Process fetched data based on `full` query parameter
             const filteredConcepts = fullRecord
-                ? concepts.map((concept) => concept.object)
+                ? concepts.map((concept) => concept["LDES_raw"]["object"])
                 : concepts.map((concept) => ({
                     "@context": [
                         {

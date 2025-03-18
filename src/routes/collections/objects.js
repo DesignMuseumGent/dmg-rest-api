@@ -98,8 +98,8 @@ export function requestObjects(app, BASE_URI) {
         "GecureerdeCollectie.curator": "Design Museum Gent",
         "GecureerdeCollectie.bestaatUit": filteredObjects,
       });
-    } catch (error) {
-      console.error("Error in requestObjects:", error);
+    } catch (err) {
+      console.error("Error in requestObjects:", err);
       res.status(500).json({ error: "Internal server error." });
     }
   });

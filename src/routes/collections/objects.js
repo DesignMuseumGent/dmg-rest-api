@@ -44,10 +44,12 @@ export function requestObjects(app, BASE_URI) {
         return res.status(404).json({ error: "No data found for the requested page." });
       }
 
-      // console.log(fullRecord)
+      let boolFullRecord = fullRecord === "true" ? true : false;
+      console.log(typeof boolFullRecord)
 
-      // Step 4: Process records into the required structure (if fullRecord is false)
-      const filteredObjects = fullRecord
+
+        // Step 4: Process records into the required structure (if fullRecord is false)
+      const filteredObjects = boolFullRecord
           ? records.map((record) => record.object)
           : records.map((record) => ({
             "@context": COMMON_CONTEXT,

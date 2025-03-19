@@ -55,7 +55,8 @@ export function requestObjects(app, BASE_URI) {
         return res.status(404).json({ error: "No data found for the requested page." });
       }
 
-      let boolFullRecord = fullRecord === "true" ? true : false;
+      let boolFullRecord = fullRecord === true || fullRecord === "true";
+      //console.log(typeof boolFullRecord)
 
       // Process records into the required structure (if fullRecord is false)
       const filteredObjects = boolFullRecord

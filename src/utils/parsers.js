@@ -128,7 +128,8 @@ export async function fetchFilteredLDESRecords({ from, to, license = null ,  cat
     query = query.contains("CC_Licenses", [license]); // Filter for specific licenses
   }
 
-  if (category) {
+  console.log(category)
+  if (category != null) {
     const { data, error, count } = await query;
     console.log(data.length)
     let catFilter = []
@@ -153,13 +154,15 @@ export async function fetchFilteredLDESRecords({ from, to, license = null ,  cat
     return { data: catFilter, total: catFilter.length}
   }
 
+  const { data, error, count } = await query;
+  return { data, total: count };
 
+  /*
   if (error) {
     console.error("Error fetching filtered LDES records from Supabase:", error);
     return { data: [], total: 0 };
   }
-  const { data, error, count } = await query;
-  return { data, total: count };
+  */
 }
 
 export async function fetchAllLDESrecordsObjects() {

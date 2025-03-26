@@ -24,7 +24,6 @@ import { requestByColor } from "./src/routes/curated/colors.js";
 import {requestAgent} from "./src/routes/entities/agent.js";
 import {requestEasyObjects} from "./src/routes/collections/easy.js";
 import {requestLostInDiffusion} from "./src/routes/curated/lost-in-diffusion.js";
-import {indexObjects} from "./src/utils/indexer.js";
 import {populateSupabaseImages} from "./src/utils/parsers.js";
 import {patternAPI} from "./src/routes/curated/patterns.js";
 
@@ -95,7 +94,6 @@ patternAPI(app, BASE_URI)
 // ROUTE to DUMP
 Dump(app, BASE_URI);
 
-//indexObjects()
 //populateSupabaseImages(app, BASE_URI);
 
 export default app;

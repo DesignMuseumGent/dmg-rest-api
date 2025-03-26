@@ -24,6 +24,9 @@ import { requestByColor } from "./src/routes/curated/colors.js";
 import {requestAgent} from "./src/routes/entities/agent.js";
 import {requestEasyObjects} from "./src/routes/collections/easy.js";
 import {requestLostInDiffusion} from "./src/routes/curated/lost-in-diffusion.js";
+import {indexObjects} from "./src/utils/indexer.js";
+import {populateSupabaseImages} from "./src/utils/parsers.js";
+import {patternAPI} from "./src/routes/curated/patterns.js";
 
 const BASE_URI = "https://data.designmuseumgent.be/v1/";
 
@@ -86,8 +89,14 @@ requestAllArchive(app, BASE_URI);
 // ROUTES to texts that are related to the collection of Design Museum Gent
 requestTexts(app, BASE_URI);
 
+// ROUTE to PATTERN API
+patternAPI(app, BASE_URI)
+
 // ROUTE to DUMP
 Dump(app, BASE_URI);
+
+//indexObjects()
+//populateSupabaseImages(app, BASE_URI);
 
 export default app;
 

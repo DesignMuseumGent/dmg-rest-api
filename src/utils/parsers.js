@@ -5,6 +5,16 @@ export async function fetchAuthentication() {
   return data;
 }
 
+export async function fetchPatterns(collection) {
+  const {data} = await supabase
+      .from("dmg_patterns")
+      .select("*")
+      .eq("collection", collection)
+  //console.log(supabase)
+  //console.log(data)
+  return data
+}
+
 export async function fetchAllLostInDiffusion() {
   const {data} = await supabase
       .from("dmg_lost_in_diffusion")
@@ -255,7 +265,9 @@ export async function populateSupabaseImages() {
   }
 
   // iterate over all object
-  for (let i = 0; i < x.length; i++) {
+  let len = x.length;
+  for (let i = 0; i < lent; i++) {
+    console.log(`* processing: ${i} / ${len}`)
     let _manifest = await fetchImages(x[i]["iiif_manifest"]);
     let _objectNumber = x[i]["objectNumber"];
     // loop within manifest to find all images and store them seperately.

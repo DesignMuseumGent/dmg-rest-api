@@ -9,11 +9,11 @@ const COMMON_CONTEXT = [
 export function patternAPI(app, BASE_URI) {
     app.get("/v1/pattern-api/", async (req, res) => {
 
-        let {
-            patternCollection = "tegels" // the desired collection to fetch such as "tegels".
-        } = req.query
+        let {collection = "tegels"} = req.query
 
-        const patterns = await fetchPatterns(patternCollection)
+        console.log(collection)
+
+        const patterns = await fetchPatterns(collection)
 
         // generate linked data objects
         const objects = [] // initialize collection

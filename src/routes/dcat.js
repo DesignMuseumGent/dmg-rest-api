@@ -51,7 +51,7 @@ export function requestDCAT(app, BASE_URI) {
       ],
       "Catalogus.heeftDataset": [
         {
-          "@id": BASE_URI +"objects/",
+          "@id": BASE_URI +"id/objects/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -69,7 +69,7 @@ export function requestDCAT(app, BASE_URI) {
             "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
-          "@id": BASE_URI+"exhibitions/",
+          "@id": BASE_URI+"id/exhibitions/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -87,7 +87,7 @@ export function requestDCAT(app, BASE_URI) {
             "https://metadata.vlaanderen.be/id/GDI-Vlaanderen-Trefwoorden/VLOPENDATASERVICE",
         },
         {
-          "@id": BASE_URI+"agents/",
+          "@id": BASE_URI+"id/agents/",
           "@type": "Dataset",
           "Dataset.titel": [
             {
@@ -106,7 +106,7 @@ export function requestDCAT(app, BASE_URI) {
         },
         {
           "@id":
-            BASE_URI+"exhibitions/billboardseries",
+            BASE_URI+"id/exhibitions/billboardseries",
           "@type": "Dataset",
           "Dataset.titel": [
             {

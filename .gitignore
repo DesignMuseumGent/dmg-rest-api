@@ -94,3 +94,4 @@ vendor/
 vendor/
 *.exe
 *.test
+node_modules/

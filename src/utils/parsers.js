@@ -215,10 +215,15 @@ export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
 }
 
 export async function fetchLDESRecordByAgentID(AgentPID) {
-  const { data } = await supabase
-    .from("dmg_personen_LDES")
-    .select("LDES_raw")
-    .eq("agent_ID", AgentPID);
+  console.log('Fetching agent with ID:', AgentPID);
+  const { data, error } = await supabase
+      .from("dmg_personen_LDES")
+      .select("LDES_raw")
+      .eq("agent_ID", AgentPID);
+
+  console.log('Received data:', data);
+  console.log('Error if any:', error);
+
   return data;
 }
 

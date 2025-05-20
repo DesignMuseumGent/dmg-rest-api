@@ -39,6 +39,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
+    "semver": "^7.7.2",
     "serve": "^14.2.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3",
@@ -50,6 +51,6 @@
   "devDependencies": {
     "esm": "^3.2.25",
     "jest": "^27.5.1",
-    "supertest": "^7.0.0"
+    "supertest": "^7.1.1"
   }
 }

@@ -9,12 +9,15 @@ export function requestAgent(app, BASE_URI) {
         res.setHeader('Content-Dispositon', 'inline');
 
         try {
+            console.log(req.params.agentPID);
             const agentData = await fetchLDESRecordByAgentID(req.params.agentPID);
             if (!agentData) {
                 return res.status(404).send('Agent not found');
             }
+            //console.log(agentData);
 
-            return res.status(200).json(agentData["LDES_raw"]["object"])
+
+            return res.status(200).json(agentData[0]["LDES_raw"]["object"]);
 
         } catch (error) {
             console.error(error);

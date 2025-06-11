@@ -14,6 +14,17 @@ export function Dump(app, BASE_URI)  {
         // await RES from DB req
         // if not existing type; return error message
 
+        // Step 1: Authenticate the API key
+        const keys = await fetchAuthentication();
+        const apiKey = req.query.apiKey || "none";
+
+        if (!keys.some((item) => item.key === apiKey)) {
+            return res.status(401).json({
+                error:
+                    "Authentication key is missing. This stream is only available via authentication.",
+            });
+        }
+
         if (!types.includes(req.params.type)) {
             res.status(422).json({
                 error: "there is data dump available for this type. Check the API documentation for available datasets."

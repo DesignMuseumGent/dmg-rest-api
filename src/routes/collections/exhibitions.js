@@ -11,7 +11,13 @@ const parseIdentification = (title) => ({
 const parseExhibition = (exh, BASE_URI) => {
     let title = "title unknown";
     try {
-        if (exh["LDES_raw"]?.["object"]?.["cidoc:P1_is_identified_by"]?.["inhoud"]?.["@value"]) {
+        // Try full URL format first
+        const identifiedBy = exh["LDES_raw"]?.["object"]?.["http://www.cidoc-crm.org/cidoc-crm/P1_is_identified_by"];
+        if (identifiedBy?.["http://www.cidoc-crm.org/cidoc-crm/P190_has_symbolic_content"]?.["@value"]) {
+            title = identifiedBy["http://www.cidoc-crm.org/cidoc-crm/P190_has_symbolic_content"]["@value"];
+        }
+        // Fallback to prefixed version with "inhoud" if it exists in some records
+        else if (exh["LDES_raw"]?.["object"]?.["cidoc:P1_is_identified_by"]?.["inhoud"]?.["@value"]) {
             title = exh["LDES_raw"]["object"]["cidoc:P1_is_identified_by"]["inhoud"]["@value"];
         }
     } catch (e) {

@@ -125,13 +125,18 @@ export async function fetchPaginatedAgents(from, to) {
 }
 
 
-export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null}) {
+export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null, onDisplay = false }) {
   let query = supabase
       .from("dmg_objects_LDES") // Replace with the actual table name
       .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification", { count: "exact" }) // Fetch only necessary fields
       .eq("STATUS", "HEALTHY")
       .neq("RESOLVES_TO", "id/object/REMOVED")
       .range(from, to);
+
+  // Apply onDisplay filter if requested
+  if (onDisplay === true) {
+    query = query.eq("COLLECTION_PRESENTATION", true);
+  }
 
   // Apply license filter if provided
   if (license) {

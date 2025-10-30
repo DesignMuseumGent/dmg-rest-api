@@ -24,8 +24,34 @@ const parseExhibition = (exh, BASE_URI) => {
         console.error(`Error parsing exhibition title: ${e.message}`);
     }
 
+    // Derive a stable identifier for the @id
+    function extractIdentifier() {
+        // Prefer explicit exh_PID if present and non-null/non-empty
+        const pid = exh["exh_PID"];
+        if (pid && pid !== "null") return pid;
+
+        const obj = exh["LDES_raw"]?.["object"];
+        const identifiers = obj?.["http://www.w3.org/ns/adms#identifier"];
+        if (Array.isArray(identifiers)) {
+            let te = null;
+            let priref = null;
+            for (const id of identifiers) {
+                const notation = id?.["http://www.w3.org/2004/02/skos/core#notation"];
+                const typeIri = notation?.["@type"] || "";
+                const value = notation?.["@value"] || null;
+                if (!value) continue;
+                if (typeIri.endsWith("/referentienummer") && !te) te = value; // e.g., TE_1942-003
+                if (typeIri.endsWith("/priref") && !priref) priref = value; // numeric id
+            }
+            return te || priref || null;
+        }
+        return null;
+    }
+
+    const identifier = extractIdentifier();
+
     return {
-        "@id": `${BASE_URI}id/exhibition/${exh["exh_PID"]}`,
+        "@id": identifier ? `${BASE_URI}id/exhibition/${identifier}` : `${BASE_URI}id/exhibition/null`,
         "@type": "Activiteit",
         "cidoc:P1_is_identified_by": parseIdentification(title),
     };

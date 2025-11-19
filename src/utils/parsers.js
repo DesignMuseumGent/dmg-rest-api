@@ -125,10 +125,10 @@ export async function fetchPaginatedAgents(from, to) {
 }
 
 
-export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null, onDisplay = false }) {
+export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null, onDisplay = false, hasImages = false }) {
   let query = supabase
       .from("dmg_objects_LDES") // Replace with the actual table name
-      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification", { count: "exact" }) // Fetch only necessary fields
+      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification, iiif_manifest_RESPONSE", { count: "exact" }) // Fetch only necessary fields
       .eq("STATUS", "HEALTHY")
       .neq("RESOLVES_TO", "id/object/REMOVED")
       .range(from, to);
@@ -141,6 +141,12 @@ export async function fetchFilteredLDESRecords({ from, to, license = null ,  cat
   // Apply license filter if provided
   if (license) {
     query = query.contains("CC_Licenses", [license]); // Filter for specific licenses
+  }
+
+  // Apply hasImages filter if requested
+  if (hasImages === true) {
+    // Only include objects where iiif_images_RESPONSE equals 200
+    query = query.eq("iiif_manifest_RESPONSE", "200");
   }
 
   console.log(category)

@@ -33,7 +33,8 @@ export function requestObjects(app, BASE_URI) {
         license = "ALL",
         fullRecord = true,
         category = "none",
-        onDisplay = false
+        onDisplay = false,
+        hasImages = true
       } = req.query;
 
       // format query parameters.
@@ -45,6 +46,7 @@ export function requestObjects(app, BASE_URI) {
 
       // Fetch filtered and paginated records directly (from SUPABASE)
       const boolOnDisplay = onDisplay === true || onDisplay === "true";
+      const boolHasImages = hasImages === true || hasImages === "true";
 
       const { data: records, total } = await fetchFilteredLDESRecords({
         from,
@@ -52,6 +54,7 @@ export function requestObjects(app, BASE_URI) {
         license: license !== "ALL" ? CC_LICENSES[license] : null,
         category: category !== "none" ? category : null,
         onDisplay: boolOnDisplay,
+        hasImages: boolHasImages,
       });
 
       // return 404 if there is no data for that request.
@@ -95,20 +98,20 @@ export function requestObjects(app, BASE_URI) {
           { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
         ],
         "@type": "GecureerdeCollectie",
-        "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}`,
+        "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}`,
         "hydra:totalItems": total,
         "hydra:view": {
-          "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&onDisplay=${boolOnDisplay}&pageNumber=${pageNumber}`,
+          "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber}`,
           "@type": "PartialCollectionView",
-          "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&pageNumber=1`,
-          "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&pageNumber=${totalPages}`,
+          "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=1`,
+          "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${totalPages}`,
           "hydra:previous":
               pageNumber > 1
-                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&pageNumber=${pageNumber - 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber - 1}`
                   : null,
           "hydra:next":
               pageNumber < totalPages
-                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&pageNumber=${pageNumber + 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber + 1}`
                   : null,
         },
         "GecureerdeCollectie.curator": "Design Museum Gent",

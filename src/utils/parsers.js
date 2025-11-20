@@ -128,7 +128,10 @@ export async function fetchPaginatedAgents(from, to) {
 export async function fetchFilteredLDESRecords({ from, to, license = null ,  category = null, onDisplay = false, hasImages = false }) {
   let query = supabase
       .from("dmg_objects_LDES") // Replace with the actual table name
-      .select("LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification, iiif_manifest_RESPONSE", { count: "exact" }) // Fetch only necessary fields
+      .select(
+        "LDES_raw->object, objectNumber, CC_Licenses, iiif_image_uris, index_classification, iiif_manifest_RESPONSE, HEX_values, color_names",
+        { count: "exact" }
+      ) // Fetch only necessary fields
       .eq("STATUS", "HEALTHY")
       .neq("RESOLVES_TO", "id/object/REMOVED")
       .range(from, to);

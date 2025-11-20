@@ -34,12 +34,13 @@ export function requestObjects(app, BASE_URI) {
         fullRecord = true,
         category = "none",
         onDisplay = false,
-        hasImages = true
+        hasImages = true,
+        colors= false,
       } = req.query;
 
-      // format query parameters.
+      // format and constrain query parameters to prevent abuse
       pageNumber = Math.max(Number(pageNumber), 1);
-      itemsPerPage = Math.max(Number(itemsPerPage), 1);
+      itemsPerPage = Math.min(Math.max(Number(itemsPerPage), 1), 100);
 
       const from = (pageNumber - 1) * itemsPerPage;
       const to = pageNumber * itemsPerPage - 1;
@@ -47,6 +48,7 @@ export function requestObjects(app, BASE_URI) {
       // Fetch filtered and paginated records directly (from SUPABASE)
       const boolOnDisplay = onDisplay === true || onDisplay === "true";
       const boolHasImages = hasImages === true || hasImages === "true";
+      const boolColors = colors === true || colors === "true";
 
       const { data: records, total } = await fetchFilteredLDESRecords({
         from,
@@ -68,25 +70,53 @@ export function requestObjects(app, BASE_URI) {
       // Process records into the required structure (if fullRecord is false)
       const filteredObjects = boolFullRecord
           // if fullRecord = True
-          ? records.map((record) => record.object)
+          ? records.map((record) => {
+            // Start from the original object
+            const baseObj = record.object || {};
+            // Always include colors array in JSON-LD output, default empty
+            const enriched = { ...baseObj, colors: [] };
+            // If colors flag is set and DB has data, add colors and colorNames
+            if (boolColors) {
+              if (Array.isArray(record.HEX_values) && record.HEX_values.length > 0) {
+                enriched.colors = record.HEX_values;
+              }
+              if (Array.isArray(record.color_names) && record.color_names.length > 0) {
+                enriched.colorNames = record.color_names;
+              }
+            }
+            return enriched;
+          })
           // if fullRecord = False
-          : records.map((record) => ({
-            "@context": COMMON_CONTEXT,
-            "@id": `${BASE_URI}id/object/${record.objectNumber}`,
-            "@type": "MensgemaaktObject",
-            "Object.identificator": [
-              {
-                "@type": "Identificator",
-                "Identificator.identificator": {
-                  "@value": record.objectNumber,
+          : records.map((record) => {
+            const obj = {
+              "@context": COMMON_CONTEXT,
+              "@id": `${BASE_URI}id/object/${record.objectNumber}`,
+              "@type": "MensgemaaktObject",
+              "Object.identificator": [
+                {
+                  "@type": "Identificator",
+                  "Identificator.identificator": {
+                    "@value": record.objectNumber,
+                  },
                 },
+              ],
+              "cidoc:P129i_is_subject_of": {
+                "@id": record.iiif_image_uris ? record.iiif_image_uris[0] : "no image",
+                "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object",
               },
-            ],
-            "cidoc:P129i_is_subject_of": {
-              "@id": record.iiif_image_uris ? record.iiif_image_uris[0] : "no image",
-              "@type": "http://www.ics.forth.gr/isl/CRMdig/D1_Digital_Object",
-            },
-          }));
+              // Always include colors in the JSON-LD output (empty by default)
+              colors: [],
+            };
+            if (boolColors) {
+              if (Array.isArray(record.HEX_values) && record.HEX_values.length > 0) {
+                obj.colors = record.HEX_values;
+              }
+              if (Array.isArray(record.color_names) && record.color_names.length > 0) {
+                obj.colorNames = record.color_names;
+              }
+            }
+            return obj;
+          });
 
       // Compute pagination metadata
       const totalPages = Math.ceil(total / itemsPerPage);
@@ -98,20 +128,20 @@ export function requestObjects(app, BASE_URI) {
           { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
         ],
         "@type": "GecureerdeCollectie",
-        "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}`,
+        "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}`,
         "hydra:totalItems": total,
         "hydra:view": {
-          "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber}`,
+          "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber}`,
           "@type": "PartialCollectionView",
-          "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=1`,
-          "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${totalPages}`,
+          "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=1`,
+          "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${totalPages}`,
           "hydra:previous":
               pageNumber > 1
-                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber - 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber - 1}`
                   : null,
           "hydra:next":
               pageNumber < totalPages
-                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&pageNumber=${pageNumber + 1}`
+                  ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber + 1}`
                   : null,
         },
         "GecureerdeCollectie.curator": "Design Museum Gent",

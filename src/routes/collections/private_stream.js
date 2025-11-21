@@ -47,6 +47,16 @@ export function requestPrivateObjects(app, BASE_URI) {
       const totalPages = Math.ceil(total / itemsPerPage);
 
       // Step 5: Build the hydra view and response structure
+      // Build hydra navigation URLs that preserve current filters
+      const qsBase = new URLSearchParams();
+      qsBase.set("apiKey", String(apiKey));
+      qsBase.set("itemsPerPage", String(itemsPerPage));
+      const urlForPage = (p) => {
+        const qs = new URLSearchParams(qsBase);
+        qs.set("pageNumber", String(p));
+        return `${BASE_URI}id/private-objects?${qs.toString()}`;
+      };
+
       res.status(200).json({
         "@context": [
           ...COMMON_CONTEXT,
@@ -55,17 +65,17 @@ export function requestPrivateObjects(app, BASE_URI) {
         "@type": "GecureerdeCollectie",
         "@id": `${BASE_URI}id/private-objects`,
         "hydra:view": {
-          "@id": `${BASE_URI}id/private-objects?pageNumber=${pageNumber}&apiKey=${apiKey}`,
+          "@id": urlForPage(pageNumber),
           "@type": "PartialCollectionView",
-          "hydra:first": `${BASE_URI}id/private-objects?pageNumber=1&apiKey=${apiKey}`,
-          "hydra:last": `${BASE_URI}id/private-objects?pageNumber=${totalPages}&apiKey=${apiKey}`,
+          "hydra:first": urlForPage(1),
+          "hydra:last": urlForPage(totalPages),
           "hydra:previous":
               pageNumber > 1
-                  ? `${BASE_URI}id/private-objects?pageNumber=${pageNumber - 1}&apiKey=${apiKey}`
+                  ? urlForPage(pageNumber - 1)
                   : null,
           "hydra:next":
               pageNumber < totalPages
-                  ? `${BASE_URI}id/private-objects?pageNumber=${pageNumber + 1}&apiKey=${apiKey}`
+                  ? urlForPage(pageNumber + 1)
                   : null,
         },
         "GecureerdeCollectie.curator": "Design Museum Gent",

@@ -113,7 +113,7 @@ export async function fetchPaginatedAgents(from, to) {
   // Query: Adjust the table and fields as per your database schema
   const { data, error, count } = await supabase
     .from("dmg_personen_LDES") // Replace with your actual table name
-    .select("LDES_raw, agent_ID", { count: "exact" }) // Fetch minimal fields needed
+    .select("LDES_raw, agent_ID, wikipedia_bios", { count: "exact" }) // Include wikipedia_bios for enrichment
     .range(from, to); // Pagination - fetch only the required range of rows
 
   if (error) {
@@ -232,11 +232,14 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
   console.log('Fetching agent with ID:', AgentPID);
   const { data, error } = await supabase
       .from("dmg_personen_LDES")
-      .select("LDES_raw")
+      .select("LDES_raw, wikipedia_bios")
       .eq("agent_ID", AgentPID);
 
-  console.log('Received data:', data);
-  console.log('Error if any:', error);
+  if (error) {
+    console.error('Error fetching agent:', error);
+  } else {
+    console.log('Received agent rows:', Array.isArray(data) ? data.length : 0);
+  }
 
   return data;
 }

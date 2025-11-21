@@ -29,9 +29,67 @@ export function requestAgents(app, BASE_URI) {
                 return res.status(404).json({ error: "No agents found for the requested page." });
             }
 
-            // Step 4: Prepare data structure (if fullRecord is false)
+            // Step 4: Prepare data structure (enrich fullRecord with wikipedia_bios notes)
             const filteredAgentsData = fullRecord
-                ? agentsData.map((agent) => agent.LDES_raw.object)
+                ? agentsData.map((agent) => {
+                    const obj = agent?.LDES_raw?.object ? { ...agent.LDES_raw.object } : {};
+
+                    // Parse wikipedia_bios into crm:P3_has_note entries (same logic as single agent endpoint)
+                    let biosRaw = agent.wikipedia_bios;
+                    const notes = [];
+
+                    const pushIfValid = (val, lang, src) => {
+                        if (!val || typeof val !== 'string') return;
+                        const entry = { "@value": val };
+                        if (lang && typeof lang === 'string') entry["@language"] = lang;
+                        if (src && typeof src === 'string') entry["dcterms:source"] = src;
+                        notes.push(entry);
+                    };
+
+                    try {
+                        if (typeof biosRaw === 'string') {
+                            const trimmed = biosRaw.trim();
+                            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                                try { biosRaw = JSON.parse(trimmed); } catch {}
+                            }
+                        }
+
+                        if (Array.isArray(biosRaw)) {
+                            for (const b of biosRaw) {
+                                if (!b || typeof b !== 'object') continue;
+                                if (b['@value']) {
+                                    pushIfValid(b['@value'], b['@language'], b['dcterms:source'] || b['source'] || b['url']);
+                                } else if (b.value || b.text || b.bio || b.snippet) {
+                                    pushIfValid(b.value || b.text || b.bio || b.snippet, b.language || b.lang, b['dcterms:source'] || b.source || b.url);
+                                } else if (typeof b.string === 'string') {
+                                    pushIfValid(b.string, b.language || b.lang, b.source || b.url);
+                                }
+                            }
+                        } else if (biosRaw && typeof biosRaw === 'object') {
+                            for (const [lang, v] of Object.entries(biosRaw)) {
+                                if (typeof v === 'string') {
+                                    pushIfValid(v, lang);
+                                } else if (v && typeof v === 'object') {
+                                    const text = v.value || v.text || v.bio || v.snippet || v['@value'];
+                                    const language = lang || v.language || v.lang || v['@language'];
+                                    const src = v['dcterms:source'] || v.source || v.url;
+                                    pushIfValid(text, language, src);
+                                }
+                            }
+                        } else if (typeof biosRaw === 'string') {
+                            pushIfValid(biosRaw);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing wikipedia_bios for agent list:', e);
+                    }
+
+                    if (notes.length > 0) {
+                        const existing = Array.isArray(obj['crm:P3_has_note']) ? obj['crm:P3_has_note'] : [];
+                        obj['crm:P3_has_note'] = [...existing, ...notes];
+                    }
+
+                    return obj;
+                })
                 : agentsData.map((agent) => ({
                     "@context": COMMON_CONTEXT,
                     "@id": `${BASE_URI}id/agent/${agent.agent_ID}`,
@@ -50,6 +108,16 @@ export function requestAgents(app, BASE_URI) {
             const totalPages = Math.ceil(total / itemsPerPage);
 
             // Step 6: Build the response
+            // Build hydra navigation URLs that preserve current filters
+            const qsBase = new URLSearchParams();
+            qsBase.set("itemsPerPage", String(itemsPerPage));
+            qsBase.set("fullRecord", String(fullRecord));
+            const urlForPage = (p) => {
+                const qs = new URLSearchParams(qsBase);
+                qs.set("pageNumber", String(p));
+                return `${BASE_URI}id/agents?${qs.toString()}`;
+            };
+
             res.status(200).json({
                 "@context": [
                     ...COMMON_CONTEXT,
@@ -59,16 +127,12 @@ export function requestAgents(app, BASE_URI) {
                 "@id": `${BASE_URI}id/agents`,
                 "hydra:totalItems": total,
                 "hydra:view": {
-                    "@id": `${BASE_URI}id/agents?pageNumber=${pageNumber}`,
+                    "@id": urlForPage(pageNumber),
                     "@type": "PartialCollectionView",
-                    "hydra:first": `${BASE_URI}id/agents?pageNumber=1`,
-                    "hydra:last": `${BASE_URI}id/agents?pageNumber=${totalPages}`,
-                    "hydra:previous":
-                        pageNumber > 1 ? `${BASE_URI}id/agents?pageNumber=${pageNumber - 1}` : null,
-                    "hydra:next":
-                        pageNumber < totalPages
-                            ? `${BASE_URI}id/agents?pageNumber=${pageNumber + 1}`
-                            : null,
+                    "hydra:first": urlForPage(1),
+                    "hydra:last": urlForPage(totalPages),
+                    "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                    "hydra:next": pageNumber < totalPages ? urlForPage(pageNumber + 1) : null,
                 },
                 "GecureerdeCollectie.curator": "Design Museum Gent",
                 "GecureerdeCollectie.bestaatUit": filteredAgentsData,

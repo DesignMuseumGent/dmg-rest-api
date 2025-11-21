@@ -60,18 +60,27 @@ export function requestTexts(app, BASE_URI) {
             filteredtexts.push(catalogue[j]);
         }
 
+        // Build hydra navigation URLs that preserve current filters
+        const qsBase = new URLSearchParams();
+        qsBase.set("itemsPerPage", String(itemsPerPage));
+        const urlForPage = (p) => {
+            const qs = new URLSearchParams(qsBase);
+            qs.set("pageNumber", String(p));
+            return `${BASE_URI}id/texts?${qs.toString()}`;
+        };
+
         res.status(200).json({
             "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
             "@type": "GecureerdeCollectie",
             "@id": `${BASE_URI}id/texts/`,
             "hydra:totalItems": catalogue.length,
             "hydra:view": {
-                "@id": `${BASE_URI}id/texts?pageNumber=${pageNumber}`,
+                "@id": urlForPage(pageNumber),
                 "@type": "PartialCollectionView",
-                "hydra:first": `${BASE_URI}id/texts?pageNumber=1`,
-                "hydra:last": `${BASE_URI}id/texts?pageNumber=${totalPages}`,
-                "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/texts?pageNumber=${pageNumber - 1}` : null,
-                "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/texts?pageNumber=${pageNumber + 1}` : null,
+                "hydra:first": urlForPage(1),
+                "hydra:last": urlForPage(totalPages),
+                "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                "hydra:next": pageNumber < totalPages ? urlForPage(pageNumber + 1) : null,
             },
             "GecureerdeCollectie.curator": "Design Museum Gent",
             "GecureerdeCollectie.bestaatUit": catalogue

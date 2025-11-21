@@ -134,6 +134,20 @@ export function requestObjects(app, BASE_URI) {
             const totalPages = Math.ceil(total / itemsPerPage);
 
             // Build the response
+            // Build hydra navigation URLs that preserve current filters
+            const qsBase = new URLSearchParams();
+            qsBase.set("fullRecord", String(fullRecord));
+            qsBase.set("itemsPerPage", String(itemsPerPage));
+            qsBase.set("license", String(license));
+            qsBase.set("onDisplay", String(boolOnDisplay));
+            qsBase.set("hasImages", String(boolHasImages));
+            qsBase.set("colors", String(boolColors));
+            const urlForPage = (p) => {
+                const qs = new URLSearchParams(qsBase);
+                qs.set("pageNumber", String(p));
+                return `${BASE_URI}id/objects?${qs.toString()}`;
+            };
+
             res.status(200).json({
                 "@context": [
                     ...COMMON_CONTEXT,
@@ -146,21 +160,15 @@ export function requestObjects(app, BASE_URI) {
                     }
                 ],
                 "@type": "GecureerdeCollectie",
-                "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}`,
+                "@id": `${BASE_URI}id/objects?${qsBase.toString()}`,
                 "hydra:totalItems": total,
                 "hydra:view": {
-                    "@id": `${BASE_URI}id/objects?fullRecord=${fullRecord}&icense=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber}`,
+                    "@id": urlForPage(pageNumber),
                     "@type": "PartialCollectionView",
-                    "hydra:first": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=1`,
-                    "hydra:last": `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${totalPages}`,
-                    "hydra:previous":
-                        pageNumber > 1
-                            ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber - 1}`
-                            : null,
-                    "hydra:next":
-                        pageNumber < totalPages
-                            ? `${BASE_URI}id/objects?fullRecord=${fullRecord}&license=${license}&onDisplay=${boolOnDisplay}&has_images=${boolHasImages}&colors=${boolColors}&pageNumber=${pageNumber + 1}`
-                            : null,
+                    "hydra:first": urlForPage(1),
+                    "hydra:last": urlForPage(totalPages),
+                    "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                    "hydra:next": pageNumber < totalPages ? urlForPage(pageNumber + 1) : null,
                 },
                 "GecureerdeCollectie.curator": "Design Museum Gent",
                 "GecureerdeCollectie.bestaatUit": filteredObjects,

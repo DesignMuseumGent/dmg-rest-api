@@ -42,11 +42,28 @@ export function requestAllArchive(app, BASE_URI) {
             filteredData.push(object)
         }
         
+        // Build hydra navigation URLs that preserve current filters
+        const qsBase = new URLSearchParams();
+        qsBase.set("itemsPerPage", String(itemsPerPage));
+        const urlForPage = (p) => {
+            const qs = new URLSearchParams(qsBase);
+            qs.set("pageNumber", String(p));
+            return `${BASE_URI}id/archives?${qs.toString()}`;
+        };
+
         res.status(200).json({
             "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
             "@type": "GecureerdeCollectie",
             "@id": `${BASE_URI}id/archives`,
             "hydra:totalItems": archiveData.length,
+            "hydra:view": {
+                "@id": urlForPage(pageNumber),
+                "@type": "PartialCollectionView",
+                "hydra:first": urlForPage(1),
+                "hydra:last": urlForPage(Math.ceil(archiveData.length / itemsPerPage)),
+                "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                "hydra:next": pageNumber < Math.ceil(archiveData.length / itemsPerPage) ? urlForPage(pageNumber + 1) : null,
+            },
             "GecureerdeCollectie.curator": "Design Museum Gent",
             "GecureerdeCollectie.bestaatUit": filteredData
         })

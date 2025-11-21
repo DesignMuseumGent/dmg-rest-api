@@ -39,6 +39,16 @@ export function requestConcepts(app, BASE_URI) {
             const totalPages = Math.ceil(total / itemsPerPage);
 
             // Step 5: Build and send the response
+            // Build hydra navigation URLs that preserve current filters
+            const qsBase = new URLSearchParams();
+            qsBase.set("itemsPerPage", String(itemsPerPage));
+            qsBase.set("fullRecord", String(fullRecord));
+            const urlForPage = (p) => {
+                const qs = new URLSearchParams(qsBase);
+                qs.set("pageNumber", String(p));
+                return `${BASE_URI}id/concepts?${qs.toString()}`;
+            };
+
             res.status(200).json({
                 "@context": [
                     "https://data.vlaanderen.be/doc/applicatieprofiel/generiek-basis/zonderstatus/2019-07-01/context/generiek-basis.jsonld",
@@ -49,18 +59,12 @@ export function requestConcepts(app, BASE_URI) {
                 "@id": `${BASE_URI}id/concepts`,
                 "hydra:totalItems": total,
                 "hydra:view": {
-                    "@id": `${BASE_URI}id/concepts?pageNumber=${pageNumber}`,
+                    "@id": urlForPage(pageNumber),
                     "@type": "PartialCollectionView",
-                    "hydra:first": `${BASE_URI}id/concepts?pageNumber=1&itemsPerPage=${itemsPerPage}`,
-                    "hydra:last": `${BASE_URI}id/concepts?pageNumber=${totalPages}&itemsPerPage=${itemsPerPage}`,
-                    "hydra:previous":
-                        pageNumber > 1
-                            ? `${BASE_URI}id/concepts?pageNumber=${pageNumber - 1}&itemsPerPage=${itemsPerPage}`
-                            : null,
-                    "hydra:next":
-                        pageNumber < totalPages
-                            ? `${BASE_URI}id/concepts?pageNumber=${pageNumber + 1}&itemsPerPage=${itemsPerPage}`
-                            : null,
+                    "hydra:first": urlForPage(1),
+                    "hydra:last": urlForPage(totalPages),
+                    "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                    "hydra:next": pageNumber < totalPages ? urlForPage(pageNumber + 1) : null,
                 },
                 "GecureerdeCollectie.curator": "Design Museum Gent",
                 "GecureerdeCollectie.bestaatUit": filteredConcepts,

@@ -92,6 +92,16 @@ export function requestExhibitions(app, BASE_URI) {
             const totalPages = Math.ceil(total / itemsPerPage);
 
             // Step 6: Build and send the response
+            // Build hydra navigation URLs that preserve current filters
+            const qsBase = new URLSearchParams();
+            qsBase.set("itemsPerPage", String(itemsPerPage));
+            qsBase.set("fullRecord", String(fullRecord));
+            const urlForPage = (p) => {
+                const qs = new URLSearchParams(qsBase);
+                qs.set("pageNumber", String(p));
+                return `${BASE_URI}id/exhibitions?${qs.toString()}`;
+            };
+
             res.status(200).json({
                 "@context": [
                     "https://data.vlaanderen.be/doc/applicatieprofiel/DCAT-AP-VL/erkendestandaard/2022-04-21/context/DCAT-AP-VL-20.jsonld",
@@ -105,12 +115,12 @@ export function requestExhibitions(app, BASE_URI) {
                 "@type": "GecureerdeCollectie",
                 "@id": `${BASE_URI}id/exhibitions`,
                 "hydra:view": {
-                    "@id": `${BASE_URI}id/exhibitions?pageNumber=${pageNumber}`,
+                    "@id": urlForPage(pageNumber),
                     "@type": "PartialCollectionView",
-                    "hydra:first": `${BASE_URI}id/exhibitions?pageNumber=1`,
-                    "hydra:last": `${BASE_URI}id/exhibitions?pageNumber=${totalPages}`,
-                    "hydra:previous": pageNumber > 1 ? `${BASE_URI}id/exhibitions?pageNumber=${pageNumber - 1}` : null,
-                    "hydra:next": pageNumber < totalPages ? `${BASE_URI}id/exhibitions?pageNumber=${pageNumber + 1}` : null,
+                    "hydra:first": urlForPage(1),
+                    "hydra:last": urlForPage(totalPages),
+                    "hydra:previous": pageNumber > 1 ? urlForPage(pageNumber - 1) : null,
+                    "hydra:next": pageNumber < totalPages ? urlForPage(pageNumber + 1) : null,
                 },
                 "GecureerdeCollectie.curator": "Design Museum Gent",
                 "GecureerdeCollectie.bestaatUit": filteredExhibitions,

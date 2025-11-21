@@ -31,7 +31,8 @@ export function requestConcepts(app, BASE_URI) {
                     "@id": `${BASE_URI}id/concept/${concept.id}`,
                     "@type": "skos:concept",
                     "skos:prefLabel": concept.LDES_raw.object["skos:prefLabel"],
-
+                    // todo: add scope note
+                    // todo: add references
                 }));
 
             // Step 4: Compute pagination metadata

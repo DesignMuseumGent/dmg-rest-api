@@ -84,6 +84,9 @@ export function requestObjects(app, BASE_URI) {
                 enriched.colorNames = record.color_names;
               }
             }
+
+            enriched.onDisplay = boolOnDisplay
+
             return enriched;
           })
           // if fullRecord = False
@@ -106,6 +109,8 @@ export function requestObjects(app, BASE_URI) {
               },
               // Always include colors in the JSON-LD output (empty by default)
               colors: [],
+              // always include onDisplay in the JSON-LD output (false by default)
+              onDisplay: false,
             };
             if (boolColors) {
               if (Array.isArray(record.HEX_values) && record.HEX_values.length > 0) {
@@ -115,6 +120,11 @@ export function requestObjects(app, BASE_URI) {
                 obj.colorNames = record.color_names;
               }
             }
+
+            if (boolOnDisplay) {
+                obj.onDisplay = true
+            }
+
             return obj;
           });
 

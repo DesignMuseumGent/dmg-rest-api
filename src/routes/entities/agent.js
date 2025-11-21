@@ -16,7 +16,6 @@ export function requestAgent(app, BASE_URI) {
             }
             //console.log(agentData);
 
-
             return res.status(200).json(agentData[0]["LDES_raw"]["object"]);
 
         } catch (error) {

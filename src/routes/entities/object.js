@@ -31,6 +31,10 @@ export function requestObject(app, BASE_URI) {
             return res.status(500).json({ error: "Error fetching object data" });
         }
 
+        // Optional filter: only allow objects that have a resolvable IIIF manifest
+        // Usage: /v1/id/object/:objectNumber?has_images=true
+        const _hasImagesFilter = req.query.hasImages === false || req.query.hasImages === "true";
+
         const _redirect = "https://data.collectie.gent/entity/dmg:" + req.params.objectNumber;
         let _manifest = false;
         let _open = false;
@@ -43,6 +47,14 @@ export function requestObject(app, BASE_URI) {
 
         // define path to resolve to
         try {
+            // If has_images filter is requested, and current record doesn't have a good IIIF manifest, 404
+            if (_hasImagesFilter) {
+                const resp = x && x[0] && (x[0]["iiif_manifest_RESPONSE"] ?? x[0]["iiif_images_RESPONSE"]);
+                if (resp !== "200" && resp !== 200) {
+                    return res.status(404).json({ error: "No data found for the requested filter (has_images)." });
+                }
+            }
+
             //console.log(x[0]["RESOLVES_TO"])
             if (x[0]["RESOLVES_TO"]) {
                 const objectnumber = x[0]["RESOLVES_TO"].replace("id/object/", "");
@@ -51,6 +63,13 @@ export function requestObject(app, BASE_URI) {
                     return res.status(410).json({ error: "this object has been permanently removed" }); // Stop execution
                 } else {
                     const resolve = await fetchLDESRecordByObjectNumber(objectnumber);
+                    // Apply has_images filter to resolved record as well
+                    if (_hasImagesFilter) {
+                        const respResolved = resolve && resolve[0] && (resolve[0]["iiif_manifest_RESPONSE"] ?? resolve[0]["iiif_images_RESPONSE"]);
+                        if (respResolved !== "200" && respResolved !== 200) {
+                            return res.status(404).json({ error: "No data found for the requested filter (has_images)." });
+                        }
+                    }
                     return res.send(resolve[0]["LDES_raw"]["object"]); // Stop execution
                 }
             }

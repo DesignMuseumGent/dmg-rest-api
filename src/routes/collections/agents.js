@@ -43,6 +43,12 @@ export function requestAgents(app, BASE_URI) {
                         const entry = { "@value": val };
                         if (lang && typeof lang === 'string') entry["@language"] = lang;
                         if (src && typeof src === 'string') entry["dcterms:source"] = src;
+
+                        // Automatically add CC BY-SA 4.0 if the source is Wikipedia
+                        if (src && src.includes('wikipedia.org')) {
+                            entry["dcterms:license"] = "https://creativecommons.org/licenses/by-sa/4.0/";
+                        }
+
                         notes.push(entry);
                     };
 

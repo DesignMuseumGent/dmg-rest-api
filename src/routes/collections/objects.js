@@ -35,7 +35,7 @@ export function requestObjects(app, BASE_URI) {
                 category = "none",
                 onDisplay = false,
                 hasImages = true,
-                colors= false,
+                colors= true,
             } = req.query;
 
             // format and constrain query parameters to prevent abuse

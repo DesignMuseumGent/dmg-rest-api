@@ -70,7 +70,80 @@ export function requestObject(app, BASE_URI) {
                             return res.status(404).json({ error: "No data found for the requested filter (has_images)." });
                         }
                     }
-                    return res.send(resolve[0]["LDES_raw"]["object"]); // Stop execution
+                    // Enrich with hasParts / isPartOf before returning
+                    try {
+                        const row = resolve && resolve[0] ? resolve[0] : null;
+                        if (row && row["LDES_raw"] && row["LDES_raw"]["object"]) {
+                            const obj = row["LDES_raw"]["object"]; // JSON-LD object to enrich
+
+                            // Helper: add crm:P46 relations based on Supabase columns
+                            const BASE_OBJ_URI = "https://data.designmuseumgent.be/v1/id/object/";
+                            const isPartOf = row["isPartOf"]; // could be string or array
+                            const hasParts = row["hasParts"]; // could be array or string
+
+                            // Local helper to normalize IDs from various shapes
+                            const normalizeToIds = (val) => {
+                                try {
+                                    if (val == null) return [];
+                                    let arr;
+                                    if (Array.isArray(val)) {
+                                        arr = val;
+                                    } else if (typeof val === "string") {
+                                        let s = val.trim();
+                                        // Try parse JSON array like '["2009-..."]'
+                                        if ((s.startsWith("[") && s.endsWith("]"))) {
+                                            try {
+                                                const parsed = JSON.parse(s);
+                                                if (Array.isArray(parsed)) arr = parsed;
+                                            } catch (_) {
+                                                // fall through
+                                            }
+                                        }
+                                        if (!arr) {
+                                            // Split on commas if present; else single value
+                                            arr = s.includes(",") ? s.split(",") : [s];
+                                        }
+                                    } else {
+                                        // other primitive types
+                                        arr = [String(val)];
+                                    }
+                                    // Clean quotes and whitespace, remove empties, dedupe while preserving order
+                                    const seen = new Set();
+                                    const clean = [];
+                                    for (const it of arr) {
+                                        if (it == null) continue;
+                                        let t = String(it).trim();
+                                        if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+                                            t = t.slice(1, -1).trim();
+                                        }
+                                        if (t && !seen.has(t)) {
+                                            seen.add(t);
+                                            clean.push(t);
+                                        }
+                                    }
+                                    return clean;
+                                } catch (e) {
+                                    return [];
+                                }
+                            };
+
+                            const normParent = normalizeToIds(isPartOf);
+                            if (normParent.length > 0) {
+                                obj["crm:P46i_forms_part_of"] = { "@id": `${BASE_OBJ_URI}${normParent[0]}` };
+                            }
+
+                            const normParts = normalizeToIds(hasParts);
+                            if (normParts.length > 0) {
+                                obj["crm:P46_has_component"] = normParts.map(p => ({ "@id": `${BASE_OBJ_URI}${p}` }));
+                            }
+
+                            return res.send(obj); // Stop execution
+                        }
+                    } catch (e) {
+                        console.warn("Enrichment (resolve branch) failed:", e);
+                        // fallback to original response
+                        return res.send(resolve[0]["LDES_raw"]["object"]);
+                    }
                 }
             }
         } catch (e) {
@@ -131,6 +204,68 @@ export function requestObject(app, BASE_URI) {
                         } else {
                             // if format .json redirect to machine-readable page.
                             // res.set('Content-Type', 'application/json+ld;charset=utf-8')
+                            try {
+                                const row = result_cidoc && result_cidoc[0] ? result_cidoc[0] : (x && x[0] ? x[0] : null);
+                                if (row && row["LDES_raw"] && row["LDES_raw"]["object"]) {
+                                    const obj = row["LDES_raw"]["object"]; // JSON-LD object to enrich
+                                    const BASE_OBJ_URI = "https://data.designmuseumgent.be/v1/id/object/";
+                                    const isPartOf = row["isPartOf"]; // could be string or array
+                                    const hasParts = row["hasParts"]; // could be array or string
+
+                                    const normalizeToIds = (val) => {
+                                        try {
+                                            if (val == null) return [];
+                                            let arr;
+                                            if (Array.isArray(val)) {
+                                                arr = val;
+                                            } else if (typeof val === "string") {
+                                                let s = val.trim();
+                                                if ((s.startsWith("[") && s.endsWith("]"))) {
+                                                    try {
+                                                        const parsed = JSON.parse(s);
+                                                        if (Array.isArray(parsed)) arr = parsed;
+                                                    } catch (_) {}
+                                                }
+                                                if (!arr) {
+                                                    arr = s.includes(",") ? s.split(",") : [s];
+                                                }
+                                            } else {
+                                                arr = [String(val)];
+                                            }
+                                            const seen = new Set();
+                                            const clean = [];
+                                            for (const it of arr) {
+                                                if (it == null) continue;
+                                                let t = String(it).trim();
+                                                if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+                                                    t = t.slice(1, -1).trim();
+                                                }
+                                                if (t && !seen.has(t)) {
+                                                    seen.add(t);
+                                                    clean.push(t);
+                                                }
+                                            }
+                                            return clean;
+                                        } catch (e) {
+                                            return [];
+                                        }
+                                    };
+
+                                    const normParent = normalizeToIds(isPartOf);
+                                    if (normParent.length > 0) {
+                                        obj["crm:P46i_forms_part_of"] = { "@id": `${BASE_OBJ_URI}${normParent[0]}` };
+                                    }
+
+                                    const normParts = normalizeToIds(hasParts);
+                                    if (normParts.length > 0) {
+                                        obj["crm:P46_has_component"] = normParts.map(p => ({ "@id": `${BASE_OBJ_URI}${p}` }));
+                                    }
+
+                                    return res.send(obj);
+                                }
+                            } catch (e) {
+                                console.warn("Enrichment (default branch) failed:", e);
+                            }
                             return res.send(result_cidoc[0]["LDES_raw"]["object"]);
                         }
                         //todo: add route to page when not published yet. -- this object has not been published yet.

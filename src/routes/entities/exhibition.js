@@ -16,6 +16,7 @@ export function requestExhibition(app, BASE_URI) {
         }
     }
 
+    app.get('/id/exhibition/:exhibitionPID', exhibitionHandler) // fallback for LDES
     app.get('/v1/id/exhibition/:exhibitionPID', exhibitionHandler) // Flemish URI standard
     app.get('/v1/id/ark:/29417/exhibition/:exhibitionPID', exhibitionHandler) // EU? URI standard (ARK)
 

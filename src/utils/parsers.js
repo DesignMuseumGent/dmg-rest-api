@@ -223,7 +223,7 @@ export async function fetchAllExhibitions() {
 export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
   const { data } = await supabase
     .from("dmg_tentoonstelling_LDES")
-    .select("LDES_raw")
+    .select("LDES_raw, text_NL, text_EN, text_FR, title_EN, title_FR, title_NL")
     .eq("exh_PID", ExhibitionPID);
   return data;
 }

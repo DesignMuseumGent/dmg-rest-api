@@ -1,8 +1,8 @@
 
 // color API
 
-import {fetchAllLDESrecordsObjects} from "../../utils/parsers.js";
-import {colors_dict} from "../../utils/colors_dict.js";
+import {fetchAllLDESrecordsObjects} from "../../../utils/parsers.js";
+import {colors_dict} from "../../../utils/colors_dict.js";
 
 function addImageUri(filteredObjects, object, BASE_URI) {
     if (object["iiif_image_uris"]) {
@@ -18,9 +18,9 @@ function addImageUri(filteredObjects, object, BASE_URI) {
                 "@type": "E38_Image",
                 "cidoc:P1_is_identified_by": uri,
                 "cidoc:P138_represents": {
-                    "@id": `${BASE_URI}id/${object["objectNumber"]}`,
+                    "@id": `${BASE_URI}/id/${object["objectNumber"]}`,
                     "@type": "E22_Man-Made_Object",
-                    "cidoc:P1_is_identified_by": `${BASE_URI}id/object/${object["objectNumber"]}`
+                    "cidoc:P1_is_identified_by": `${BASE_URI}/id/object/${object["objectNumber"]}`
                 },
             });
         })
@@ -29,12 +29,12 @@ function addImageUri(filteredObjects, object, BASE_URI) {
 
 export function requestByColor(app, BASE_URI) {
     // Returns the dictionary of available colors
-    app.get("/v1/colors/", (req, res) => {
+    app.get("/colors/", (req, res) => {
         res.status(200).send(colors_dict); // colors_dict should be predefined in your application
     });
 
     // Fetches objects that match a given color
-    app.get("/v1/color-api/:color", async (req, res) => {
+    app.get("/color-api/:color", async (req, res) => {
         try {
             // Step 1: Fetch all data and prepare inputs
             const objects = await fetchAllLDESrecordsObjects(); // Fetch objects from the database
@@ -93,15 +93,15 @@ export function requestByColor(app, BASE_URI) {
                     },
                 ],
                 "@type": "GecureerdeCollectie",
-                "@id": `${BASE_URI}color-api/${targetColor}?image=true`,
+                "@id": `${BASE_URI}/color-api/${targetColor}?image=true`,
                 "hydra:totalItems": totalItems,
                 "hydra:view": {
-                    "@id": `${BASE_URI}color-api/${targetColor}?image=true&page=${page}`,
+                    "@id": `${BASE_URI}/color-api/${targetColor}?image=true&page=${page}`,
                     "@type": "PartialCollectionView",
-                    "hydra:first": `${BASE_URI}color-api/${targetColor}?image=true&page=1`,
-                    "hydra:last": `${BASE_URI}color-api/${targetColor}?image=true&page=${totalPages}`,
-                    "hydra:previous": page > 1 ? `${BASE_URI}color-api/${targetColor}?image=true&page=${page - 1}` : null,
-                    "hydra:next": page < totalPages ? `${BASE_URI}color-api/${targetColor}?image=true&page=${page + 1}` : null,
+                    "hydra:first": `${BASE_URI}/color-api/${targetColor}?image=true&page=1`,
+                    "hydra:last": `${BASE_URI}/color-api/${targetColor}?image=true&page=${totalPages}`,
+                    "hydra:previous": page > 1 ? `${BASE_URI}/color-api/${targetColor}?image=true&page=${page - 1}` : null,
+                    "hydra:next": page < totalPages ? `${BASE_URI}/color-api/${targetColor}?image=true&page=${page + 1}` : null,
                 },
                 "GecureerdeCollectie.curator": "Olivier Van D'huynslager",
                 "hydra:description": "curated API that allows agents to query objects from the collection of Design Museum Gent based on various color systems.",

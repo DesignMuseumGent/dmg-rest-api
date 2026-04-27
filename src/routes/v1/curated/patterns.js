@@ -1,4 +1,4 @@
-import {fetchPatterns} from "../../utils/parsers.js";
+import {fetchPatterns} from "../../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
     "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
@@ -7,7 +7,7 @@ const COMMON_CONTEXT = [
 ];
 
 export function patternAPI(app, BASE_URI) {
-    app.get("/v1/pattern-api/", async (req, res) => {
+    app.get("/pattern-api/", async (req, res) => {
 
         let {collection = "tegels"} = req.query
 
@@ -21,7 +21,7 @@ export function patternAPI(app, BASE_URI) {
         for (let o = 0; o < patterns.length; o++) {
             let record = patterns[o];
             let object = {
-                "@id": `${BASE_URI}id/object/${record["objectNumber"]}`,
+                "@id": `${BASE_URI}/id/object/${record["objectNumber"]}`,
                 "image": record["IIIF"]
             }
             objects.push(object);
@@ -34,7 +34,7 @@ export function patternAPI(app, BASE_URI) {
                 { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
             ],
             "@type": "GecureerdeCollectie",
-            "@id": `${BASE_URI}pattern-api`,
+            "@id": `${BASE_URI}/pattern-api`,
             "hydra:totalItems": patterns.length,
             "GecureerdeCollectie.curator": "https://oliviervandhuynslager.net",
             "GecureerdeCollectie.bestaatUit": objects

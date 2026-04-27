@@ -1,4 +1,4 @@
-import { fetchPaginatedExhibitions } from "../../utils/parsers.js";
+import { fetchPaginatedExhibitions } from "../../../utils/parsers.js";
 
 const parseIdentification = (title) => ({
     "@type": "cidoc:E33_E41_Linguistic_Appelation",
@@ -51,14 +51,14 @@ const parseExhibition = (exh, BASE_URI) => {
     const identifier = extractIdentifier();
 
     return {
-        "@id": identifier ? `${BASE_URI}id/exhibition/${identifier}` : `${BASE_URI}id/exhibition/null`,
+        "@id": identifier ? `${BASE_URI}/id/exhibition/${identifier}` : `${BASE_URI}/id/exhibition/null`,
         "@type": "Activiteit",
         "cidoc:P1_is_identified_by": parseIdentification(title),
     };
 };
 
 export function requestExhibitions(app, BASE_URI) {
-    app.get("/v1/id/exhibitions", async (req, res) => {
+    app.get("/id/exhibitions", async (req, res) => {
         try {
             // Step 1: Set headers
             res.setHeader("Content-type", "application/ld+json");
@@ -99,7 +99,7 @@ export function requestExhibitions(app, BASE_URI) {
             const urlForPage = (p) => {
                 const qs = new URLSearchParams(qsBase);
                 qs.set("pageNumber", String(p));
-                return `${BASE_URI}id/exhibitions?${qs.toString()}`;
+                return `${BASE_URI}/id/exhibitions?${qs.toString()}`;
             };
 
             res.status(200).json({
@@ -113,7 +113,7 @@ export function requestExhibitions(app, BASE_URI) {
                     },
                 ],
                 "@type": "GecureerdeCollectie",
-                "@id": `${BASE_URI}id/exhibitions`,
+                "@id": `${BASE_URI}/id/exhibitions`,
                 "hydra:view": {
                     "@id": urlForPage(pageNumber),
                     "@type": "PartialCollectionView",

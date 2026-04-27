@@ -4,13 +4,13 @@ import {
     fetchAuthentication,
     fetchLDESAllAgents,
     parseBoolean
-} from "../../utils/parsers.js";
-import {supabase} from "../../../supabaseClient.js";
+} from "../../../utils/parsers.js";
+import {supabase} from "../../../../supabaseClient.js";
 export function Dump(app, BASE_URI)  {
 
     let types = ["concepts", "objects", "agents", "exhibitions"]
 
-    app.get("/v1/dump/:type", async(req, res)=> {
+    app.get("/dump/:type", async(req, res)=> {
         // await RES from DB req
         // if not existing type; return error message
 

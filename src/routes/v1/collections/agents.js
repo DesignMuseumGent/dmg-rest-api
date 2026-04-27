@@ -1,4 +1,4 @@
-import { fetchPaginatedAgents } from "../../utils/parsers.js";
+import { fetchPaginatedAgents } from "../../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/persoon-basis.jsonld",
@@ -7,7 +7,7 @@ const COMMON_CONTEXT = [
 ];
 
 export function requestAgents(app, BASE_URI) {
-    app.get("/v1/id/agents/", async (req, res) => {
+    app.get("/id/agents/", async (req, res) => {
         try {
             // Step 1: Set headers
             res.setHeader("Content-type", "application/ld+json");
@@ -98,7 +98,7 @@ export function requestAgents(app, BASE_URI) {
                 })
                 : agentsData.map((agent) => ({
                     "@context": COMMON_CONTEXT,
-                    "@id": `${BASE_URI}id/agent/${agent.agent_ID}`,
+                    "@id": `${BASE_URI}/id/agent/${agent.agent_ID}`,
                     "@type": "Persoon",
                     "Persoon.identificator": [
                         {
@@ -121,7 +121,7 @@ export function requestAgents(app, BASE_URI) {
             const urlForPage = (p) => {
                 const qs = new URLSearchParams(qsBase);
                 qs.set("pageNumber", String(p));
-                return `${BASE_URI}id/agents?${qs.toString()}`;
+                return `${BASE_URI}/id/agents?${qs.toString()}`;
             };
 
             res.status(200).json({
@@ -130,7 +130,7 @@ export function requestAgents(app, BASE_URI) {
                     { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
                 ],
                 "@type": "GecureerdeCollectie",
-                "@id": `${BASE_URI}id/agents`,
+                "@id": `${BASE_URI}/id/agents`,
                 "hydra:totalItems": total,
                 "hydra:view": {
                     "@id": urlForPage(pageNumber),

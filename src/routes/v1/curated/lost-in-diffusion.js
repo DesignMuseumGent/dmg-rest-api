@@ -1,7 +1,7 @@
-import {fetchAllLostInDiffusion} from "../../utils/parsers.js";
+import {fetchAllLostInDiffusion} from "../../../utils/parsers.js";
 
 export function requestLostInDiffusion(app, BASE_URI) {
-    app.get('/v1/lost-in-diffusion/', async(req, res) => {
+    app.get('/lost-in-diffusion/', async(req, res) => {
         // fetch data
         const diffusedObjects = await fetchAllLostInDiffusion()
         const filteredObjects = []
@@ -85,7 +85,7 @@ export function requestLostInDiffusion(app, BASE_URI) {
                     "cidoc": "http://www.cidoc-crm.org/cidoc-crm/",
                     "ex": "http://example.org/"
                 },
-                "@id": `${BASE_URI}lost-in-diffusion/entity/${diffusedObject["lid-id"]}`,
+                "@id": `${BASE_URI}/lost-in-diffusion/entity/${diffusedObject["lid-id"]}`,
                 "@type": "schema:CreativeWork",
                 "schema:name": `AI Generated ${diffusedObjectType}`,
                 "prov:wasDerivedFrom": `https://data.designmuseum.be/v1/id/object/${diffusedObject["original-id"]}`,
@@ -122,15 +122,15 @@ export function requestLostInDiffusion(app, BASE_URI) {
                 }
             ],
             "@type": "GecureerdeCollectie",
-            "@id": `${BASE_URI}lost-in-diffusion/`,
+            "@id": `${BASE_URI}/lost-in-diffusion/`,
             "hydra:totalItems": diffusedObjects.length,
             "hydra:view": {
-                "@id": `${BASE_URI}lost-in-diffusion?page=${page}`,
+                "@id": `${BASE_URI}/lost-in-diffusion?page=${page}`,
                 "@type": "PartialCollectionView",
-                "hydra:first": `${BASE_URI}lost-in-diffusion?page=1`,
-                "hydra:last": `${BASE_URI}lost-in-diffusion?page=${totalPages}`,
-                "hydra:previous": previousPage? `${BASE_URI}lost-in-diffusion?page=${previousPage}` : null,
-                "hydra:next": nextPage? `${BASE_URI}lost-in-diffusion?page=${nextPage}` : null,
+                "hydra:first": `${BASE_URI}/lost-in-diffusion?page=1`,
+                "hydra:last": `${BASE_URI}/lost-in-diffusion?page=${totalPages}`,
+                "hydra:previous": previousPage? `${BASE_URI}/lost-in-diffusion?page=${previousPage}` : null,
+                "hydra:next": nextPage? `${BASE_URI}/lost-in-diffusion?page=${nextPage}` : null,
             },
             "GecureerdeCollectie.curator": "Olivier Van D'huynslager, Kasper Jordaens",
             "hydra:description": "curated API returning results from the Lost in Diffusion collection of Design Museum Gent.",

@@ -1,4 +1,4 @@
-import {fetchLDESRecordByAgentID} from "../../utils/parsers.js";
+import {fetchLDESRecordByAgentID} from "../../../utils/parsers.js";
 import console from "node:console";
 
 export function requestAgent(app, BASE_URI) {
@@ -84,6 +84,6 @@ export function requestAgent(app, BASE_URI) {
         }
     }
 
-    app.get('/v1/id/agent/:agentPID', agentHandler);
-    app.get('/v1/id/ark:/29417/agent/:agentPID', agentHandler);
+    app.get('/id/agent/:agentPID', agentHandler);
+    app.get('/id/ark:/29417/agent/:agentPID', agentHandler);
 }

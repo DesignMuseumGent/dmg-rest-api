@@ -1,4 +1,4 @@
-import {fetchAllConcepts, fetchConcept} from "../../utils/parsers.js";
+import {fetchAllConcepts, fetchConcept} from "../../../utils/parsers.js";
 
 export function requestConcept(app, BASE_URI) {
     const conceptHandler = async(req, res) => {
@@ -24,8 +24,7 @@ export function requestConcept(app, BASE_URI) {
             })
         }
     }
-
-    app.get("/v1/id/concept/:id", conceptHandler)
-    app.get("/v1/id/ark:/29417/concept/:id", conceptHandler)
+    app.get("/id/concept/:id", conceptHandler)
+    app.get("/id/ark:/29417/concept/:id", conceptHandler)
 }
 

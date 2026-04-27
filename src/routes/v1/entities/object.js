@@ -1,4 +1,4 @@
-import { fetchLDESRecordByObjectNumber } from "../../utils/parsers.js";
+import { fetchLDESRecordByObjectNumber } from "../../../utils/parsers.js";
 
 // constants
 const ERROR_410 = "the object is permanently removed from our collection";
@@ -77,7 +77,7 @@ export function requestObject(app, BASE_URI) {
                             const obj = row["LDES_raw"]["object"]; // JSON-LD object to enrich
 
                             // Helper: add crm:P46 relations based on Supabase columns
-                            const BASE_OBJ_URI = "https://data.designmuseumgent.be/v1/id/object/";
+                            const BASE_OBJ_URI = `${BASE_URI}/id/object/`;
                             const isPartOf = row["isPartOf"]; // could be string or array
                             const hasParts = row["hasParts"]; // could be array or string
 
@@ -208,7 +208,7 @@ export function requestObject(app, BASE_URI) {
                                 const row = result_cidoc && result_cidoc[0] ? result_cidoc[0] : (x && x[0] ? x[0] : null);
                                 if (row && row["LDES_raw"] && row["LDES_raw"]["object"]) {
                                     const obj = row["LDES_raw"]["object"]; // JSON-LD object to enrich
-                                    const BASE_OBJ_URI = "https://data.designmuseumgent.be/v1/id/object/";
+                                    const BASE_OBJ_URI = `${BASE_URI}/id/object/`;
                                     const isPartOf = row["isPartOf"]; // could be string or array
                                     const hasParts = row["hasParts"]; // could be array or string
 
@@ -288,6 +288,6 @@ export function requestObject(app, BASE_URI) {
         }
     }
 
-    app.get("/v1/id/object/:objectNumber.:format?", objectHandler);
-    app.get("/v1/id/ark:/29417/object/:objectNumber.:format?", objectHandler);
+    app.get("/id/object/:objectNumber.:format?", objectHandler);
+    app.get("/id/ark:/29417/object/:objectNumber.:format?", objectHandler);
 }

@@ -1,7 +1,7 @@
-import {fetchAllEasyObjects} from "../../utils/parsers.js";
+import {fetchAllEasyObjects} from "../../../utils/parsers.js";
 
 export function requestEasyObjects(app, BASE_URI){
-    app.get("/v1/id/easy/", async(req,res)=>{
+    app.get("/id/easy/", async(req,res)=>{
         const records = await fetchAllEasyObjects();
         const filteredObjects = [];
         let allMatchedRecords = []
@@ -14,7 +14,7 @@ export function requestEasyObjects(app, BASE_URI){
         for (let i = 0; i < records.length; i++) {
             let record = records[i]
             let object = {
-                "@id": `${BASE_URI}id/object/${record["OBJECTNUMBER"]}`,
+                "@id": `${BASE_URI}/id/object/${record["OBJECTNUMBER"]}`,
                 "objectnumber": record["OBJECTNUMBER"],
                 "title": record["TITLE_NL"],
                 "description": record["DESCRIPTION_NL"],
@@ -40,12 +40,12 @@ export function requestEasyObjects(app, BASE_URI){
         const urlForPage = (p) => {
             const qs = new URLSearchParams(qsBase);
             qs.set("pageNumber", String(p));
-            return `${BASE_URI}id/easy?${qs.toString()}`;
+            return `${BASE_URI}/id/easy?${qs.toString()}`;
         };
 
         res.status(200).json({
             "@type": "GecureerdeCollectie",
-            "@id": `${BASE_URI}id/easy`,
+            "@id": `${BASE_URI}/id/easy`,
             "hydra:totalItems": records.length,
             "hydra:view": {
                 "@id": urlForPage(pageNumber),

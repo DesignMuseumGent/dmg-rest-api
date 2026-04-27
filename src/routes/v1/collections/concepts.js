@@ -1,7 +1,7 @@
-import { fetchPaginatedConcepts } from "../../utils/parsers.js";
+import { fetchPaginatedConcepts } from "../../../utils/parsers.js";
 
 export function requestConcepts(app, BASE_URI) {
-    app.get("/v1/id/concepts/", async (req, res) => {
+    app.get("/id/concepts/", async (req, res) => {
         try {
             // Step 1: Extract query parameters
             let { pageNumber = 1, itemsPerPage = 20, fullRecord = true } = req.query;
@@ -28,7 +28,7 @@ export function requestConcepts(app, BASE_URI) {
                             skos: "http://www.w3.org/2004/02/skos/core#",
                         },
                     ],
-                    "@id": `${BASE_URI}id/concept/${concept.id}`,
+                    "@id": `${BASE_URI}/id/concept/${concept.id}`,
                     "@type": "skos:concept",
                     "skos:prefLabel": concept.LDES_raw.object["skos:prefLabel"],
                     // todo: add scope note
@@ -46,7 +46,7 @@ export function requestConcepts(app, BASE_URI) {
             const urlForPage = (p) => {
                 const qs = new URLSearchParams(qsBase);
                 qs.set("pageNumber", String(p));
-                return `${BASE_URI}id/concepts?${qs.toString()}`;
+                return `${BASE_URI}/id/concepts?${qs.toString()}`;
             };
 
             res.status(200).json({
@@ -56,7 +56,7 @@ export function requestConcepts(app, BASE_URI) {
                         hydra: "http://www.w3.org/ns/hydra/context.jsonld",
                     },
                 ],
-                "@id": `${BASE_URI}id/concepts`,
+                "@id": `${BASE_URI}/id/concepts`,
                 "hydra:totalItems": total,
                 "hydra:view": {
                     "@id": urlForPage(pageNumber),

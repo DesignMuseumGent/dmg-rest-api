@@ -1,4 +1,4 @@
-import {fetchTexts} from "../../utils/parsers.js";
+import {fetchTexts} from "../../../utils/parsers.js";
 
 const CONTEXT = [
     "https://apidg.gent.be/opendata/adlib2eventstream/v1/context/cultureel-erfgoed-event-ap.jsonld",
@@ -15,7 +15,7 @@ const COMMON_CONTEXT = [
 const languages = {"NL": "nl", "EN": "en", "FR": "fr"}
 
 export function requestTexts(app, BASE_URI) {
-    app.get('/v1/id/texts/', async(req, res)=> {
+    app.get('/id/texts/', async(req, res)=> {
         const texts = await fetchTexts() // connect with Supabase and fetch data.
         const catalogue = []; // initialize catalogue
         const filteredtexts = []
@@ -28,7 +28,7 @@ export function requestTexts(app, BASE_URI) {
 
             let catalogueTexts = [];
             let _objectNumber = texts[i]["object_number"]
-            let _objectID = BASE_URI+"id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
+            let _objectID = BASE_URI+"/id/object/"+_objectNumber //todo: add resolver when the object has not been published yet.
 
             for (let language in languages) {
                 let text = texts[i][`text_${language}`]
@@ -66,13 +66,13 @@ export function requestTexts(app, BASE_URI) {
         const urlForPage = (p) => {
             const qs = new URLSearchParams(qsBase);
             qs.set("pageNumber", String(p));
-            return `${BASE_URI}id/texts?${qs.toString()}`;
+            return `${BASE_URI}/id/texts?${qs.toString()}`;
         };
 
         res.status(200).json({
             "@context": [...COMMON_CONTEXT, { "hydra": "http://www.w3.org/ns/hydra/context.jsonld" }],
             "@type": "GecureerdeCollectie",
-            "@id": `${BASE_URI}id/texts/`,
+            "@id": `${BASE_URI}/id/texts/`,
             "hydra:totalItems": catalogue.length,
             "hydra:view": {
                 "@id": urlForPage(pageNumber),

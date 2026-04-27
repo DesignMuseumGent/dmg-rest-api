@@ -1,4 +1,4 @@
-import { fetchFilteredLDESRecords } from "../../utils/parsers.js";
+import { fetchFilteredLDESRecords } from "../../../utils/parsers.js";
 
 // context
 const COMMON_CONTEXT = [
@@ -17,7 +17,7 @@ const CC_LICENSES = {
 };
 
 export function requestObjects(app, BASE_URI) {
-    app.get("/v1/id/objects/", async (req, res) => {
+    app.get("/id/objects/", async (req, res) => {
         try {
 
             // HEADERS
@@ -108,7 +108,7 @@ export function requestObjects(app, BASE_URI) {
 
                     const obj = {
                         "@context": COMMON_CONTEXT,
-                        "@id": `${BASE_URI}id/object/${record.objectNumber}`,
+                        "@id": `${BASE_URI}/id/object/${record.objectNumber}`,
                         "@type": "MensgemaaktObject",
                         "Object.identificator": [
                             {
@@ -145,7 +145,7 @@ export function requestObjects(app, BASE_URI) {
             const urlForPage = (p) => {
                 const qs = new URLSearchParams(qsBase);
                 qs.set("pageNumber", String(p));
-                return `${BASE_URI}id/objects?${qs.toString()}`;
+                return `${BASE_URI}/id/objects?${qs.toString()}`;
             };
 
             res.status(200).json({

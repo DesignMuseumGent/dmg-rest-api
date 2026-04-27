@@ -1,7 +1,7 @@
 import {
   fetchAuthentication,
   fetchPrivateObjectsWithPagination, // Rewritten helper for optimized fetching
-} from "../../utils/parsers.js";
+} from "../../../utils/parsers.js";
 
 const COMMON_CONTEXT = [
   "https://data.vlaanderen.be/doc/applicatieprofiel/cultureel-erfgoed-object/erkendestandaard/2021-04-22/context/cultureel-erfgoed-object-ap.jsonld",
@@ -10,7 +10,7 @@ const COMMON_CONTEXT = [
 ];
 
 export function requestPrivateObjects(app, BASE_URI) {
-  app.get("/v1/id/private-objects/", async (req, res) => {
+  app.get("/id/private-objects/", async (req, res) => {
     try {
       // Step 1: Authenticate the API key
       const keys = await fetchAuthentication();
@@ -54,7 +54,7 @@ export function requestPrivateObjects(app, BASE_URI) {
       const urlForPage = (p) => {
         const qs = new URLSearchParams(qsBase);
         qs.set("pageNumber", String(p));
-        return `${BASE_URI}id/private-objects?${qs.toString()}`;
+        return `${BASE_URI}/id/private-objects?${qs.toString()}`;
       };
 
       res.status(200).json({
@@ -63,7 +63,7 @@ export function requestPrivateObjects(app, BASE_URI) {
           { hydra: "http://www.w3.org/ns/hydra/context.jsonld" },
         ],
         "@type": "GecureerdeCollectie",
-        "@id": `${BASE_URI}id/private-objects`,
+        "@id": `${BASE_URI}/id/private-objects`,
         "hydra:view": {
           "@id": urlForPage(pageNumber),
           "@type": "PartialCollectionView",

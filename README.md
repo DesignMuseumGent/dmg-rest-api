@@ -1,15 +1,15 @@
 # DESIGN MUSEUM GENT - REST-API
 
 > [!WARNING]
-> **v1 of this API is deprecated** and will be sunset on **31 December 2026**.
-> Please migrate to [v2](https://data.designmuseumgent.be/v2). 
+> **v1 of this API is deprecated** and will be sunset on **8 may 2026**.
+> Please migrate to v2. 
 > v1 will remain available until the sunset date for backwards compatibility.
 
 This **rest-api** exposes **linked-data** related to [Design Museum Gent](https://data.designmuseumgent.be).  It offers a range of information, from metadata and media related to the collection, to details about its programs such as the billboard series and the exhibition archive. The data is harvested from our [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and is exposed based on REST principles. Additionally all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government). 
 
 ## QUICK-START
 
-## ~~v1~~ (deprecated — migrate to [v2](https://data.designmuseumgent.be/v2))
+## ~~v1~~ (deprecated — migrate to v2)
 
 ### DATA CATALOGUES
 Top level **data-catalogues** or DCAT are exposed on the top-level of the API and make use of the [OSLO standard](https://joinup.ec.europa.eu/collection/oslo-open-standards-local-administrations-flanders): 

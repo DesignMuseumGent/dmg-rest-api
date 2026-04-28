@@ -244,6 +244,30 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
   return data;
 }
 
+export async function fetchByAgentID(AgentPID) {
+  console.log('Fetching agent with ID:', AgentPID);
+  const { data, error } = await supabase
+      .from("dmg_personen_LDES")
+      .select("json_ld_v2, wikipedia_bios")
+      .eq("agent_ID", AgentPID);
+
+  if (error) {
+    console.error('Error fetching agent:', error);
+  } else {
+    console.log('Received agent rows:', Array.isArray(data) ? data.length : 0);
+  }
+
+  return data;
+}
+
+export async function fetchExhibitionById(ExhibitionPID) {
+  const { data } = await supabase
+      .from("dmg_tentoonstelling_LDES")
+      .select("json_ld_v2, text_NL, text_EN, text_FR, title_EN, title_FR, title_NL, exh_PID")
+      .eq("exh_PID", ExhibitionPID);
+  return data;
+}
+
 export async function fetchLDESAllAgents(start, end) {
   const { data } = await supabase
       .from("dmg_personen_LDES")

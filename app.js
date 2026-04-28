@@ -53,6 +53,7 @@ app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 // routes
 app.use("/v1", v1Router);
+app.use("/v2", v2Router);
 
 export default app;
 

@@ -1,4 +1,4 @@
-import {fetchLDESrecordsByExhibitionID} from "../../utils/parsers.js";
+import {fetchLDESrecordsByExhibitionID} from "../../../utils/parsers.js";
 
 function makeLangArray(values) {
     return values

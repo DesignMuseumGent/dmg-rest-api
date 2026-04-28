@@ -14,7 +14,7 @@ export function requestExhibition(app, BASE_URI){
 
             if (record[0]["exh_PID"]) {
                 const pid = record[0]["exh_PID"]
-                exh["@id"] = `${BASE_URI}id/exhibition/${pid}`
+                exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
 
                 // add as E42_Identifier
                 const identifier = {

@@ -1,0 +1,193 @@
+import { supabase } from '../../../../supabaseClient.js';
+
+export function requestAgents(app, BASE_URI) {
+    const agentsHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json');
+        res.setHeader('Content-Disposition', 'inline');
+
+        try {
+            const page = parseInt(req.query.page) || 1
+            const itemsPerPage = parseInt(req.query.itemsPerPage) || 10
+            const fullRecord = req.query.fullRecord === 'true'
+            const offset = (page - 1) * itemsPerPage
+
+            // get total count
+            const { count, error: countError } = await supabase
+                .from('dmg_personen_LDES')
+                .select('*', { count: 'exact', head: true })
+
+            if (countError) {
+                console.error('Count error:', countError.message)
+                return res.status(500).json({ error: 'Error fetching agents' })
+            }
+
+            // fetch page of agents — select json_ld_v2 only when needed
+            const selectFields = fullRecord
+                ? 'agent_ID, json_ld_v2, wikipedia_bios'
+                : 'agent_ID, json_ld_v2'
+
+            const { data, error } = await supabase
+                .from('dmg_personen_LDES')
+                .select(selectFields)
+                .range(offset, offset + itemsPerPage - 1)
+                .order('agent_ID', { ascending: true })
+
+            if (error) {
+                console.error('Fetch error:', error.message)
+                return res.status(500).json({ error: 'Error fetching agents' })
+            }
+
+            const totalPages = Math.ceil(count / itemsPerPage)
+            const collectionId = `${BASE_URI}id/agents`
+            const pageId = `${collectionId}?page=${page}&itemsPerPage=${itemsPerPage}${fullRecord ? '&fullRecord=true' : ''}`
+
+            // build hydra pagination view — preserve fullRecord param in all links
+            const paginationParams = (p) =>
+                `${collectionId}?page=${p}&itemsPerPage=${itemsPerPage}${fullRecord ? '&fullRecord=true' : ''}`
+
+            const hydraView = {
+                "@id": pageId,
+                "@type": "hydra:PartialCollectionView",
+                "hydra:first": paginationParams(1),
+                "hydra:last": paginationParams(totalPages),
+            }
+
+            if (page > 1) hydraView["hydra:previous"] = paginationParams(page - 1)
+            if (page < totalPages) hydraView["hydra:next"] = paginationParams(page + 1)
+
+            // build member list
+            const members = (data || []).map(row => {
+                const obj = row["json_ld_v2"] ?? {}
+
+                if (!fullRecord) {
+                    return {
+                        "@id": obj["@id"] ?? `${BASE_URI}id/agent/${row.agent_ID}`,
+                        "@type": "crm:E39_Actor",
+                        "rdfs:label": obj["rdfs:label"] ?? row.agent_ID
+                    }
+                }
+
+                // fullRecord — enrich with wikipedia bios and titles
+                // same enrichment logic as the single agent endpoint
+                if (obj["@context"]) {
+                    obj["@context"]["dcterms"] = "http://purl.org/dc/terms/"
+                }
+
+                let biosRaw = row["wikipedia_bios"]
+                const linguisticObjects = []
+                const titles = []
+
+                const pushBio = (text, lang, src) => {
+                    if (!text || typeof text !== 'string') return
+                    if (text.trim().toLowerCase() === 'no data') return
+                    const entry = {
+                        "@type": "crm:E33_Linguistic_Object",
+                        "rdfs:label": text,
+                        "crm:P2_has_type": {
+                            "@id": "https://data.designmuseumgent.be/v2/id/type/biography",
+                            "@type": "crm:E55_Type",
+                            "rdfs:label": "Biografie"
+                        }
+                    }
+                    if (lang) entry["crm:P72_has_language"] = { "rdfs:label": lang }
+                    if (src) {
+                        entry["crm:P67_refers_to"] = { "@id": src }
+                        if (src.includes("wikipedia.org")) {
+                            entry["dcterms:license"] = "https://creativecommons.org/licenses/by-sa/4.0/"
+                        }
+                    }
+                    linguisticObjects.push(entry)
+                }
+
+                try {
+                    if (typeof biosRaw === 'string') {
+                        const trimmed = biosRaw.trim()
+                        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                            try { biosRaw = JSON.parse(trimmed) } catch {}
+                        }
+                    }
+
+                    if (Array.isArray(biosRaw)) {
+                        for (const b of biosRaw) {
+                            if (!b || typeof b !== 'object') continue
+                            const text = b['@value'] || b.value || b.text || b.bio || b.snippet
+                            const lang = b['@language'] || b.language || b.lang
+                            const src = b['dcterms:source'] || b.source || b.url
+                            pushBio(text, lang, src)
+                        }
+                    } else if (biosRaw && typeof biosRaw === 'object') {
+                        for (const [lang, v] of Object.entries(biosRaw)) {
+                            if (typeof v === 'string') {
+                                pushBio(v, lang)
+                            } else if (v && typeof v === 'object') {
+                                const text = v['@value'] || v.value || v.text || v.bio || v.snippet
+                                const src = v['dcterms:source'] || v.source || v.url
+                                pushBio(text, lang, src)
+
+                                const langMap = { nl: "NLD", en: "ENG", fr: "FRA" }
+                                if (v.title && langMap[lang]) {
+                                    titles.push({
+                                        "@type": "crm:E41_Appellation",
+                                        "rdfs:label": v.title,
+                                        "crm:P2_has_type": {
+                                            "@id": "http://vocab.getty.edu/aat/300404670",
+                                            "@type": "crm:E55_Type",
+                                            "rdfs:label": "preferred title"
+                                        },
+                                        "crm:P72_has_language": {
+                                            "@id": `http://publications.europa.eu/resource/authority/language/${langMap[lang]}`
+                                        },
+                                        ...(src && { "crm:P67_refers_to": { "@id": src } }),
+                                        ...(src?.includes("wikipedia.org") && {
+                                            "dcterms:license": "https://creativecommons.org/licenses/by-sa/4.0/"
+                                        })
+                                    })
+                                }
+                            }
+                        }
+                    } else if (typeof biosRaw === 'string') {
+                        pushBio(biosRaw)
+                    }
+                } catch (e) {
+                    console.error('Error parsing wikipedia_bios:', e)
+                }
+
+                if (titles.length > 0) {
+                    if (Array.isArray(obj["crm:P1_is_identified_by"])) {
+                        obj["crm:P1_is_identified_by"].push(...titles)
+                    } else {
+                        obj["crm:P1_is_identified_by"] = titles
+                    }
+                }
+
+                if (linguisticObjects.length > 0) {
+                    obj["crm:P67i_is_referred_to_by"] = linguisticObjects
+                }
+
+                return obj
+            })
+
+            const response = {
+                "@context": {
+                    "crm": "http://www.cidoc-crm.org/cidoc-crm/",
+                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "hydra": "http://www.w3.org/ns/hydra/core#",
+                    "owl": "https://www.w3.org/2002/07/owl#"
+                },
+                "@id": collectionId,
+                "@type": "hydra:Collection",
+                "hydra:totalItems": count,
+                "hydra:view": hydraView,
+                "hydra:member": members
+            }
+
+            return res.status(200).json(response)
+
+        } catch (error) {
+            console.error('Error handling agents request:', error)
+            return res.status(500).json({ error: 'Internal Server Error' })
+        }
+    }
+
+    app.get('/id/agents', agentsHandler)
+}

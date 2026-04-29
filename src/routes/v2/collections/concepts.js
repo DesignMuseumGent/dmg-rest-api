@@ -62,7 +62,7 @@ export function requestConcepts(app, BASE_URI) {
             const members = (data || []).map(row => {
                 if (!fullRecord) {
                     return {
-                        "@id": `${BASE_URI}id/concept/${row.id}`,
+                        "@id": `${BASE_URI}/id/concept/${row.id}`,
                         "@type": "crm:E55_Type",
                         "rdfs:label": row["concept_label_nl"] ?? row.id
                     }

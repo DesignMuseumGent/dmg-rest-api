@@ -61,7 +61,7 @@ export function requestAgents(app, BASE_URI) {
 
                 if (!fullRecord) {
                     return {
-                        "@id": obj["@id"] ?? `${BASE_URI}id/agent/${row.agent_ID}`,
+                        "@id": obj["@id"] ?? `${BASE_URI}/id/agent/${row.agent_ID}`,
                         "@type": "crm:E39_Actor",
                         "rdfs:label": obj["rdfs:label"] ?? row.agent_ID
                     }

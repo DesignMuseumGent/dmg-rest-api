@@ -5,6 +5,7 @@ export function requestConcept(app, BASE_URI) {
         res.setHeader('Content-Type', 'application/ld+json');
         res.setHeader('Content-Disposition', 'inline');
 
+
         try {
             const ConceptPID = req.params.ConceptPID;
             const record = await fetchByConceptID(ConceptPID);

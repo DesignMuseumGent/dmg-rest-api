@@ -276,6 +276,22 @@ export async function fetchByConceptID(ConceptPID) {
   return data;
 }
 
+export async function fetchObjectByID(ObjectPID) {
+  console.log('Fetching object with ID:', ObjectPID);
+  const { data, error } = await supabase
+      .from("dmg_objects_LDES")
+      .select("json_ld_v2, objectNumber, iiif_image_uris, index_classification, iiif_manifest_RESPONSE, HEX_values, color_names, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en")
+      .eq("objectNumber", ObjectPID);
+
+  if (error) {
+    console.error('Error fetching object:', error);
+  } else {
+    console.log('Received object rows:', Array.isArray(data) ? data.length : 0);
+  }
+
+  return data;
+}
+
 export async function fetchExhibitionById(ExhibitionPID) {
   const { data } = await supabase
       .from("dmg_tentoonstelling_LDES")

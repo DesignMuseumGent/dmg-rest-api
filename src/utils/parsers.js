@@ -260,6 +260,22 @@ export async function fetchByAgentID(AgentPID) {
   return data;
 }
 
+export async function fetchByConceptID(ConceptPID) {
+  console.log('Fetching concept with ID:', ConceptPID);
+  const { data, error } = await supabase
+      .from("dmg_thesaurus_LDES")
+      .select("json_ld_v2, concept_scope_en, concept_scope_nl, concept_scope_fr, concept_label_nl, concept_label_fr, concept_label_en")
+      .eq("id", ConceptPID);
+
+  if (error) {
+    console.error('Error fetching concept:', error);
+  } else {
+    console.log('Received concept rows:', Array.isArray(data) ? data.length : 0);
+  }
+
+  return data;
+}
+
 export async function fetchExhibitionById(ExhibitionPID) {
   const { data } = await supabase
       .from("dmg_tentoonstelling_LDES")

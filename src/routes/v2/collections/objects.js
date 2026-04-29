@@ -87,7 +87,7 @@ export function requestObjects(app, BASE_URI) {
                     // lightweight stub — no json_ld_v2 needed
                     if (!fullRecord) {
                         return {
-                            "@id": `${BASE_URI}id/object/${row.objectNumber}`,
+                            "@id": `${BASE_URI}/id/object/${row.objectNumber}`,
                             "@type": "crm:E22_Human-Made_Object",
                             "rdfs:label": row["object_title_nl"] ?? row.objectNumber,
                             ...(row["iiif_manifest"] && {

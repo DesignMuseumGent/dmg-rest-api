@@ -39,10 +39,10 @@ export function requestObject(app, BASE_URI) {
                 } else {
                    // console.log(`   ↪ Redirecting to: ${BASE_URI}id/object/${resolvedNumber}`)
                     return res.status(301)
-                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
+                        .setHeader('Location', `${BASE_URI}/id/object/${resolvedNumber}`)
                         .json({
                             message: `This object has been merged into ${resolvedNumber}.`,
-                            resolved: `${BASE_URI}id/object/${resolvedNumber}`
+                            resolved: `${BASE_URI}/id/object/${resolvedNumber}`
                         })
                 }
             }

@@ -49,7 +49,8 @@ export function requestAgent(app, BASE_URI) {
 
             };
 
-            // parse biosRaw and call pushBio
+            const titles = []
+
             try {
                 if (typeof biosRaw === 'string') {
                     const trimmed = biosRaw.trim();
@@ -74,6 +75,28 @@ export function requestAgent(app, BASE_URI) {
                             const text = v['@value'] || v.value || v.text || v.bio || v.snippet;
                             const src = v['dcterms:source'] || v.source || v.url;
                             pushBio(text, lang, src);
+
+                            // ← add this: extract title from same entry
+                            const langMap = { nl: "NLD", en: "ENG", fr: "FRA" }
+                            if (v.title && langMap[lang]) {
+                                titles.push({
+                                    "@type": "crm:E41_Appellation",
+                                    "rdfs:label": v.title,
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300404670",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "preferred title"
+                                    },
+                                    "crm:P72_has_language": {
+                                        "@id": `http://publications.europa.eu/resource/authority/language/${langMap[lang]}`
+                                    },
+                                    // ← add source and license
+                                    ...(src && { "crm:P67_refers_to": { "@id": src } }),
+                                    ...(src?.includes("wikipedia.org") && {
+                                        "dcterms:license": "https://creativecommons.org/licenses/by-sa/4.0/"
+                                    })
+                                })
+                            }
                         }
                     }
                 } else if (typeof biosRaw === 'string') {
@@ -81,6 +104,15 @@ export function requestAgent(app, BASE_URI) {
                 }
             } catch (e) {
                 console.error('Error parsing wikipedia_bios:', e);
+            }
+
+            // attach titles to P1_is_identified_by
+            if (titles.length > 0) {
+                if (Array.isArray(obj["crm:P1_is_identified_by"])) {
+                    obj["crm:P1_is_identified_by"].push(...titles)
+                } else {
+                    obj["crm:P1_is_identified_by"] = titles
+                }
             }
 
             if (linguisticObjects.length > 0) {

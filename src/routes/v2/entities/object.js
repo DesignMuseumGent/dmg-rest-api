@@ -7,6 +7,11 @@ export function requestObject(app, BASE_URI) {
 
         const { ObjectPID } = req.params;
 
+        // handle permanently removed objects
+        if (ObjectPID === "REMOVED") {
+            return res.status(410).json({ error: "This object has been permanently removed from our collection." });
+        }
+
         try {
             const record = await fetchObjectByID(ObjectPID);
 
@@ -14,7 +19,36 @@ export function requestObject(app, BASE_URI) {
                 return res.status(404).json({ error: 'Object not found' });
             }
 
+            //console.log(record)
+
             const row = record[0]
+
+            if (row["RESOLVES_TO"]) {
+                //console.log(`\n🔀 Resolver triggered for: ${ObjectPID}`)
+                //console.log(`   RESOLVES_TO value: "${row["RESOLVES_TO"]}"`)
+
+                const resolvedNumber = row["RESOLVES_TO"].replace("id/object/", "")
+                //console.log(`   Resolved object number: "${resolvedNumber}"`)
+
+                // skip self-referencing resolvers
+                if (resolvedNumber === ObjectPID) {
+                   // console.log(`   ⚠️  RESOLVES_TO points to itself — skipping resolver, serving record directly`)
+                } else if (resolvedNumber.includes("REMOVED")) {
+                    //console.log(`   ❌ Object is marked as REMOVED — returning 410`)
+                    return res.status(410).json({ error: "This object has been permanently removed from our collection." })
+                } else {
+                   // console.log(`   ↪ Redirecting to: ${BASE_URI}id/object/${resolvedNumber}`)
+                    return res.status(301)
+                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
+                        .json({
+                            message: `This object has been merged into ${resolvedNumber}.`,
+                            resolved: `${BASE_URI}id/object/${resolvedNumber}`
+                        })
+                }
+            }
+
+            //console.log(`✅ Serving record directly for ${ObjectPID}`)
+
             const obj = row["json_ld_v2"] ?? {}
 
             // enrich with multilingual titles from separate columns
@@ -25,7 +59,6 @@ export function requestObject(app, BASE_URI) {
 
             if (appellations.length > 0) {
                 const langsToReplace = ["NLD", "FRA", "ENG"]
-                // remove existing appellations for these languages to avoid duplicates
                 if (Array.isArray(obj["crm:P1_is_identified_by"])) {
                     obj["crm:P1_is_identified_by"] = obj["crm:P1_is_identified_by"].filter(node => {
                         const langId = node["crm:P72_has_language"]?.["@id"] ?? ""
@@ -65,6 +98,7 @@ export function requestObject(app, BASE_URI) {
                 }))
             }
 
+            // enrich with color data
             const hexValues = row["HEX_values"]?.[0] ?? []
             const colorNames = row["color_names"]?.[0] ?? []
             const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
@@ -124,4 +158,5 @@ export function requestObject(app, BASE_URI) {
     };
 
     app.get(`/id/object/:ObjectPID`, objectHandler);
+    app.get(`/id/ark:/29417/object/:ObjectPID`, objectHandler);
 }

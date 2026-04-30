@@ -8,7 +8,7 @@
 
 This **REST API** exposes **linked data** related to [Design Museum Gent](https://data.designmuseumgent.be). It provides access to collection objects, agents, exhibitions and thesaurus concepts as **CIDOC-CRM compliant JSON-LD**. The data is harvested from the [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government).
 
-📖 **Full documentation**: [data.designmuseumgent.be](https://data.designmuseumgent.be)
+📖 **Full documentation**: [api.designmuseumgent.be](https://api.designmuseumgent.be)
 
 ---
 

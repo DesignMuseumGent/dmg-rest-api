@@ -7,10 +7,14 @@ import {requestAgents} from "./collections/agents.js";
 import {requestObjects} from "./collections/objects.js";
 import {requestConcepts} from "./collections/concepts.js";
 import {requestExhibitions} from "./collections/exhibitions.js";
+import {requestDCAT} from "../v2/dcat.js";
 
 // import v2 routes
 const v2Router = Router();
 const V2_BASE = "https://data.designmuseumgent.be/v2"
+
+// DCAT
+requestDCAT(v2Router, V2_BASE)
 
 // single entitites
 requestAgent(v2Router, V2_BASE);

@@ -4,6 +4,7 @@ export function requestObject(app, BASE_URI) {
     const objectHandler = async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json');
         res.setHeader('Content-Disposition', 'inline');
+        const showColors = req.query.colors === 'true'
 
         const { ObjectPID } = req.params;
 
@@ -98,56 +99,116 @@ export function requestObject(app, BASE_URI) {
                 }))
             }
 
-            // enrich with color data
-            const hexValues = row["HEX_values"]?.[0] ?? []
-            const colorNames = row["color_names"]?.[0] ?? []
-            const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
+            if (showColors) {
+                // enrich with color data
+                const colorsData = row["colors"] ?? null
+                const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
 
-            if (hexValues.length > 0 && iiifImageUri) {
-                obj["crm:P65_shows_visual_item"] = {
-                    "@id": `${obj["@id"]}/visual`,
-                    "@type": "crm:E36_Visual_Item",
-                    "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300264863",
-                        "@type": "crm:E55_Type",
-                        "rdfs:label": "digital image"
-                    },
-                    "crm:P138i_has_representation": {
-                        "@id": iiifImageUri,
-                        "@type": "crm:E38_Image"
-                    },
-                    "crm:P56_bears_feature": [
-                        {
-                            "@id": `${obj["@id"]}/visual/colors/hex`,
-                            "@type": "crm:E26_Physical_Feature",
+                if (colorsData && iiifImageUri) {
+                    // colorsData is an array of images, each containing an array of colors
+                    const colorFeatures = colorsData.map((imageColors, imageIndex) => {
+                        // group by base color and sum percentages
+                        const baseColorMap = {}
+                        for (const c of imageColors) {
+                            if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
+                            baseColorMap[c.base] += c.percentage
+                        }
+
+                        return {
+                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}`,
+                            "@type": "crm:E36_Visual_Item",
                             "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300056130",
+                                "@id": "http://vocab.getty.edu/aat/300264863",
                                 "@type": "crm:E55_Type",
-                                "rdfs:label": "color"
+                                "rdfs:label": "digital image"
                             },
-                            "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
-                            "crm:P3_has_note": hexValues.map(hex => ({
-                                "@value": hex,
-                                "@type": "xsd:string"
-                            }))
-                        },
-                        ...(colorNames.length > 0 ? [{
-                            "@id": `${obj["@id"]}/visual/colors/css`,
-                            "@type": "crm:E26_Physical_Feature",
-                            "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300056130",
-                                "@type": "crm:E55_Type",
-                                "rdfs:label": "color"
+                            "crm:P138i_has_representation": {
+                                "@id": iiifImageUri,
+                                "@type": "crm:E38_Image"
                             },
-                            "rdfs:comment": "Dominant colors clustered to CSS named colors for indexing",
-                            "crm:P3_has_note": colorNames.map(name => ({
-                                "@value": name,
-                                "@type": "xsd:string"
-                            }))
-                        }] : [])
-                    ]
+                            "crm:P56_bears_feature": [
+                                // exact HEX colors as E26_Physical_Feature
+                                {
+                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
+                                    "@type": "crm:E26_Physical_Feature",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300056130",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "color"
+                                    },
+                                    "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
+                                    "crm:P3_has_note": imageColors.map(c => ({
+                                        "@type": "crm:E62_String",
+                                        "rdf:value": c.hex,
+                                        "crm:P2_has_type": {
+                                            "@id": "http://vocab.getty.edu/aat/300056130",
+                                            "@type": "crm:E55_Type",
+                                            "rdfs:label": "color"
+                                        },
+                                        // percentage as E54_Dimension
+                                        "crm:P43_has_dimension": {
+                                            "@type": "crm:E54_Dimension",
+                                            "crm:P2_has_type": {
+                                                "@id": "http://vocab.getty.edu/aat/300417476",
+                                                "@type": "crm:E55_Type",
+                                                "rdfs:label": "percentage"
+                                            },
+                                            "crm:P90_has_value": {
+                                                "@value": Math.round(c.percentage * 100 * 100) / 100,
+                                                "@type": "xsd:decimal"
+                                            },
+                                            "crm:P91_has_unit": {
+                                                "@id": "http://vocab.getty.edu/aat/300417476",
+                                                "rdfs:label": "%"
+                                            }
+                                        },
+                                        // CSS name as rdfs:label
+                                        "rdfs:label": c.css
+                                    }))
+                                },
+                                // base colors as E26_Physical_Feature
+                                {
+                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
+                                    "@type": "crm:E26_Physical_Feature",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300056130",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "color"
+                                    },
+                                    "rdfs:comment": "Dominant base colors clustered for indexing",
+                                    "crm:P3_has_note": Object.entries(baseColorMap)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([base, pct]) => ({
+                                            "@type": "crm:E62_String",
+                                            "rdf:value": base,
+                                            "crm:P43_has_dimension": {
+                                                "@type": "crm:E54_Dimension",
+                                                "crm:P2_has_type": {
+                                                    "@id": "http://vocab.getty.edu/aat/300417476",
+                                                    "@type": "crm:E55_Type",
+                                                    "rdfs:label": "percentage"
+                                                },
+                                                "crm:P90_has_value": {
+                                                    "@value": Math.round(pct * 100 * 100) / 100,
+                                                    "@type": "xsd:decimal"
+                                                },
+                                                "crm:P91_has_unit": {
+                                                    "@id": "http://vocab.getty.edu/aat/300417476",
+                                                    "rdfs:label": "%"
+                                                }
+                                            }
+                                        }))
+                                }
+                            ]
+                        }
+                    })
+
+                    obj["crm:P65_shows_visual_item"] = colorFeatures.length === 1
+                        ? colorFeatures[0]
+                        : colorFeatures
                 }
             }
+
 
             return res.status(200).json(obj)
 

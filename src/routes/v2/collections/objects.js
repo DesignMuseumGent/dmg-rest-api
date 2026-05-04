@@ -7,13 +7,13 @@ export function requestObjects(app, BASE_URI) {
 
         try {
             const page = parseInt(req.query.page) || 1
-            const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100) // cap at 100
+            const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
             const fullRecord = req.query.fullRecord === 'true'
             const hasImages = req.query.hasImages === 'true'
-            const offset = (page - 1) * itemsPerPage
+            const showColors = req.query.colors === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
+            const offset = (page - 1) * itemsPerPage
 
-            // validate if provided
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
             }
@@ -21,15 +21,20 @@ export function requestObjects(app, BASE_URI) {
             // build count query
             let countQuery = supabase
                 .from('dmg_objects_LDES')
-                .select('objectNumber', { count: 'exact', head: true })  // ← specific column not *
+                .select('objectNumber', { count: 'exact', head: true })
 
             if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
 
-            // build data query — select must come first
-            const selectFields = fullRecord
-                ? 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, HEX_values, color_names, iiif_image_uris, RESOLVES_TO'
-                : 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO'
+            // build data query — select fields depend on fullRecord and showColors
+            let selectFields
+            if (!fullRecord) {
+                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO'
+            } else if (showColors) {
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO'
+            } else {
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO'
+            }
 
             let dataQuery = supabase
                 .from('dmg_objects_LDES')
@@ -40,7 +45,6 @@ export function requestObjects(app, BASE_URI) {
             if (hasImages) dataQuery = dataQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
 
-            // execute both queries in parallel
             const [{ count, error: countError }, { data, error }] = await Promise.all([
                 countQuery,
                 dataQuery
@@ -65,7 +69,8 @@ export function requestObjects(app, BASE_URI) {
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
                     ...(hasImages && { hasImages: 'true' }),
-                    ...(modifiedSince && { modifiedSince })
+                    ...(modifiedSince && { modifiedSince }),
+                    ...(showColors && { colors: 'true' })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -89,10 +94,10 @@ export function requestObjects(app, BASE_URI) {
                     return false
                 })
                 .map(row => {
-                    // lightweight stub — no json_ld_v2 needed
+                    // lightweight stub
                     if (!fullRecord) {
                         return {
-                            "@id": `${BASE_URI}/id/object/${row.objectNumber}`,
+                            "@id": `${BASE_URI}id/object/${row.objectNumber}`,
                             "@type": "crm:E22_Human-Made_Object",
                             "rdfs:label": row["object_title_nl"] ?? row.objectNumber,
                             ...(row["iiif_manifest"] && {
@@ -104,7 +109,6 @@ export function requestObjects(app, BASE_URI) {
                         }
                     }
 
-                    // full record — enrich json_ld_v2
                     const obj = row["json_ld_v2"] ?? {}
 
                     // multilingual titles
@@ -154,54 +158,103 @@ export function requestObjects(app, BASE_URI) {
                         }))
                     }
 
-                    // color data
-                    const hexValues = row["HEX_values"]?.[0] ?? []
-                    const colorNames = row["color_names"]?.[0] ?? []
-                    const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
+                    // color data — only when ?colors=true
+                    if (showColors) {
+                        const colorsData = row["colors"] ?? null
+                        const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
 
-                    if (hexValues.length > 0 && iiifImageUri) {
-                        obj["crm:P65_shows_visual_item"] = {
-                            "@id": `${obj["@id"]}/visual`,
-                            "@type": "crm:E36_Visual_Item",
-                            "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300264863",
-                                "@type": "crm:E55_Type",
-                                "rdfs:label": "digital image"
-                            },
-                            "crm:P138i_has_representation": {
-                                "@id": iiifImageUri,
-                                "@type": "crm:E38_Image"
-                            },
-                            "crm:P56_bears_feature": [
-                                {
-                                    "@id": `${obj["@id"]}/visual/colors/hex`,
-                                    "@type": "crm:E26_Physical_Feature",
+                        if (colorsData && iiifImageUri) {
+                            const colorFeatures = colorsData.map((imageColors, imageIndex) => {
+                                // group base colors and sum percentages
+                                const baseColorMap = {}
+                                for (const c of imageColors) {
+                                    if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
+                                    baseColorMap[c.base] += c.percentage
+                                }
+
+                                return {
+                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}`,
+                                    "@type": "crm:E36_Visual_Item",
                                     "crm:P2_has_type": {
-                                        "@id": "http://vocab.getty.edu/aat/300056130",
+                                        "@id": "http://vocab.getty.edu/aat/300264863",
                                         "@type": "crm:E55_Type",
-                                        "rdfs:label": "color"
+                                        "rdfs:label": "digital image"
                                     },
-                                    "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
-                                    "crm:P3_has_note": hexValues.map(hex => ({
-                                        "@value": hex,
-                                        "@type": "xsd:string"
-                                    }))
-                                },
-                                ...(colorNames.length > 0 ? [{
-                                    "@id": `${obj["@id"]}/visual/colors/css`,
-                                    "@type": "crm:E26_Physical_Feature",
-                                    "crm:P2_has_type": {
-                                        "@id": "http://vocab.getty.edu/aat/300056130",
-                                        "@type": "crm:E55_Type",
-                                        "rdfs:label": "color"
+                                    "crm:P138i_has_representation": {
+                                        "@id": iiifImageUri,
+                                        "@type": "crm:E38_Image"
                                     },
-                                    "rdfs:comment": "Dominant colors clustered to CSS named colors for indexing",
-                                    "crm:P3_has_note": colorNames.map(name => ({
-                                        "@value": name,
-                                        "@type": "xsd:string"
-                                    }))
-                                }] : [])
-                            ]
+                                    "crm:P56_bears_feature": [
+                                        {
+                                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
+                                            "@type": "crm:E26_Physical_Feature",
+                                            "crm:P2_has_type": {
+                                                "@id": "http://vocab.getty.edu/aat/300056130",
+                                                "@type": "crm:E55_Type",
+                                                "rdfs:label": "color"
+                                            },
+                                            "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
+                                            "crm:P3_has_note": imageColors.map(c => ({
+                                                "@type": "crm:E62_String",
+                                                "rdf:value": c.hex,
+                                                "rdfs:label": c.css,
+                                                "crm:P43_has_dimension": {
+                                                    "@type": "crm:E54_Dimension",
+                                                    "crm:P2_has_type": {
+                                                        "@id": "http://vocab.getty.edu/aat/300417476",
+                                                        "@type": "crm:E55_Type",
+                                                        "rdfs:label": "percentage"
+                                                    },
+                                                    "crm:P90_has_value": {
+                                                        "@value": Math.round(c.percentage * 100 * 100) / 100,
+                                                        "@type": "xsd:decimal"
+                                                    },
+                                                    "crm:P91_has_unit": {
+                                                        "@id": "http://vocab.getty.edu/aat/300417476",
+                                                        "rdfs:label": "%"
+                                                    }
+                                                }
+                                            }))
+                                        },
+                                        {
+                                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
+                                            "@type": "crm:E26_Physical_Feature",
+                                            "crm:P2_has_type": {
+                                                "@id": "http://vocab.getty.edu/aat/300056130",
+                                                "@type": "crm:E55_Type",
+                                                "rdfs:label": "color"
+                                            },
+                                            "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
+                                            "crm:P3_has_note": Object.entries(baseColorMap)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .map(([base, pct]) => ({
+                                                    "@type": "crm:E62_String",
+                                                    "rdf:value": base,
+                                                    "crm:P43_has_dimension": {
+                                                        "@type": "crm:E54_Dimension",
+                                                        "crm:P2_has_type": {
+                                                            "@id": "http://vocab.getty.edu/aat/300417476",
+                                                            "@type": "crm:E55_Type",
+                                                            "rdfs:label": "percentage"
+                                                        },
+                                                        "crm:P90_has_value": {
+                                                            "@value": Math.round(pct * 100 * 100) / 100,
+                                                            "@type": "xsd:decimal"
+                                                        },
+                                                        "crm:P91_has_unit": {
+                                                            "@id": "http://vocab.getty.edu/aat/300417476",
+                                                            "rdfs:label": "%"
+                                                        }
+                                                    }
+                                                }))
+                                        }
+                                    ]
+                                }
+                            })
+
+                            obj["crm:P65_shows_visual_item"] = colorFeatures.length === 1
+                                ? colorFeatures[0]
+                                : colorFeatures
                         }
                     }
 

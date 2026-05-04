@@ -22,6 +22,22 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
     - Subsequent runs fetch only records modified since the last harvest date
     - Harvest log can be reset per endpoint to force a full re-harvest
 
+- `colors` query parameter on the object endpoint (`/v2/id/object/{PID}`) and objects collection (`/v2/id/objects`) — include full color data in the response
+  - Hidden by default to keep payloads small
+  - Enable with `?colors=true`
+  - Example: `GET /v2/id/object/1987-1105?colors=true`
+  - Example: `GET /v2/id/objects?fullRecord=true&colors=true`
+  - Parameter is preserved in all Hydra pagination links
+
+- Enriched color data model — color annotations now stored as structured `colors` column alongside legacy `HEX_values` and `color_names` columns
+  - Each color entry includes `hex`, `css`, `base` and `percentage`
+  - Modelled in CIDOC-CRM as `crm:E36_Visual_Item` with two `crm:E26_Physical_Feature` nodes per image:
+    - `colors/hex` — exact HEX values with CSS name and percentage as `crm:E54_Dimension`
+    - `colors/base` — base colors (red, blue, grey, etc.) grouped and aggregated by percentage
+  - Multi-image objects each get their own `crm:E36_Visual_Item` node
+
+- Background removal via `rembg` neural network in the color tagger — foreground pixels only are used for color extraction, preventing white and grey studio backgrounds from skewing results
+
 ---
 
 ## [v2.0.0] — 2026-04-30

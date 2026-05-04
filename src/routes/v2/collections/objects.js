@@ -11,15 +11,20 @@ export function requestObjects(app, BASE_URI) {
             const fullRecord = req.query.fullRecord === 'true'
             const hasImages = req.query.hasImages === 'true'
             const offset = (page - 1) * itemsPerPage
+            const modifiedSince = req.query.modifiedSince ?? null
+
+            // validate if provided
+            if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
+                return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
+            }
 
             // build count query
             let countQuery = supabase
                 .from('dmg_objects_LDES')
                 .select('objectNumber', { count: 'exact', head: true })  // ← specific column not *
 
-            if (hasImages) {
-                countQuery = countQuery.not('iiif_manifest', 'is', null)
-            }
+            if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
+            if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
 
             // build data query — select must come first
             const selectFields = fullRecord
@@ -32,9 +37,8 @@ export function requestObjects(app, BASE_URI) {
                 .order('objectNumber', { ascending: true })
                 .range(offset, offset + itemsPerPage - 1)
 
-            if (hasImages) {
-                dataQuery = dataQuery.not('iiif_manifest', 'is', null)
-            }
+            if (hasImages) dataQuery = dataQuery.not('iiif_manifest', 'is', null)
+            if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
 
             // execute both queries in parallel
             const [{ count, error: countError }, { data, error }] = await Promise.all([
@@ -60,7 +64,8 @@ export function requestObjects(app, BASE_URI) {
                     page: p,
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
-                    ...(hasImages && { hasImages: 'true' })
+                    ...(hasImages && { hasImages: 'true' }),
+                    ...(modifiedSince && { modifiedSince })
                 })
                 return `${collectionId}?${params.toString()}`
             }

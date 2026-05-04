@@ -226,7 +226,9 @@ export async function fetchLDESrecordsByExhibitionID(ExhibitionPID) {
     .select("LDES_raw, text_NL, text_EN, text_FR, title_EN, title_FR, title_NL")
     .eq("exh_PID", ExhibitionPID);
   return data;
-}
+};
+
+
 
 export async function fetchLDESRecordByAgentID(AgentPID) {
   console.log('Fetching agent with ID:', AgentPID);

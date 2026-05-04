@@ -10,15 +10,10 @@ export function requestConcepts(app, BASE_URI) {
             const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
             const fullRecord = req.query.fullRecord === 'true'
             const offset = (page - 1) * itemsPerPage
+            const modifiedSince = req.query.modifiedSince ?? null
 
-            // count query
-            const { count, error: countError } = await supabase
-                .from('dmg_thesaurus_LDES')
-                .select('id', { count: 'exact', head: true })
-
-            if (countError) {
-                console.error('Count error:', JSON.stringify(countError, null, 2))
-                return res.status(500).json({ error: 'Error fetching concepts' })
+            if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
+                return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
             }
 
             // data query
@@ -26,11 +21,31 @@ export function requestConcepts(app, BASE_URI) {
                 ? 'id, json_ld_v2, concept_label_nl, concept_label_fr, concept_label_en, concept_scope_nl, concept_scope_fr, concept_scope_en'
                 : 'id, concept_label_nl'
 
-            const { data, error } = await supabase
-                .from('dmg_thesaurus_LDES')
-                .select(selectFields)
-                .order('id', { ascending: true })
-                .range(offset, offset + itemsPerPage - 1)
+            const applyFilters = (query) => {
+                if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                return query
+            }
+
+            // count query — use applyFilters
+            const { count, error: countError } = await applyFilters(
+                supabase
+                    .from('dmg_thesaurus_LDES')
+                    .select('id', { count: 'exact', head: true })
+            )
+
+            if (countError) {
+                console.error('Count error:', JSON.stringify(countError, null, 2))
+                return res.status(500).json({ error: 'Error fetching concepts' })
+            }
+
+            // data query — use applyFilters
+            const { data, error } = await applyFilters(
+                supabase
+                    .from('dmg_thesaurus_LDES')
+                    .select(selectFields)
+                    .order('id', { ascending: true })
+                    .range(offset, offset + itemsPerPage - 1)
+            )
 
             if (error) {
                 console.error('Fetch error:', JSON.stringify(error, null, 2))

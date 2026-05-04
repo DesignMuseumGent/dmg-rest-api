@@ -7,6 +7,21 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.1.0] — 2026-05-04
+
+### Added
+
+- `modifiedSince` query parameter on all collection endpoints (`/v2/id/objects`, `/v2/id/agents`, `/v2/id/exhibitions`, `/v2/id/concepts`) — filter records modified on or after a given date
+    - Format: `YYYY-MM-DD`
+    - Example: `GET /v2/id/objects?modifiedSince=2026-05-01&fullRecord=true`
+    - Invalid date format returns `400 Bad Request`
+    - Parameter is preserved in all Hydra pagination links
+
+- Incremental harvesting in all harvesters — each harvester now records the timestamp of its last successful run in a new `dmg_harvest_log` Supabase table and uses `modifiedSince` on subsequent runs
+    - Full harvest on first run (no previous timestamp)
+    - Subsequent runs fetch only records modified since the last harvest date
+    - Harvest log can be reset per endpoint to force a full re-harvest
+
 ---
 
 ## [v2.0.0] — 2026-04-30

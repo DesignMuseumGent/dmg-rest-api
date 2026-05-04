@@ -9,12 +9,28 @@ export function requestExhibitions(app, BASE_URI) {
             const page = parseInt(req.query.page) || 1
             const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
             const fullRecord = req.query.fullRecord === 'true'
+            const modifiedSince = req.query.modifiedSince ?? null
             const offset = (page - 1) * itemsPerPage
 
+            if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
+                return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
+            }
+
+            const selectFields = fullRecord
+                ? 'id, json_ld_v2, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN'
+                : 'id, exh_PID, title_NL'
+
+            const applyFilters = (query) => {
+                if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                return query
+            }
+
             // count query
-            const { count, error: countError } = await supabase
-                .from('dmg_tentoonstelling_LDES')
-                .select('id', { count: 'exact', head: true })
+            const { count, error: countError } = await applyFilters(
+                supabase
+                    .from('dmg_tentoonstelling_LDES')
+                    .select('id', { count: 'exact', head: true })
+            )
 
             if (countError) {
                 console.error('Count error:', JSON.stringify(countError, null, 2))
@@ -22,15 +38,13 @@ export function requestExhibitions(app, BASE_URI) {
             }
 
             // data query
-            const selectFields = fullRecord
-                ? 'id, json_ld_v2, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN'
-                : 'id, exh_PID, title_NL'
-
-            const { data, error } = await supabase
-                .from('dmg_tentoonstelling_LDES')
-                .select(selectFields)
-                .order('exh_PID', { ascending: true })
-                .range(offset, offset + itemsPerPage - 1)
+            const { data, error } = await applyFilters(
+                supabase
+                    .from('dmg_tentoonstelling_LDES')
+                    .select(selectFields)
+                    .order('exh_PID', { ascending: true })
+                    .range(offset, offset + itemsPerPage - 1)
+            )
 
             if (error) {
                 console.error('Fetch error:', JSON.stringify(error, null, 2))
@@ -38,13 +52,14 @@ export function requestExhibitions(app, BASE_URI) {
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)
-            const collectionId = `${BASE_URI}/id/exhibitions`
+            const collectionId = `${BASE_URI}id/exhibitions`
 
             const buildParams = (p) => {
                 const params = new URLSearchParams({
                     page: p,
                     itemsPerPage,
-                    ...(fullRecord && { fullRecord: 'true' })
+                    ...(fullRecord && { fullRecord: 'true' }),
+                    ...(modifiedSince && { modifiedSince })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -60,7 +75,6 @@ export function requestExhibitions(app, BASE_URI) {
             if (page < totalPages) hydraView["hydra:next"] = buildParams(page + 1)
 
             const members = (data || []).map(row => {
-                // lightweight stub
                 if (!fullRecord) {
                     return {
                         "@id": row["exh_PID"]
@@ -71,15 +85,12 @@ export function requestExhibitions(app, BASE_URI) {
                     }
                 }
 
-                // full record — apply same enrichment as single exhibition endpoint
                 const exh = row["json_ld_v2"] ?? {}
 
-                // set internal @id
                 if (row["exh_PID"]) {
                     const pid = row["exh_PID"]
                     exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
 
-                    // add E42_Identifier
                     const identifier = {
                         "@id": `${BASE_URI}/id/exhibition/${pid}/identifier/intern`,
                         "@type": "crm:E42_Identifier",
@@ -98,7 +109,6 @@ export function requestExhibitions(app, BASE_URI) {
                     }
                 }
 
-                // remove existing appellations for languages we're about to add
                 const langsToAdd = ["NLD", "FRA", "ENG"]
                 if (Array.isArray(exh["crm:P1_is_identified_by"])) {
                     exh["crm:P1_is_identified_by"] = exh["crm:P1_is_identified_by"].filter(node => {
@@ -107,7 +117,6 @@ export function requestExhibitions(app, BASE_URI) {
                     })
                 }
 
-                // multilingual titles
                 const appellations = []
                 if (row["title_NL"]) appellations.push({ lang: "NLD", value: row["title_NL"] })
                 if (row["title_FR"]) appellations.push({ lang: "FRA", value: row["title_FR"] })
@@ -126,7 +135,6 @@ export function requestExhibitions(app, BASE_URI) {
                     ]
                 }
 
-                // multilingual descriptions
                 const descriptions = []
                 if (row["text_NL"]) descriptions.push({ lang: "NLD", value: row["text_NL"] })
                 if (row["text_FR"]) descriptions.push({ lang: "FRA", value: row["text_FR"] })

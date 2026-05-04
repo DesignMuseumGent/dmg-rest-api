@@ -9,28 +9,40 @@ export function requestAgents(app, BASE_URI) {
             const page = parseInt(req.query.page) || 1
             const itemsPerPage = parseInt(req.query.itemsPerPage) || 10
             const fullRecord = req.query.fullRecord === 'true'
+            const modifiedSince = req.query.modifiedSince ?? null
             const offset = (page - 1) * itemsPerPage
 
-            // get total count
-            const { count, error: countError } = await supabase
-                .from('dmg_personen_LDES')
-                .select('*', { count: 'exact', head: true })
+            if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
+                return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
+            }
+
+            // ← define selectFields before using it
+            const selectFields = fullRecord
+                ? 'agent_ID, json_ld_v2, wikipedia_bios'
+                : 'agent_ID, json_ld_v2'
+
+            const applyFilters = (query) => {
+                if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                return query
+            }
+
+            // count query
+            const { count, error: countError } = await applyFilters(
+                supabase.from('dmg_personen_LDES').select('agent_ID', { count: 'exact', head: true })
+            )
 
             if (countError) {
                 console.error('Count error:', countError.message)
                 return res.status(500).json({ error: 'Error fetching agents' })
             }
 
-            // fetch page of agents — select json_ld_v2 only when needed
-            const selectFields = fullRecord
-                ? 'agent_ID, json_ld_v2, wikipedia_bios'
-                : 'agent_ID, json_ld_v2'
-
-            const { data, error } = await supabase
-                .from('dmg_personen_LDES')
-                .select(selectFields)
-                .range(offset, offset + itemsPerPage - 1)
-                .order('agent_ID', { ascending: true })
+            // data query
+            const { data, error } = await applyFilters(
+                supabase.from('dmg_personen_LDES')
+                    .select(selectFields)
+                    .order('agent_ID', { ascending: true })
+                    .range(offset, offset + itemsPerPage - 1)
+            )
 
             if (error) {
                 console.error('Fetch error:', error.message)
@@ -39,36 +51,40 @@ export function requestAgents(app, BASE_URI) {
 
             const totalPages = Math.ceil(count / itemsPerPage)
             const collectionId = `${BASE_URI}id/agents`
-            const pageId = `${collectionId}?page=${page}&itemsPerPage=${itemsPerPage}${fullRecord ? '&fullRecord=true' : ''}`
 
-            // build hydra pagination view — preserve fullRecord param in all links
-            const paginationParams = (p) =>
-                `${collectionId}?page=${p}&itemsPerPage=${itemsPerPage}${fullRecord ? '&fullRecord=true' : ''}`
-
-            const hydraView = {
-                "@id": pageId,
-                "@type": "hydra:PartialCollectionView",
-                "hydra:first": paginationParams(1),
-                "hydra:last": paginationParams(totalPages),
+            // preserve all active params in pagination links
+            const buildParams = (p) => {
+                const params = new URLSearchParams({
+                    page: p,
+                    itemsPerPage,
+                    ...(fullRecord && { fullRecord: 'true' }),
+                    ...(modifiedSince && { modifiedSince })
+                })
+                return `${collectionId}?${params.toString()}`
             }
 
-            if (page > 1) hydraView["hydra:previous"] = paginationParams(page - 1)
-            if (page < totalPages) hydraView["hydra:next"] = paginationParams(page + 1)
+            const hydraView = {
+                "@id": buildParams(page),
+                "@type": "hydra:PartialCollectionView",
+                "hydra:first": buildParams(1),
+                "hydra:last": buildParams(totalPages),
+            }
 
-            // build member list
+            if (page > 1) hydraView["hydra:previous"] = buildParams(page - 1)
+            if (page < totalPages) hydraView["hydra:next"] = buildParams(page + 1)
+
             const members = (data || []).map(row => {
                 const obj = row["json_ld_v2"] ?? {}
 
                 if (!fullRecord) {
                     return {
-                        "@id": obj["@id"] ?? `${BASE_URI}/id/agent/${row.agent_ID}`,
+                        "@id": obj["@id"] ?? `${BASE_URI}id/agent/${row.agent_ID}`,
                         "@type": "crm:E39_Actor",
                         "rdfs:label": obj["rdfs:label"] ?? row.agent_ID
                     }
                 }
 
                 // fullRecord — enrich with wikipedia bios and titles
-                // same enrichment logic as the single agent endpoint
                 if (obj["@context"]) {
                     obj["@context"]["dcterms"] = "http://purl.org/dc/terms/"
                 }

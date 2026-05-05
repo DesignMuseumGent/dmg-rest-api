@@ -12,6 +12,12 @@ export function requestObjects(app, BASE_URI) {
             const hasImages = req.query.hasImages === 'true'
             const showColors = req.query.colors === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
+            const colorFilter = req.query.color
+                ? req.query.color.split(',').map(c => c.trim().toLowerCase())
+                : null
+            const cssColorFilter = req.query.cssColor
+                ? req.query.cssColor.split(',').map(c => c.trim())
+                : null
             const offset = (page - 1) * itemsPerPage
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
@@ -25,8 +31,10 @@ export function requestObjects(app, BASE_URI) {
 
             if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
+            if (colorFilter?.length > 0) countQuery = countQuery.contains('dominant_colors', colorFilter)
+            if (cssColorFilter?.length > 0) countQuery = countQuery.contains('dominant_css_colors', cssColorFilter)
 
-            // build data query — select fields depend on fullRecord and showColors
+            // build data query
             let selectFields
             if (!fullRecord) {
                 selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO'
@@ -44,6 +52,8 @@ export function requestObjects(app, BASE_URI) {
 
             if (hasImages) dataQuery = dataQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
+            if (colorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_colors', colorFilter)
+            if (cssColorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_css_colors', cssColorFilter)
 
             const [{ count, error: countError }, { data, error }] = await Promise.all([
                 countQuery,
@@ -63,6 +73,7 @@ export function requestObjects(app, BASE_URI) {
             const totalPages = Math.ceil(count / itemsPerPage)
             const collectionId = `${BASE_URI}id/objects`
 
+            // ← colorFilter and cssColorFilter now correctly included
             const buildParams = (p) => {
                 const params = new URLSearchParams({
                     page: p,
@@ -70,7 +81,9 @@ export function requestObjects(app, BASE_URI) {
                     ...(fullRecord && { fullRecord: 'true' }),
                     ...(hasImages && { hasImages: 'true' }),
                     ...(modifiedSince && { modifiedSince }),
-                    ...(showColors && { colors: 'true' })
+                    ...(showColors && { colors: 'true' }),
+                    ...(colorFilter && { color: colorFilter.join(',') }),
+                    ...(cssColorFilter && { cssColor: cssColorFilter.join(',') })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -94,7 +107,6 @@ export function requestObjects(app, BASE_URI) {
                     return false
                 })
                 .map(row => {
-                    // lightweight stub
                     if (!fullRecord) {
                         return {
                             "@id": `${BASE_URI}id/object/${row.objectNumber}`,
@@ -165,7 +177,6 @@ export function requestObjects(app, BASE_URI) {
 
                         if (colorsData && iiifImageUri) {
                             const colorFeatures = colorsData.map((imageColors, imageIndex) => {
-                                // group base colors and sum percentages
                                 const baseColorMap = {}
                                 for (const c of imageColors) {
                                     if (!baseColorMap[c.base]) baseColorMap[c.base] = 0

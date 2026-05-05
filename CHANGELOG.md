@@ -7,6 +7,25 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.3.0] — 2026-05-05
+
+### Added
+
+- `color` query parameter on the objects collection (`/v2/id/objects`) — filter by base color
+  - Accepts one or more comma-separated base colors
+  - Available values: `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `pink`, `brown`, `grey`, `black`, `white`
+  - Example: `GET /v2/id/objects?color=pink`
+  - Example: `GET /v2/id/objects?color=pink,grey`
+
+- `cssColor` query parameter on the objects collection — filter by CSS color name
+  - Accepts one or more comma-separated CSS color names from the 900+ color lookup table
+  - Example: `GET /v2/id/objects?cssColor=Old rose`
+  - Example: `GET /v2/id/objects?cssColor=English lavender,Mountbatten pink`
+
+- Both filters can be combined with each other and with existing filters (`hasImages`, `modifiedSince`, `fullRecord`, `colors`)
+  - Example: `GET /v2/id/objects?color=pink&hasImages=true&fullRecord=true`
+  - All active filters are preserved in Hydra pagination links
+
 ## [v2.1.0] — 2026-05-04
 
 ### Added

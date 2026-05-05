@@ -37,12 +37,12 @@ export function requestColors(app, BASE_URI) {
                 "base_colors": (baseData || []).map(row => ({
                     "value": row.color,
                     "count": parseInt(row.count),
-                    "filter": `${BASE_URI}id/objects?color=${row.color}`
+                    "filter": `${BASE_URI}/id/objects?color=${row.color}`
                 })),
                 "css_colors": (cssData || []).map(row => ({
                     "value": row.color,
                     "count": parseInt(row.count),
-                    "filter": `${BASE_URI}id/objects?cssColor=${encodeURIComponent(row.color)}`
+                    "filter": `${BASE_URI}/id/objects?cssColor=${encodeURIComponent(row.color)}`
                 }))
             }
 

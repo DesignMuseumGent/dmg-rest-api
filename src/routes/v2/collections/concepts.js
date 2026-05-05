@@ -9,24 +9,28 @@ export function requestConcepts(app, BASE_URI) {
             const page = parseInt(req.query.page) || 1
             const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
             const fullRecord = req.query.fullRecord === 'true'
-            const offset = (page - 1) * itemsPerPage
             const modifiedSince = req.query.modifiedSince ?? null
+            const searchQuery = req.query.q ?? null
+            const offset = (page - 1) * itemsPerPage
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
             }
 
-            // data query
             const selectFields = fullRecord
                 ? 'id, json_ld_v2, concept_label_nl, concept_label_fr, concept_label_en, concept_scope_nl, concept_scope_fr, concept_scope_en'
                 : 'id, concept_label_nl'
 
             const applyFilters = (query) => {
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                if (searchQuery) query = query.textSearch('search_vector', searchQuery, {
+                    type: 'websearch',
+                    config: 'dutch'
+                })
                 return query
             }
 
-            // count query — use applyFilters
+            // count query
             const { count, error: countError } = await applyFilters(
                 supabase
                     .from('dmg_thesaurus_LDES')
@@ -38,7 +42,7 @@ export function requestConcepts(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching concepts' })
             }
 
-            // data query — use applyFilters
+            // data query
             const { data, error } = await applyFilters(
                 supabase
                     .from('dmg_thesaurus_LDES')
@@ -59,7 +63,9 @@ export function requestConcepts(app, BASE_URI) {
                 const params = new URLSearchParams({
                     page: p,
                     itemsPerPage,
-                    ...(fullRecord && { fullRecord: 'true' })
+                    ...(fullRecord && { fullRecord: 'true' }),
+                    ...(modifiedSince && { modifiedSince }),
+                    ...(searchQuery && { q: searchQuery })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -77,13 +83,12 @@ export function requestConcepts(app, BASE_URI) {
             const members = (data || []).map(row => {
                 if (!fullRecord) {
                     return {
-                        "@id": `${BASE_URI}/id/concept/${row.id}`,
+                        "@id": `${BASE_URI}id/concept/${row.id}`,
                         "@type": "crm:E55_Type",
                         "rdfs:label": row["concept_label_nl"] ?? row.id
                     }
                 }
 
-                // full record — enrich with multilingual labels and scope notes
                 const obj = row["json_ld_v2"] ?? {}
 
                 const prefLabels = []

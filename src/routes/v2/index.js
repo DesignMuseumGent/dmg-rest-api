@@ -8,10 +8,14 @@ import {requestObjects} from "./collections/objects.js";
 import {requestConcepts} from "./collections/concepts.js";
 import {requestExhibitions} from "./collections/exhibitions.js";
 import {requestDCAT} from "../v2/dcat.js";
+import { requestColors } from "./colors.js";
 
 // import v2 routes
 const v2Router = Router();
 const V2_BASE = "https://data.designmuseumgent.be/v2"
+
+// helpers
+requestColors(v2Router, V2_BASE);
 
 // DCAT
 requestDCAT(v2Router, V2_BASE)

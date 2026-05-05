@@ -11,6 +11,12 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- `GET /v2/id/colors` — new color index endpoint listing all available base colors and CSS color names with object counts
+  - Returns two lists: `base_colors` (11 base categories) and `css_colors` (900+ named colors)
+  - Each entry includes the color value, object count, and a ready-to-use filter URL
+  - Useful for building color picker UIs without guessing what values exist in the collection
+  - Example: `GET /v2/id/colors`
+
 - `color` query parameter on the objects collection (`/v2/id/objects`) — filter by base color
   - Accepts one or more comma-separated base colors
   - Available values: `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `pink`, `brown`, `grey`, `black`, `white`

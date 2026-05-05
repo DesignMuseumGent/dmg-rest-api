@@ -26,6 +26,15 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
   - Example: `GET /v2/id/objects?color=pink&hasImages=true&fullRecord=true`
   - All active filters are preserved in Hydra pagination links
 
+- `q` query parameter on objects and agents collection endpoints — full text search
+  - Supports single words, phrases, AND/OR operators and negation
+  - Objects: searches titles (NL/FR/EN), descriptions (NL/FR/EN) and object number
+  - Agents: searches agent name and agent ID
+  - Titles and object numbers are weighted higher than descriptions
+  - Compatible with all existing filters
+  - Example: `GET /v2/id/objects?q=roze glas&hasImages=true`
+  - Example: `GET /v2/id/agents?q=Sabino`
+  
 ## [v2.1.0] — 2026-05-04
 
 ### Added

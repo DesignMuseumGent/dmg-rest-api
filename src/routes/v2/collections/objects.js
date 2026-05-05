@@ -19,6 +19,7 @@ export function requestObjects(app, BASE_URI) {
                 ? req.query.cssColor.split(',').map(c => c.trim())
                 : null
             const offset = (page - 1) * itemsPerPage
+            const searchQuery = req.query.q ?? null
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
@@ -28,6 +29,13 @@ export function requestObjects(app, BASE_URI) {
             let countQuery = supabase
                 .from('dmg_objects_LDES')
                 .select('objectNumber', { count: 'exact', head: true })
+
+            if (searchQuery) {
+                countQuery = countQuery.textSearch('search_vector', searchQuery, {
+                    type: 'websearch',
+                    config: 'dutch'
+                })
+            }
 
             if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
@@ -44,6 +52,7 @@ export function requestObjects(app, BASE_URI) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO'
             }
 
+
             let dataQuery = supabase
                 .from('dmg_objects_LDES')
                 .select(selectFields)
@@ -54,6 +63,13 @@ export function requestObjects(app, BASE_URI) {
             if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
             if (colorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_colors', colorFilter)
             if (cssColorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_css_colors', cssColorFilter)
+            if (searchQuery) {
+                dataQuery = dataQuery.textSearch('search_vector', searchQuery, {
+                    type: 'websearch',
+                    config: 'dutch'
+                })
+            }
+
 
             const [{ count, error: countError }, { data, error }] = await Promise.all([
                 countQuery,
@@ -71,9 +87,8 @@ export function requestObjects(app, BASE_URI) {
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)
-            const collectionId = `${BASE_URI}id/objects`
+            const collectionId = `${BASE_URI}/id/objects`
 
-            // ← colorFilter and cssColorFilter now correctly included
             const buildParams = (p) => {
                 const params = new URLSearchParams({
                     page: p,
@@ -83,7 +98,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(modifiedSince && { modifiedSince }),
                     ...(showColors && { colors: 'true' }),
                     ...(colorFilter && { color: colorFilter.join(',') }),
-                    ...(cssColorFilter && { cssColor: cssColorFilter.join(',') })
+                    ...(cssColorFilter && { cssColor: cssColorFilter.join(',') }),
+                    ...(searchQuery && { q: searchQuery })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -109,7 +125,7 @@ export function requestObjects(app, BASE_URI) {
                 .map(row => {
                     if (!fullRecord) {
                         return {
-                            "@id": `${BASE_URI}id/object/${row.objectNumber}`,
+                            "@id": `${BASE_URI}/id/object/${row.objectNumber}`,
                             "@type": "crm:E22_Human-Made_Object",
                             "rdfs:label": row["object_title_nl"] ?? row.objectNumber,
                             ...(row["iiif_manifest"] && {

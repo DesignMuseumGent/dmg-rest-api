@@ -10,19 +10,23 @@ export function requestAgents(app, BASE_URI) {
             const itemsPerPage = parseInt(req.query.itemsPerPage) || 10
             const fullRecord = req.query.fullRecord === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
+            const searchQuery = req.query.q ?? null
             const offset = (page - 1) * itemsPerPage
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
             }
 
-            // ← define selectFields before using it
             const selectFields = fullRecord
                 ? 'agent_ID, json_ld_v2, wikipedia_bios'
                 : 'agent_ID, json_ld_v2'
 
             const applyFilters = (query) => {
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                if (searchQuery) query = query.textSearch('search_vector', searchQuery, {
+                    type: 'websearch',
+                    config: 'simple'
+                })
                 return query
             }
 
@@ -50,15 +54,15 @@ export function requestAgents(app, BASE_URI) {
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)
-            const collectionId = `${BASE_URI}id/agents`
+            const collectionId = `${BASE_URI}/id/agents`
 
-            // preserve all active params in pagination links
             const buildParams = (p) => {
                 const params = new URLSearchParams({
                     page: p,
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
-                    ...(modifiedSince && { modifiedSince })
+                    ...(modifiedSince && { modifiedSince }),
+                    ...(searchQuery && { q: searchQuery })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -78,13 +82,12 @@ export function requestAgents(app, BASE_URI) {
 
                 if (!fullRecord) {
                     return {
-                        "@id": obj["@id"] ?? `${BASE_URI}id/agent/${row.agent_ID}`,
+                        "@id": obj["@id"] ?? `${BASE_URI}/id/agent/${row.agent_ID}`,
                         "@type": "crm:E39_Actor",
                         "rdfs:label": obj["rdfs:label"] ?? row.agent_ID
                     }
                 }
 
-                // fullRecord — enrich with wikipedia bios and titles
                 if (obj["@context"]) {
                     obj["@context"]["dcterms"] = "http://purl.org/dc/terms/"
                 }

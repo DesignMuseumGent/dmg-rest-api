@@ -20,25 +20,16 @@ export function requestObject(app, BASE_URI) {
                 return res.status(404).json({ error: 'Object not found' });
             }
 
-            //console.log(record)
-
             const row = record[0]
 
             if (row["RESOLVES_TO"]) {
-                //console.log(`\n🔀 Resolver triggered for: ${ObjectPID}`)
-                //console.log(`   RESOLVES_TO value: "${row["RESOLVES_TO"]}"`)
-
                 const resolvedNumber = row["RESOLVES_TO"].replace("id/object/", "")
-                //console.log(`   Resolved object number: "${resolvedNumber}"`)
 
-                // skip self-referencing resolvers
                 if (resolvedNumber === ObjectPID) {
-                   // console.log(`   ⚠️  RESOLVES_TO points to itself — skipping resolver, serving record directly`)
+                    // self-referencing resolver — serve directly
                 } else if (resolvedNumber.includes("REMOVED")) {
-                    //console.log(`   ❌ Object is marked as REMOVED — returning 410`)
                     return res.status(410).json({ error: "This object has been permanently removed from our collection." })
                 } else {
-                   // console.log(`   ↪ Redirecting to: ${BASE_URI}id/object/${resolvedNumber}`)
                     return res.status(301)
                         .setHeader('Location', `${BASE_URI}/id/object/${resolvedNumber}`)
                         .json({
@@ -48,11 +39,9 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
-            //console.log(`✅ Serving record directly for ${ObjectPID}`)
-
             const obj = row["json_ld_v2"] ?? {}
 
-            // enrich with multilingual titles from separate columns
+            // multilingual titles
             const appellations = []
             if (row["object_title_nl"]) appellations.push({ lang: "NLD", value: row["object_title_nl"] })
             if (row["object_title_fr"]) appellations.push({ lang: "FRA", value: row["object_title_fr"] })
@@ -78,7 +67,7 @@ export function requestObject(app, BASE_URI) {
                 ]
             }
 
-            // enrich with multilingual descriptions from separate columns
+            // multilingual descriptions
             const descriptions = []
             if (row["object_description_nl"]) descriptions.push({ lang: "NLD", value: row["object_description_nl"] })
             if (row["object_description_fr"]) descriptions.push({ lang: "FRA", value: row["object_description_fr"] })
@@ -99,15 +88,41 @@ export function requestObject(app, BASE_URI) {
                 }))
             }
 
+            // hasParts / isPartOf — always overwrite json_ld_v2 with computed relations columns
+            const isPartOf = row["isPartOf"] ?? null
+            const hasParts = row["hasParts"] ?? null
+
+
+            // always delete existing values from json_ld_v2 first
+            delete obj["crm:P46_has_component"]
+            delete obj["crm:P46i_forms_part_of"]
+
+            if (isPartOf) {
+                obj["crm:P46i_forms_part_of"] = {
+                    "@id": `${BASE_URI}/id/object/${isPartOf}`,
+                    "@type": "crm:E22_Human-Made_Object"
+                }
+            }
+
+            if (hasParts) {
+                const parts = typeof hasParts === 'string'
+                    ? hasParts.split(',').map(p => p.trim()).filter(Boolean)
+                    : Array.isArray(hasParts) ? hasParts : []
+
+                if (parts.length > 0) {
+                    obj["crm:P46_has_component"] = parts.map(p => ({
+                        "@id": `${BASE_URI}/id/object/${p}`,
+                        "@type": "crm:E22_Human-Made_Object"
+                    }))
+                }
+            }
+            // color data — only when ?colors=true
             if (showColors) {
-                // enrich with color data
                 const colorsData = row["colors"] ?? null
                 const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
 
                 if (colorsData && iiifImageUri) {
-                    // colorsData is an array of images, each containing an array of colors
                     const colorFeatures = colorsData.map((imageColors, imageIndex) => {
-                        // group by base color and sum percentages
                         const baseColorMap = {}
                         for (const c of imageColors) {
                             if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
@@ -127,7 +142,6 @@ export function requestObject(app, BASE_URI) {
                                 "@type": "crm:E38_Image"
                             },
                             "crm:P56_bears_feature": [
-                                // exact HEX colors as E26_Physical_Feature
                                 {
                                     "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
                                     "@type": "crm:E26_Physical_Feature",
@@ -140,12 +154,7 @@ export function requestObject(app, BASE_URI) {
                                     "crm:P3_has_note": imageColors.map(c => ({
                                         "@type": "crm:E62_String",
                                         "rdf:value": c.hex,
-                                        "crm:P2_has_type": {
-                                            "@id": "http://vocab.getty.edu/aat/300056130",
-                                            "@type": "crm:E55_Type",
-                                            "rdfs:label": "color"
-                                        },
-                                        // percentage as E54_Dimension
+                                        "rdfs:label": c.css,
                                         "crm:P43_has_dimension": {
                                             "@type": "crm:E54_Dimension",
                                             "crm:P2_has_type": {
@@ -161,12 +170,9 @@ export function requestObject(app, BASE_URI) {
                                                 "@id": "http://vocab.getty.edu/aat/300417476",
                                                 "rdfs:label": "%"
                                             }
-                                        },
-                                        // CSS name as rdfs:label
-                                        "rdfs:label": c.css
+                                        }
                                     }))
                                 },
-                                // base colors as E26_Physical_Feature
                                 {
                                     "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
                                     "@type": "crm:E26_Physical_Feature",
@@ -175,7 +181,7 @@ export function requestObject(app, BASE_URI) {
                                         "@type": "crm:E55_Type",
                                         "rdfs:label": "color"
                                     },
-                                    "rdfs:comment": "Dominant base colors clustered for indexing",
+                                    "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
                                     "crm:P3_has_note": Object.entries(baseColorMap)
                                         .sort((a, b) => b[1] - a[1])
                                         .map(([base, pct]) => ({
@@ -208,7 +214,6 @@ export function requestObject(app, BASE_URI) {
                         : colorFeatures
                 }
             }
-
 
             return res.status(200).json(obj)
 

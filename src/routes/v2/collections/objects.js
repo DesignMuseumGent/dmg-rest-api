@@ -12,6 +12,7 @@ export function requestObjects(app, BASE_URI) {
             const hasImages = req.query.hasImages === 'true'
             const showColors = req.query.colors === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
+            const onDisplay = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
             const colorFilter = req.query.color
                 ? req.query.color.split(',').map(c => c.trim().toLowerCase())
                 : null
@@ -37,6 +38,7 @@ export function requestObjects(app, BASE_URI) {
                 })
             }
 
+            if (onDisplay) countQuery = countQuery.eq('COLLECTION_PRESENTATION', true)
             if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
             if (colorFilter?.length > 0) countQuery = countQuery.contains('dominant_colors', colorFilter)
@@ -45,11 +47,11 @@ export function requestObjects(app, BASE_URI) {
             // build data query
             let selectFields
             if (!fullRecord) {
-                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO'
+                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO,COLLECTION_PRESENTATION'
             } else if (showColors) {
-                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO'
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION'
             } else {
-                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO'
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO, COLLECTION_PRESENTATION'
             }
 
 
@@ -59,6 +61,7 @@ export function requestObjects(app, BASE_URI) {
                 .order('objectNumber', { ascending: true })
                 .range(offset, offset + itemsPerPage - 1)
 
+            if (onDisplay) dataQuery = dataQuery.eq('COLLECTION_PRESENTATION', true)
             if (hasImages) dataQuery = dataQuery.not('iiif_manifest', 'is', null)
             if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
             if (colorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_colors', colorFilter)
@@ -99,7 +102,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(showColors && { colors: 'true' }),
                     ...(colorFilter && { color: colorFilter.join(',') }),
                     ...(cssColorFilter && { cssColor: cssColorFilter.join(',') }),
-                    ...(searchQuery && { q: searchQuery })
+                    ...(searchQuery && { q: searchQuery }),
+                    ...(onDisplay && { onDisplay: 'true'})
                 })
                 return `${collectionId}?${params.toString()}`
             }

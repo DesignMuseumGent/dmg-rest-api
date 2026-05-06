@@ -3,6 +3,7 @@ import { requestAgent} from './entities/agent.js'
 import { requestExhibition} from './entities/exhibition.js'
 import { requestConcept} from './entities/concept.js'
 import { requestObject} from './entities/object.js'
+import { requestPrivateObjects } from "./collections/fullCollection.js";
 import {requestAgents} from "./collections/agents.js";
 import {requestObjects} from "./collections/objects.js";
 import {requestConcepts} from "./collections/concepts.js";
@@ -31,5 +32,7 @@ requestAgents(v2Router, V2_BASE);
 requestObjects(v2Router, V2_BASE);
 requestConcepts(v2Router, V2_BASE);
 requestExhibitions(v2Router, V2_BASE);
+requestPrivateObjects(v2Router, V2_BASE);
+
 
 export default v2Router;

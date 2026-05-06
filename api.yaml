@@ -4,11 +4,14 @@ info:
   title: Design Museum Gent REST API
   version: 1.0.0
 servers:
+  - url: https://data.designmuseumgent.be/v2/
+    description: current version
   - url: https://data.designmuseumgent.be/v1/
-    description: Main (production server)
+    description: deprecated
+
 
 externalDocs:
-  #url: https://digitaal.designmuseumgent.be/api-documentation/
+  url: https://api.designmuseumgent.be/api-documentation/
   #description: find more information here
 
 paths:

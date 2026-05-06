@@ -49,7 +49,7 @@ app.use(express.static("public"));
 
 // swagger docs
 const swaggerDocument = YAML.load("./api.yaml");
-app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+//app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 // routes
 app.use("/v1", v1Router);

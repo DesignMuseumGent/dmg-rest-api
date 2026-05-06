@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+
 - `GET /v2/id/colors` — new color index endpoint listing all available base colors and CSS color names with object counts
   - Returns two lists: `base_colors` (11 base categories) and `css_colors` (900+ named colors)
   - Each entry includes the color value, object count, and a ready-to-use filter URL
@@ -22,6 +23,18 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
   - Available values: `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `pink`, `brown`, `grey`, `black`, `white`
   - Example: `GET /v2/id/objects?color=pink`
   - Example: `GET /v2/id/objects?color=pink,grey`
+
+- Weighted color statistics on `GET /v2/id/colors`
+  - `collection_share_pct` — percentage of the total collection palette each color represents
+  - `avg_dominance_pct` — average dominance of a color when it appears in an object
+  - Both statistics available for base colors and CSS color names
+  - Each entry includes a `dominant` link to the new dominant endpoint
+
+- `GET /v2/id/colors/dominant` — new endpoint returning objects sorted by color dominance
+  - Supports both `?color=` (base color) and `?cssColor=` (CSS color name)
+  - `?limit=` parameter (default 20, max 100)
+  - Each result includes `dominance_pct` — the percentage of the object covered by that color
+  - Example: `GET /v2/id/colors/dominant?color=black` returns the blackest objects in the collection
 
 - `cssColor` query parameter on the objects collection — filter by CSS color name
   - Accepts one or more comma-separated CSS color names from the 900+ color lookup table

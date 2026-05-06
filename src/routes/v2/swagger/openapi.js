@@ -5,9 +5,8 @@ export const swaggerDefinition = {
         version: '2.0.0',
         description: 'CIDOC-CRM compliant JSON-LD REST API for the Design Museum Gent collection.',
         contact: {
-            name: 'Studio Digitaal — Design Museum Gent',
+            name: "Olivier Van D'huynslager",
             email: 'olivier.vandhuynslager@stad.gent',
-            url: 'https://data.designmuseumgent.be'
         },
         license: {
             name: 'MIT',

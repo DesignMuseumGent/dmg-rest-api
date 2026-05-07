@@ -14,6 +14,10 @@ export function requestAgents(app, BASE_URI) {
             const searchQuery = req.query.q ?? null
             const offset = (page - 1) * itemsPerPage
 
+            const roleFilter = req.query.role
+                ? req.query.role.split(',').map(r => r.trim().toLowerCase())
+                : null
+
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
             }
@@ -28,13 +32,12 @@ export function requestAgents(app, BASE_URI) {
 
             const applyFilters = (query) => {
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
-                if (searchQuery) query = query.textSearch('search_vector', searchQuery, {
-                    type: 'websearch',
-                    config: 'simple'
-                })
+                if (searchQuery) query = query.textSearch('search_vector', searchQuery, { type: 'websearch', config: 'simple' })
                 if (nationalityFilter?.length > 0) query = query.contains('nationalities', nationalityFilter)
+                if (roleFilter?.length > 0) query = query.contains('roles', roleFilter)
                 return query
             }
+
 
             // count query
             const { count, error: countError } = await applyFilters(
@@ -69,7 +72,8 @@ export function requestAgents(app, BASE_URI) {
                     ...(fullRecord && { fullRecord: 'true' }),
                     ...(modifiedSince && { modifiedSince }),
                     ...(searchQuery && { q: searchQuery }),
-                    ...(nationalityFilter && { nationality: nationalityFilter.join(',') })
+                    ...(nationalityFilter && { nationality: nationalityFilter.join(',') }),
+                    ...(roleFilter && { role: roleFilter.join(',') })
                 })
                 return `${collectionId}?${params.toString()}`
             }

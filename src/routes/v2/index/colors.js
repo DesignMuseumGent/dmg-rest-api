@@ -5,13 +5,15 @@ export function requestColors(app, BASE_URI) {
         res.setHeader('Content-Type', 'application/ld+json');
         res.setHeader('Content-Disposition', 'inline');
 
+        const onDisplay = req.query.onDisplay === 'true'
+
         try {
             const [
                 { data: baseData, error: baseError },
                 { data: cssData, error: cssError }
             ] = await Promise.all([
-                supabase.rpc('get_base_color_stats'),
-                supabase.rpc('get_css_color_stats')
+                supabase.rpc('get_base_color_stats',{ only_on_display: onDisplay }),
+                supabase.rpc('get_css_color_stats',{ only_on_display: onDisplay })
             ])
 
             if (baseError) {
@@ -39,16 +41,16 @@ export function requestColors(app, BASE_URI) {
                     "object_count": parseInt(row.object_count),
                     "collection_share_pct": parseFloat(row.collection_share_pct),
                     "avg_dominance_pct": parseFloat(row.avg_dominance_pct),
-                    "filter": `${BASE_URI}/id/objects?color=${row.color}`,
-                    "dominant": `${BASE_URI}/id/colors/dominant?color=${encodeURIComponent(row.color)}`
+                    "filter": `${BASE_URI}/id/objects?color=${row.color}${onDisplay ? '&onDisplay=true' : ''}`,
+                    "dominant": `${BASE_URI}/id/colors/dominant?color=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`
                 })),
                 "css_colors": (cssData || []).map(row => ({
                     "value": row.color,
                     "object_count": parseInt(row.object_count),
                     "collection_share_pct": parseFloat(row.collection_share_pct),
                     "avg_dominance_pct": parseFloat(row.avg_dominance_pct),
-                    "filter": `${BASE_URI}/id/objects?cssColor=${encodeURIComponent(row.color)}`,
-                    "dominant": `${BASE_URI}/id/colors/dominant?cssColor=${encodeURIComponent(row.color)}`
+                    "filter": `${BASE_URI}/id/objects?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
+                    "dominant": `${BASE_URI}/id/colors/dominant?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`
                 }))
             }
 

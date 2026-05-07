@@ -7,11 +7,16 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
-## [v2.3.0] — 2026-05-05
+## [v2.3.0] — 2026-05-07
 
 ### Added
 
+- `GET /v2/id/nationalities` — nationality index listing all nationalities in agent records with counts and filter URLs
 - `GET /v2/id/types` — object type index listing all types in the collection with object counts and filter URLs
+- `?nationality=` filter on agents collection
+- `?type=` filter on objects collection
+- `?hasParts=true` and `?isPartOf=true` filters on objects collection
+
 
 - `GET /v2/id/colors` — new color index endpoint listing all available base colors and CSS color names with object counts
   - Returns two lists: `base_colors` (11 base categories) and `css_colors` (900+ named colors)

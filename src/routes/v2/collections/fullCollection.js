@@ -2,6 +2,7 @@
 // this endpoint can only be accessed through authorized users using a valid API key
 
 import { supabase } from '../../../../supabaseClient.js';
+import { buildLinkHeader } from "../../../utils/linkHeader.js"
 
 // ---------------------------------------------------------------------------
 // AUTHENTICATION
@@ -342,8 +343,10 @@ export function requestPrivateObjects(app, BASE_URI) {
                 "hydra:member": members
             }
 
-            return res.status(200).json(response)
+            const linkHeader = buildLinkHeader(hydraView)
+            if (linkHeader) res.setHeader('Link', linkHeader)
 
+            return res.status(200).json(response)
         } catch (error) {
             console.error('Error handling private objects request:', error)
             return res.status(500).json({ error: 'Internal Server Error' })

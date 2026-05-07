@@ -1,4 +1,5 @@
 import { supabase } from '../../../../supabaseClient.js';
+import { buildLinkHeader } from "../../../utils/linkHeader.js"
 
 export function requestExhibitions(app, BASE_URI) {
     const exhibitionsHandler = async (req, res) => {
@@ -174,6 +175,9 @@ export function requestExhibitions(app, BASE_URI) {
                 "hydra:view": hydraView,
                 "hydra:member": members
             }
+
+            const linkHeader = buildLinkHeader(hydraView)
+            if (linkHeader) res.setHeader('Link', linkHeader)
 
             return res.status(200).json(response)
 

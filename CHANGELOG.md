@@ -11,11 +11,21 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
-- `GET /v2/id/nationalities` — nationality index listing all nationalities in agent records with counts and filter URLs
-- `GET /v2/id/types` — object type index listing all types in the collection with object counts and filter URLs
-- `?nationality=` filter on agents collection
-- `?type=` filter on objects collection
-- `?hasParts=true` and `?isPartOf=true` filters on objects collection
+- `?nationality=` query parameter on `GET /v2/id/agents` — filter by nationality
+  - Comma-separated for multiple values (AND)
+  - Use `/v2/id/nationalities` to discover available values
+  - Example: `GET /v2/id/agents?nationality=België`
+
+- `?hasParts=true` query parameter on `GET /v2/id/objects` — only return koepelrecords
+  - Example: `GET /v2/id/objects?hasParts=true&fullRecord=true`
+
+- `?isPartOf=true` query parameter on `GET /v2/id/objects` — only return components
+  - Example: `GET /v2/id/objects?isPartOf=true`
+
+- `Link` header on all collection endpoints following RFC 8288
+  - Exposes Hydra pagination (`first`, `last`, `next`, `prev`) as HTTP headers
+  - Allows clients to paginate without parsing the JSON-LD body
+  - Example: `Link: <...?page=1>; rel="first", <...?page=2>; rel="next"`
 
 
 - `GET /v2/id/colors` — new color index endpoint listing all available base colors and CSS color names with object counts

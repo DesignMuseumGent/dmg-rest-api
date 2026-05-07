@@ -1,4 +1,4 @@
-import { supabase } from '../../../supabaseClient.js';
+import { supabase } from '../../../../supabaseClient.js';
 
 export function requestColors(app, BASE_URI) {
     const colorsHandler = async (req, res) => {

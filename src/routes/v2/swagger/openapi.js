@@ -530,6 +530,43 @@ export const swaggerDefinition = {
                     200: { description: 'DCAT catalog', content: { 'application/ld+json': { schema: { type: 'object' } } } }
                 }
             }
+        },
+
+        '/id/types': {
+            get: {
+                tags: ['Objects'],
+                summary: 'Object type index',
+                description: 'Returns all object types present in the collection with object counts and a ready-to-use filter URL.',
+                responses: {
+                    200: {
+                        description: 'Type index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@id': { type: 'string', format: 'uri' },
+                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
+                                                    'rdfs:label': { type: 'string', example: 'pepervat' },
+                                                    'object_count': { type: 'integer', example: 42 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
         }
     }
 }

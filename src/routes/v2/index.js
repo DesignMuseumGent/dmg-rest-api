@@ -13,7 +13,8 @@ import {requestObjects} from "./collections/objects.js";
 import {requestConcepts} from "./collections/concepts.js";
 import {requestExhibitions} from "./collections/exhibitions.js";
 import {requestDCAT} from "../v2/dcat.js";
-import { requestColors } from "./colors.js";
+import { requestColors } from "./index/colors.js";
+import {requestTypes} from "./index/types.js";
 
 // import v2 routes
 const v2Router = Router();
@@ -29,6 +30,7 @@ v2Router.use(cors({
 
 // helpers
 requestColors(v2Router, V2_BASE);
+requestTypes(v2Router, V2_BASE);
 
 // DCAT
 requestDCAT(v2Router, V2_BASE)

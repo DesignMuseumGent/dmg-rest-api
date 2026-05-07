@@ -21,12 +21,17 @@ export function requestAgents(app, BASE_URI) {
                 ? 'agent_ID, json_ld_v2, wikipedia_bios'
                 : 'agent_ID, json_ld_v2'
 
+            const nationalityFilter = req.query.nationality
+                ? req.query.nationality.split(',').map(n => n.trim())
+                : null
+
             const applyFilters = (query) => {
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
                 if (searchQuery) query = query.textSearch('search_vector', searchQuery, {
                     type: 'websearch',
                     config: 'simple'
                 })
+                if (nationalityFilter?.length > 0) query = query.contains('nationalities', nationalityFilter)
                 return query
             }
 
@@ -62,7 +67,8 @@ export function requestAgents(app, BASE_URI) {
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
                     ...(modifiedSince && { modifiedSince }),
-                    ...(searchQuery && { q: searchQuery })
+                    ...(searchQuery && { q: searchQuery }),
+                    ...(nationalityFilter && { nationality: nationalityFilter.join(',') })
                 })
                 return `${collectionId}?${params.toString()}`
             }

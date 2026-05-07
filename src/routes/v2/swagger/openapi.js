@@ -585,6 +585,41 @@ export const swaggerDefinition = {
                     500: { description: 'Server error' }
                 }
             }
+        },
+        '/id/nationalities': {
+            get: {
+                tags: ['Agents'],
+                summary: 'Nationality index',
+                description: 'Returns all nationalities present in the agent records with agent counts and a ready-to-use filter URL.',
+                responses: {
+                    200: {
+                        description: 'Nationality index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
+                                                    'rdfs:label': { type: 'string', example: 'België' },
+                                                    'agent_count': { type: 'integer', example: 312 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
         }
     }
 }

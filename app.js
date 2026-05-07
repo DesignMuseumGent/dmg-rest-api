@@ -1,18 +1,11 @@
-// import dependencies
 import express from "express";
 import YAML from "yamljs";
 import swaggerUI from "swagger-ui-express";
 import cors from "cors";
 import helmet from "helmet";
-import {rateLimit} from "express-rate-limit";
 import v1Router from "./src/routes/v1/index.js";
 import v2Router from "./src/routes/v2/index.js";
 
-// import routes (API contructors)
-
-const BASE_URI = "https://data.designmuseumgent.be/v1/";
-
-// setup accept-headers
 const app = express();
 
 // behind proxies (e.g., Heroku) so rate limiting and IP work correctly
@@ -22,38 +15,30 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet());
 
-const limiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // one minute
-    limit: 10, // limit public requests to 10 per minute
-    message: {
-        status: 429,
-        message: "Too many requests, please slow down."
-    },
-    legacyHeaders: false,
-    standardHeaders: 'draft-8',
-});
+// ---------------------------------------------------------------------------
+// CORS — global baseline
+// ---------------------------------------------------------------------------
 
-app.use(limiter);
-
-// CORS: allowlist from env (comma-separated). Default to disabled if not provided.
-const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-const corsOptions = {
-    origin: allowedOrigins.length ? allowedOrigins : true, // default: allow all (backward compatible); restrict via CORS_ORIGINS
-    methods: ["GET", "HEAD", "OPTIONS"],
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+app.use(cors({
+    origin: allowedOrigins.length ? allowedOrigins : true,
+    methods: ['GET', 'HEAD', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'x-api-key'],
     credentials: false,
-    optionsSuccessStatus: 204,
-};
-app.use(cors(corsOptions));
+    optionsSuccessStatus: 204
+}))
 
-app.use(express.static("public"));
+// ---------------------------------------------------------------------------
+// STATIC
+// ---------------------------------------------------------------------------
 
-// swagger docs
-const swaggerDocument = YAML.load("./api.yaml");
-//app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+app.use(express.static('public'))
 
-// routes
-app.use("/v1", v1Router);
-app.use("/v2", v2Router);
+// ---------------------------------------------------------------------------
+// ROUTES — each router handles its own rate limiting
+// ---------------------------------------------------------------------------
+
+app.use('/v1', v1Router)
+app.use('/v2', v2Router)
 
 export default app;
-

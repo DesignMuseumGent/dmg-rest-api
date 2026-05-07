@@ -188,6 +188,24 @@ export const swaggerDefinition = {
                         in: 'query',
                         description: 'Filter by CSS color name. Comma-separated for multiple (AND).',
                         schema: { type: 'string', example: 'Old rose' }
+                    },
+                    {
+                        name: 'hasParts',
+                        in: 'query',
+                        description: 'Only return koepelrecords — objects that have physical components',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'isPartOf',
+                        in: 'query',
+                        description: 'Only return components — objects that belong to a parent koepelrecord',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'type',
+                        in: 'query',
+                        description: 'Filter by object type label. Comma-separated for multiple (AND). Use /v2/id/types to discover available values.',
+                        schema: { type: 'string', example: 'vaas' }
                     }
                 ],
                 responses: {

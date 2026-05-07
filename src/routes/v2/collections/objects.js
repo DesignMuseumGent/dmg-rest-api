@@ -24,6 +24,8 @@ export function requestObjects(app, BASE_URI) {
                 : null
             const offset = (page - 1) * itemsPerPage
             const searchQuery = req.query.q ?? null
+            const hasParts = req.query.hasParts === 'true'
+            const isPartOf = req.query.isPartOf === 'true'
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
@@ -47,11 +49,13 @@ export function requestObjects(app, BASE_URI) {
             if (colorFilter?.length > 0) countQuery = countQuery.contains('dominant_colors', colorFilter)
             if (cssColorFilter?.length > 0) countQuery = countQuery.contains('dominant_css_colors', cssColorFilter)
             if (typeFilter?.length > 0) countQuery = countQuery.contains('object_types', typeFilter)
+            if (hasParts) countQuery = countQuery.not('hasParts', 'is', null)
+            if (isPartOf) countQuery = countQuery.not('isPartOf', 'is', null)
 
             // build data query
             let selectFields
             if (!fullRecord) {
-                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, object_types'
+                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, hasParts, isPartOf'
             } else if (showColors) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION'
             } else {
@@ -77,7 +81,8 @@ export function requestObjects(app, BASE_URI) {
                 })
             }
             if (typeFilter?.length > 0) dataQuery = dataQuery.contains('object_types', typeFilter)
-
+            if (hasParts) dataQuery = dataQuery.not('hasParts', 'is', null)
+            if (isPartOf) dataQuery = dataQuery.not('isPartOf', 'is', null)
 
             const [{ count, error: countError }, { data, error }] = await Promise.all([
                 countQuery,
@@ -110,6 +115,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(searchQuery && { q: searchQuery }),
                     ...(onDisplay && { onDisplay: 'true'}),
                     ...(typeFilter && { type: typeFilter.join(',') })
+                    ...(hasParts && { hasParts: 'true' }),
+                    ...(isPartOf && { isPartOf: 'true' })
                 })
                 return `${collectionId}?${params.toString()}`
             }

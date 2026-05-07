@@ -114,7 +114,7 @@ export function requestObjects(app, BASE_URI) {
                     ...(cssColorFilter && { cssColor: cssColorFilter.join(',') }),
                     ...(searchQuery && { q: searchQuery }),
                     ...(onDisplay && { onDisplay: 'true'}),
-                    ...(typeFilter && { type: typeFilter.join(',') })
+                    ...(typeFilter && { type: typeFilter.join(',') }),
                     ...(hasParts && { hasParts: 'true' }),
                     ...(isPartOf && { isPartOf: 'true' })
                 })

@@ -5,9 +5,12 @@ export function requestTypes(app, BASE_URI) {
         res.setHeader('Content-Type', 'application/ld+json')
         res.setHeader('Content-Disposition', 'inline')
 
+        const onDisplay = req.query.onDisplay === 'true'
+
+
         try {
             const { data, error } = await supabase
-                .rpc('get_object_type_stats')
+                .rpc('get_object_type_stats', { only_on_display: onDisplay })
 
             if (error) {
                 console.error('Type stats error:', error.message)
@@ -30,8 +33,7 @@ export function requestTypes(app, BASE_URI) {
                     "@type": "crm:E55_Type",
                     "rdfs:label": row.type_label,
                     "object_count": parseInt(row.object_count),
-                    "filter": `${BASE_URI}/id/objects?type=${encodeURIComponent(row.type_label)}`
-                }))
+                    "filter": `${BASE_URI}id/objects?type=${encodeURIComponent(row.type_label)}${onDisplay ? '&onDisplay=true' : ''}`                }))
             }
 
             return res.status(200).json(response)

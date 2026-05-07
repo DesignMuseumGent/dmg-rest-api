@@ -5,9 +5,11 @@ export function requestMaterials(app, BASE_URI) {
         res.setHeader('Content-Type', 'application/ld+json')
         res.setHeader('Content-Disposition', 'inline')
 
+        const onDisplay = req.query.onDisplay === 'true'
+
         try {
             const { data, error } = await supabase
-                .rpc('get_material_stats')
+                .rpc('get_material_stats', { only_on_display: onDisplay })
 
             if (error) {
                 console.error('Material stats error:', error.message)
@@ -29,8 +31,7 @@ export function requestMaterials(app, BASE_URI) {
                     "@type": "crm:E57_Material",
                     "rdfs:label": row.material,
                     "object_count": parseInt(row.object_count),
-                    "filter": `${BASE_URI}id/objects?material=${encodeURIComponent(row.material)}`
-                }))
+                    "filter": `${BASE_URI}id/objects?material=${encodeURIComponent(row.material)}${onDisplay ? '&onDisplay=true' : ''}`                }))
             })
 
         } catch (error) {

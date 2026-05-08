@@ -374,6 +374,30 @@ export const swaggerDefinition = {
                     404: { description: 'Agent not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
                     500: { description: 'Server error' }
                 }
+            },
+            head: {
+                tags: ['Agents'],
+                summary: 'Check if an agent exists',
+                description: 'Lightweight existence check without fetching the full payload. Includes ETag and Last-Modified headers for cache validation.',
+                parameters: [
+                    {
+                        name: 'agentPID',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', example: 'DMG-A-00162' }
+                    }
+                ],
+                responses: {
+                    200: {
+                        description: 'Agent exists',
+                        headers: {
+                            'Last-Modified': { schema: { type: 'string' } },
+                            'ETag': { schema: { type: 'string' } }
+                        }
+                    },
+                    404: { description: 'Agent not found' },
+                    500: { description: 'Server error' }
+                }
             }
         },
 

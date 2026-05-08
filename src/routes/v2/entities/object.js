@@ -215,6 +215,13 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
+            if (row["generated_at_time"]) {
+                const lastModified = new Date(row["generated_at_time"]).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${ObjectPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
             return res.status(200).json(obj)
 
         } catch (error) {
@@ -223,6 +230,52 @@ export function requestObject(app, BASE_URI) {
         }
     };
 
+    const headHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json')
+
+        const { ObjectPID } = req.params
+
+        if (ObjectPID === 'REMOVED') return res.status(410).end()
+
+        try {
+            const { data, error } = await supabase
+                .from('dmg_objects_LDES')
+                .select('objectNumber, RESOLVES_TO, generated_at_time')
+                .eq('objectNumber', ObjectPID)
+                .maybeSingle()
+
+            if (error) return res.status(500).end()
+            if (!data) return res.status(404).end()
+
+            if (data['RESOLVES_TO']) {
+                const resolvedNumber = data['RESOLVES_TO'].replace('id/object/', '')
+                if (resolvedNumber.includes('REMOVED')) return res.status(410).end()
+                if (resolvedNumber !== ObjectPID) {
+                    return res
+                        .status(301)
+                        .setHeader('Location', `${BASE_URI}/id/object/${resolvedNumber}`)
+                        .end()
+                }
+            }
+
+            if (data['generated_at_time']) {
+                const lastModified = new Date(data['generated_at_time']).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${ObjectPID}-${new Date(data['generated_at_time']).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
+            return res.status(200).end()
+
+        } catch (error) {
+            console.error('Error handling HEAD request:', error)
+            return res.status(500).end()
+        }
+    }
+
     app.get(`/id/object/:ObjectPID`, objectHandler);
     app.get(`/id/ark:/29417/object/:ObjectPID`, objectHandler);
+
+    app.head('/id/object/:ObjectPID', headHandler)
+    app.head('/id/ark:/29417/object/:ObjectPID', headHandler)
 }

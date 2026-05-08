@@ -18,14 +18,21 @@ export function requestAgent(app, BASE_URI) {
                 obj["@context"]["dcterms"] = "http://purl.org/dc/terms/";
             }
 
+            // cache headers
+            if (row["generated_at_time"]) {
+                const lastModified = new Date(row["generated_at_time"]).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${req.params.agentPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
             // Add wikipedia bios as crm:E33_Linguistic_Object
             let biosRaw = row["wikipedia_bios"];
             const linguisticObjects = [];
 
             const pushBio = (text, lang, src) => {
-
                 if (!text || typeof text !== 'string') return;
-                if (text.trim().toLowerCase() === 'no data') return; // ← add this
+                if (text.trim().toLowerCase() === 'no data') return;
 
                 const entry = {
                     "@type": "crm:E33_Linguistic_Object",
@@ -46,7 +53,6 @@ export function requestAgent(app, BASE_URI) {
                     }
                 }
                 linguisticObjects.push(entry);
-
             };
 
             const titles = []
@@ -76,7 +82,6 @@ export function requestAgent(app, BASE_URI) {
                             const src = v['dcterms:source'] || v.source || v.url;
                             pushBio(text, lang, src);
 
-                            // ← add this: extract title from same entry
                             const langMap = { nl: "NLD", en: "ENG", fr: "FRA" }
                             if (v.title && langMap[lang]) {
                                 titles.push({
@@ -90,7 +95,6 @@ export function requestAgent(app, BASE_URI) {
                                     "crm:P72_has_language": {
                                         "@id": `http://publications.europa.eu/resource/authority/language/${langMap[lang]}`
                                     },
-                                    // ← add source and license
                                     ...(src && { "crm:P67_refers_to": { "@id": src } }),
                                     ...(src?.includes("wikipedia.org") && {
                                         "dcterms:license": "https://creativecommons.org/licenses/by-sa/4.0/"
@@ -106,7 +110,6 @@ export function requestAgent(app, BASE_URI) {
                 console.error('Error parsing wikipedia_bios:', e);
             }
 
-            // attach titles to P1_is_identified_by
             if (titles.length > 0) {
                 if (Array.isArray(obj["crm:P1_is_identified_by"])) {
                     obj["crm:P1_is_identified_by"].push(...titles)
@@ -127,6 +130,37 @@ export function requestAgent(app, BASE_URI) {
         }
     }
 
-    app.get("/id/agent/:agentPID", agentHandler);
-    app.get("/id/ark:/29417/agent/:agentPID", agentHandler);
+    const headHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json')
+
+        try {
+            const { data, error } = await supabase
+                .from('dmg_personen_LDES')
+                .select('"agent_ID", generated_at_time')
+                .eq('agent_ID', req.params.agentPID)
+                .maybeSingle()
+
+            if (error) return res.status(500).end()
+            if (!data) return res.status(404).end()
+
+            if (data['generated_at_time']) {
+                const lastModified = new Date(data['generated_at_time']).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${req.params.agentPID}-${new Date(data['generated_at_time']).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
+            return res.status(200).end()
+
+        } catch (error) {
+            console.error('Error handling HEAD request:', error)
+            return res.status(500).end()
+        }
+    }
+
+    app.get('/id/agent/:agentPID', agentHandler)
+    app.get('/id/ark:/29417/agent/:agentPID', agentHandler)
+
+    app.head('/id/agent/:agentPID', headHandler)
+    app.head('/id/ark:/29417/agent/:agentPID', headHandler)
 }

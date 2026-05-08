@@ -1,5 +1,9 @@
 import { supabase } from '../../../../supabaseClient.js'
 
+export const encodeParam = (value) =>
+    encodeURIComponent(value.trim()).replace(/\(/g, '%28').replace(/\)/g, '%29')
+
+
 export function requestMaterials(app, BASE_URI) {
     app.get('/id/materials', async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json')
@@ -31,7 +35,7 @@ export function requestMaterials(app, BASE_URI) {
                     "@type": "crm:E57_Material",
                     "rdfs:label": row.material,
                     "object_count": parseInt(row.object_count),
-                    "filter": `${BASE_URI}id/objects?material=${encodeURIComponent(row.material)}${onDisplay ? '&onDisplay=true' : ''}`                }))
+                    "filter": `${BASE_URI}id/objects?material=${encodeParam(row.material)}${onDisplay ? '&onDisplay=true' : ''}`               }))
             })
 
         } catch (error) {

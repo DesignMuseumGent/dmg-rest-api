@@ -448,6 +448,32 @@ export const swaggerDefinition = {
                     404: { description: 'Exhibition not found' },
                     500: { description: 'Server error' }
                 }
+            },
+            head: {
+                tags: ['Exhibitions'],
+                summary: 'Check if an exhibition exists',
+                description: 'Lightweight existence check without fetching the full payload. Includes ETag and Last-Modified headers for cache validation.',
+                parameters: [
+                    {
+                        name: 'exhibitionPID',
+                        in: 'path',
+                        required: true,
+                        description: 'Exhibition identifier',
+                        schema: { type: 'string', example: 'TE_2020-001' }
+                    }
+                ],
+                responses: {
+                    200: {
+                        description: 'Exhibition exists',
+                        headers: {
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
+                        }
+                    },
+                    404: { description: 'Exhibition not found' },
+                    500: { description: 'Server error' }
+                }
             }
         },
 

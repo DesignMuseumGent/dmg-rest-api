@@ -1,22 +1,25 @@
-import {fetchExhibitionById} from "../../../utils/parsers.js";
+import { fetchExhibitionById } from "../../../utils/parsers.js";
 
-
-export function requestExhibition(app, BASE_URI){
-    const exhibitionHandler = async(req, res) => {
-        res.setHeader('Content-type', 'application/ld+json');
-        res.setHeader('Content-Dispositon', 'inline');
+export function requestExhibition(app, BASE_URI) {
+    const exhibitionHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json');
+        res.setHeader('Content-Disposition', 'inline');
 
         try {
             const record = await fetchExhibitionById(req.params.exhibitionPID)
-            const exh = record[0]["json_ld_v2"]
 
-            // add INTERNAL PID
+            if (!record || record.length === 0) {
+                return res.status(404).json({ error: 'Exhibition not found' })
+            }
 
-            if (record[0]["exh_PID"]) {
-                const pid = record[0]["exh_PID"]
+            const row = record[0]
+            const exh = row["json_ld_v2"]
+
+            // add internal PID
+            if (row["exh_PID"]) {
+                const pid = row["exh_PID"]
                 exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
 
-                // add as E42_Identifier
                 const identifier = {
                     "@id": `${BASE_URI}/id/exhibition/${pid}/identifier/intern`,
                     "@type": "crm:E42_Identifier",
@@ -28,7 +31,6 @@ export function requestExhibition(app, BASE_URI){
                     }
                 }
 
-                // append to existing P1_is_identified_by or create it
                 if (Array.isArray(exh["crm:P1_is_identified_by"])) {
                     exh["crm:P1_is_identified_by"].push(identifier)
                 } else {
@@ -47,9 +49,9 @@ export function requestExhibition(app, BASE_URI){
 
             // multilingual titles
             const appellations = []
-            if (record[0]["title_NL"]) appellations.push({ lang: "NLD", value: record[0]["title_NL"] })
-            if (record[0]["title_FR"]) appellations.push({ lang: "FRA", value: record[0]["title_FR"] })
-            if (record[0]["title_EN"]) appellations.push({ lang: "ENG", value: record[0]["title_EN"] })
+            if (row["title_NL"]) appellations.push({ lang: "NLD", value: row["title_NL"] })
+            if (row["title_FR"]) appellations.push({ lang: "FRA", value: row["title_FR"] })
+            if (row["title_EN"]) appellations.push({ lang: "ENG", value: row["title_EN"] })
 
             if (appellations.length > 0) {
                 exh["crm:P1_is_identified_by"] = [
@@ -66,9 +68,9 @@ export function requestExhibition(app, BASE_URI){
 
             // multilingual descriptions
             const descriptions = []
-            if (record[0]["text_NL"]) descriptions.push({ lang: "NLD", value: record[0]["text_NL"] })
-            if (record[0]["text_FR"]) descriptions.push({ lang: "FRA", value: record[0]["text_FR"] })
-            if (record[0]["text_EN"]) descriptions.push({ lang: "ENG", value: record[0]["text_EN"] })
+            if (row["text_NL"]) descriptions.push({ lang: "NLD", value: row["text_NL"] })
+            if (row["text_FR"]) descriptions.push({ lang: "FRA", value: row["text_FR"] })
+            if (row["text_EN"]) descriptions.push({ lang: "ENG", value: row["text_EN"] })
 
             if (descriptions.length > 0) {
                 exh["crm:P67i_is_referred_to_by"] = [
@@ -88,15 +90,50 @@ export function requestExhibition(app, BASE_URI){
                 ]
             }
 
+            // cache headers
+            if (row["generated_at_time"]) {
+                const lastModified = new Date(row["generated_at_time"]).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${req.params.exhibitionPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
 
             return res.status(200).json(exh)
 
         } catch (e) {
-            console.log(e)
-            res.status(500).send({error: "Error fetching exhibition data"})
+            console.error(e)
+            return res.status(500).json({ error: 'Error fetching exhibition data' })
+        }
+    }
+
+    const headHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json')
+
+        try {
+            const { data, error } = await supabase
+                .from('dmg_tentoonstelling_LDES')
+                .select('id, exh_PID, generated_at_time')
+                .eq('exh_PID', req.params.exhibitionPID)
+                .maybeSingle()
+
+            if (error) return res.status(500).end()
+            if (!data) return res.status(404).end()
+
+            if (data['generated_at_time']) {
+                const lastModified = new Date(data['generated_at_time']).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${req.params.exhibitionPID}-${new Date(data['generated_at_time']).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
+            return res.status(200).end()
+
+        } catch (error) {
+            console.error('Error handling HEAD request:', error)
+            return res.status(500).end()
         }
     }
 
     app.get('/id/exhibition/:exhibitionPID', exhibitionHandler)
-
+    app.head('/id/exhibition/:exhibitionPID', headHandler)
 }

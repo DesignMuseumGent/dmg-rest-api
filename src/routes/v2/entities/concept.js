@@ -5,7 +5,6 @@ export function requestConcept(app, BASE_URI) {
         res.setHeader('Content-Type', 'application/ld+json');
         res.setHeader('Content-Disposition', 'inline');
 
-
         try {
             const ConceptPID = req.params.ConceptPID;
             const record = await fetchByConceptID(ConceptPID);
@@ -37,6 +36,14 @@ export function requestConcept(app, BASE_URI) {
                 obj["skos:scopeNote"] = scopeNotes
             }
 
+            // cache headers
+            if (row["generated_at_time"]) {
+                const lastModified = new Date(row["generated_at_time"]).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${ConceptPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
             return res.status(200).json(obj)
 
         } catch (e) {
@@ -45,5 +52,34 @@ export function requestConcept(app, BASE_URI) {
         }
     }
 
-    app.get("/id/concept/:ConceptPID", conceptHandler);
+    const headHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json')
+
+        try {
+            const { data, error } = await supabase
+                .from('dmg_thesaurus_LDES')
+                .select('id, generated_at_time')
+                .eq('id', req.params.ConceptPID)
+                .maybeSingle()
+
+            if (error) return res.status(500).end()
+            if (!data) return res.status(404).end()
+
+            if (data['generated_at_time']) {
+                const lastModified = new Date(data['generated_at_time']).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${req.params.ConceptPID}-${new Date(data['generated_at_time']).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
+            return res.status(200).end()
+
+        } catch (error) {
+            console.error('Error handling HEAD request:', error)
+            return res.status(500).end()
+        }
+    }
+
+    app.get('/id/concept/:ConceptPID', conceptHandler)
+    app.head('/id/concept/:ConceptPID', headHandler)
 }

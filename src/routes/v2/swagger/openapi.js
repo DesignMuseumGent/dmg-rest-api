@@ -499,6 +499,30 @@ export const swaggerDefinition = {
                     404: { description: 'Concept not found' },
                     500: { description: 'Server error' }
                 }
+            },
+            head: {
+                tags: ['Concepts'],
+                summary: 'Check if a concept exists',
+                description: 'Lightweight existence check without fetching the full payload. Includes ETag and Last-Modified headers for cache validation.',
+                parameters: [
+                    {
+                        name: 'ConceptPID',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', example: '530000049' }
+                    }
+                ],
+                responses: {
+                    200: {
+                        description: 'Concept exists',
+                        headers: {
+                            'Last-Modified': { schema: { type: 'string' } },
+                            'ETag': { schema: { type: 'string' } }
+                        }
+                    },
+                    404: { description: 'Concept not found' },
+                    500: { description: 'Server error' }
+                }
             }
         },
 

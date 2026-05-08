@@ -2,11 +2,12 @@ export const swaggerDefinition = {
     openapi: '3.0.0',
     info: {
         title: 'Design Museum Gent API',
-        version: '2.0.0',
+        version: '2.7.0',
         description: 'CIDOC-CRM compliant JSON-LD REST API for the Design Museum Gent collection.',
         contact: {
             name: "Olivier Van D'huynslager",
             email: 'olivier.vandhuynslager@stad.gent',
+            url: 'https://data.designmuseumgent.be'
         },
         license: {
             name: 'MIT',
@@ -29,6 +30,7 @@ export const swaggerDefinition = {
         { name: 'Exhibitions', description: 'Exhibition archive' },
         { name: 'Concepts', description: 'Thesaurus terms' },
         { name: 'Colors', description: 'Color index and statistics' },
+        { name: 'Discovery', description: 'Index endpoints for types, materials, nationalities and roles' },
         { name: 'Private', description: 'Authenticated private streams' },
         { name: 'DCAT', description: 'Data catalog' }
     ],
@@ -44,7 +46,7 @@ export const swaggerDefinition = {
                 type: 'apiKey',
                 in: 'header',
                 name: 'x-api-key',
-                description: 'API key for private endpoints (header)'
+                description: 'API key for private endpoints (preferred)'
             }
         },
         parameters: {
@@ -77,6 +79,12 @@ export const swaggerDefinition = {
                 in: 'query',
                 description: 'Full text search. Supports phrases ("roze glas"), OR, and negation (-keramiek)',
                 schema: { type: 'string', example: 'roze glas' }
+            },
+            onDisplay: {
+                name: 'onDisplay',
+                in: 'query',
+                description: 'Only return objects currently on view in the collection presentation',
+                schema: { type: 'boolean', default: false }
             }
         },
         schemas: {
@@ -105,6 +113,15 @@ export const swaggerDefinition = {
                 type: 'object',
                 properties: {
                     error: { type: 'string' }
+                }
+            },
+            IndexEntry: {
+                type: 'object',
+                properties: {
+                    '@type': { type: 'string' },
+                    'rdfs:label': { type: 'string' },
+                    'object_count': { type: 'integer' },
+                    'filter': { type: 'string', format: 'uri' }
                 }
             },
             LightweightObject: {
@@ -158,13 +175,14 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Objects'],
                 summary: 'Paginated collection of all objects',
-                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, full text search and incremental harvesting.',
+                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, type filter, material filter, full text search, incremental harvesting and collection presentation filter.',
                 parameters: [
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
                     { $ref: '#/components/parameters/fullRecord' },
                     { $ref: '#/components/parameters/modifiedSince' },
                     { $ref: '#/components/parameters/searchQuery' },
+                    { $ref: '#/components/parameters/onDisplay' },
                     {
                         name: 'hasImages',
                         in: 'query',
@@ -186,8 +204,20 @@ export const swaggerDefinition = {
                     {
                         name: 'cssColor',
                         in: 'query',
-                        description: 'Filter by CSS color name. Comma-separated for multiple (AND).',
+                        description: 'Filter by CSS color name. Comma-separated for multiple (AND). Use /v2/id/colors to discover available values.',
                         schema: { type: 'string', example: 'Old rose' }
+                    },
+                    {
+                        name: 'type',
+                        in: 'query',
+                        description: 'Filter by object type label. Comma-separated for multiple (AND). Use /v2/id/types to discover available values.',
+                        schema: { type: 'string', example: 'vaas' }
+                    },
+                    {
+                        name: 'material',
+                        in: 'query',
+                        description: 'Filter by material label. Comma-separated for multiple (AND). Use /v2/id/materials to discover available values.',
+                        schema: { type: 'string', example: 'glas (materiaal)' }
                     },
                     {
                         name: 'hasParts',
@@ -200,17 +230,14 @@ export const swaggerDefinition = {
                         in: 'query',
                         description: 'Only return components — objects that belong to a parent koepelrecord',
                         schema: { type: 'boolean', default: false }
-                    },
-                    {
-                        name: 'type',
-                        in: 'query',
-                        description: 'Filter by object type label. Comma-separated for multiple (AND). Use /v2/id/types to discover available values.',
-                        schema: { type: 'string', example: 'vaas' }
                     }
                 ],
                 responses: {
                     200: {
                         description: 'Successful response',
+                        headers: {
+                            'Link': { schema: { type: 'string' }, description: 'RFC 8288 pagination links (first, last, next, prev)' }
+                        },
                         content: {
                             'application/ld+json': {
                                 schema: { $ref: '#/components/schemas/HydraCollection' }
@@ -227,7 +254,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Objects'],
                 summary: 'Single object record',
-                description: 'Returns a single object as CIDOC-CRM compliant JSON-LD. Handles resolver redirects (301) and permanently removed objects (410).',
+                description: 'Returns a single object as CIDOC-CRM compliant JSON-LD. Handles resolver redirects (301) and permanently removed objects (410). Includes ETag and Last-Modified headers for cache validation.',
                 parameters: [
                     {
                         name: 'ObjectPID',
@@ -244,11 +271,44 @@ export const swaggerDefinition = {
                     }
                 ],
                 responses: {
-                    200: { description: 'Object found', content: { 'application/ld+json': { schema: { type: 'object' } } } },
+                    200: {
+                        description: 'Object found',
+                        headers: {
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
+                        },
+                        content: { 'application/ld+json': { schema: { type: 'object' } } }
+                    },
                     301: { description: 'Object has been merged — follow Location header' },
                     404: { description: 'Object not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
                     410: { description: 'Object permanently removed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
                     500: { description: 'Server error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+                }
+            },
+            head: {
+                tags: ['Objects'],
+                summary: 'Check if an object exists',
+                description: 'Lightweight existence check without fetching the full payload. Returns the same status codes as GET but with no response body. Includes ETag and Last-Modified headers for cache validation.',
+                parameters: [
+                    {
+                        name: 'ObjectPID',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', example: '1987-1105' }
+                    }
+                ],
+                responses: {
+                    200: {
+                        description: 'Object exists',
+                        headers: {
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' }
+                        }
+                    },
+                    301: { description: 'Object has been merged — follow Location header' },
+                    404: { description: 'Object not found' },
+                    410: { description: 'Object permanently removed' }
                 }
             }
         },
@@ -261,16 +321,34 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Agents'],
                 summary: 'Paginated collection of all agents',
-                description: 'Returns a Hydra paginated collection of agents (persons and organisations).',
+                description: 'Returns a Hydra paginated collection of agents (persons and organisations). Supports full text search, nationality filter and role filter.',
                 parameters: [
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
                     { $ref: '#/components/parameters/fullRecord' },
                     { $ref: '#/components/parameters/modifiedSince' },
-                    { $ref: '#/components/parameters/searchQuery' }
+                    { $ref: '#/components/parameters/searchQuery' },
+                    {
+                        name: 'nationality',
+                        in: 'query',
+                        description: 'Filter by nationality (Dutch country name). Comma-separated for multiple (AND). Use /v2/id/nationalities to discover available values.',
+                        schema: { type: 'string', example: 'België' }
+                    },
+                    {
+                        name: 'role',
+                        in: 'query',
+                        description: 'Filter by role in the collection. Use /v2/id/roles to discover available values.',
+                        schema: { type: 'string', example: 'designer' }
+                    }
                 ],
                 responses: {
-                    200: { description: 'Successful response', content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } } },
+                    200: {
+                        description: 'Successful response',
+                        headers: {
+                            'Link': { schema: { type: 'string' }, description: 'RFC 8288 pagination links' }
+                        },
+                        content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } }
+                    },
                     400: { description: 'Invalid modifiedSince format' },
                     500: { description: 'Server error' }
                 }
@@ -315,7 +393,13 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/modifiedSince' }
                 ],
                 responses: {
-                    200: { description: 'Successful response', content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } } },
+                    200: {
+                        description: 'Successful response',
+                        headers: {
+                            'Link': { schema: { type: 'string' }, description: 'RFC 8288 pagination links' }
+                        },
+                        content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } }
+                    },
                     500: { description: 'Server error' }
                 }
             }
@@ -360,7 +444,13 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/searchQuery' }
                 ],
                 responses: {
-                    200: { description: 'Successful response', content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } } },
+                    200: {
+                        description: 'Successful response',
+                        headers: {
+                            'Link': { schema: { type: 'string' }, description: 'RFC 8288 pagination links' }
+                        },
+                        content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } }
+                    },
                     500: { description: 'Server error' }
                 }
             }
@@ -396,7 +486,10 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Colors'],
                 summary: 'Color index with weighted statistics',
-                description: 'Returns all available base colors and CSS color names with weighted distribution statistics across the full collection.',
+                description: 'Returns all available base colors and CSS color names with weighted distribution statistics across the full collection. Supports ?onDisplay=true to filter to collection presentation objects only.',
+                parameters: [
+                    { $ref: '#/components/parameters/onDisplay' }
+                ],
                 responses: {
                     200: {
                         description: 'Color index',
@@ -477,6 +570,161 @@ export const swaggerDefinition = {
         },
 
         // -----------------------------------------------------------------------
+        // DISCOVERY
+        // -----------------------------------------------------------------------
+
+        '/id/types': {
+            get: {
+                tags: ['Discovery'],
+                summary: 'Object type index',
+                description: 'Returns all object types present in the collection with object counts and a ready-to-use filter URL. Supports ?onDisplay=true.',
+                parameters: [
+                    { $ref: '#/components/parameters/onDisplay' }
+                ],
+                responses: {
+                    200: {
+                        description: 'Type index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@id': { type: 'string', format: 'uri' },
+                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
+                                                    'rdfs:label': { type: 'string', example: 'vaas' },
+                                                    'object_count': { type: 'integer', example: 843 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
+        },
+
+        '/id/materials': {
+            get: {
+                tags: ['Discovery'],
+                summary: 'Material index',
+                description: 'Returns all materials present in the collection with object counts and a ready-to-use filter URL. Supports ?onDisplay=true.',
+                parameters: [
+                    { $ref: '#/components/parameters/onDisplay' }
+                ],
+                responses: {
+                    200: {
+                        description: 'Material index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@type': { type: 'string', example: 'crm:E57_Material' },
+                                                    'rdfs:label': { type: 'string', example: 'glas (materiaal)' },
+                                                    'object_count': { type: 'integer', example: 1243 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
+        },
+
+        '/id/nationalities': {
+            get: {
+                tags: ['Discovery'],
+                summary: 'Nationality index',
+                description: 'Returns all nationalities present in the agent records with agent counts and a ready-to-use filter URL.',
+                responses: {
+                    200: {
+                        description: 'Nationality index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
+                                                    'rdfs:label': { type: 'string', example: 'België' },
+                                                    'agent_count': { type: 'integer', example: 312 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
+        },
+
+        '/id/roles': {
+            get: {
+                tags: ['Discovery'],
+                summary: 'Agent role index',
+                description: 'Returns all roles agents play in the collection (designer, producer) with agent counts and a ready-to-use filter URL.',
+                responses: {
+                    200: {
+                        description: 'Role index',
+                        content: {
+                            'application/ld+json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        'hydra:totalItems': { type: 'integer' },
+                                        'hydra:member': {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
+                                                    'rdfs:label': { type: 'string', example: 'designer' },
+                                                    'agent_count': { type: 'integer', example: 1243 },
+                                                    'filter': { type: 'string', format: 'uri' }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    500: { description: 'Server error' }
+                }
+            }
+        },
+
+        // -----------------------------------------------------------------------
         // PRIVATE
         // -----------------------------------------------------------------------
 
@@ -484,7 +732,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Private'],
                 summary: 'Authenticated private objects stream',
-                description: 'Returns the full private collection stream. Requires a valid API key. Supports all the same filters as the public objects endpoint.',
+                description: 'Returns the full private collection stream. Requires a valid API key passed as ?apiKey= query parameter or x-api-key header. Supports all the same filters as the public objects endpoint.',
                 security: [
                     { ApiKeyAuth: [] },
                     { ApiKeyHeader: [] }
@@ -495,26 +743,15 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/fullRecord' },
                     { $ref: '#/components/parameters/modifiedSince' },
                     { $ref: '#/components/parameters/searchQuery' },
-                    {
-                        name: 'hasImages',
-                        in: 'query',
-                        schema: { type: 'boolean', default: false }
-                    },
-                    {
-                        name: 'colors',
-                        in: 'query',
-                        schema: { type: 'boolean', default: false }
-                    },
-                    {
-                        name: 'color',
-                        in: 'query',
-                        schema: { type: 'string', example: 'pink' }
-                    },
-                    {
-                        name: 'cssColor',
-                        in: 'query',
-                        schema: { type: 'string', example: 'Old rose' }
-                    }
+                    { $ref: '#/components/parameters/onDisplay' },
+                    { name: 'hasImages', in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'colors', in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'color', in: 'query', schema: { type: 'string', example: 'pink' } },
+                    { name: 'cssColor', in: 'query', schema: { type: 'string', example: 'Old rose' } },
+                    { name: 'type', in: 'query', schema: { type: 'string', example: 'vaas' } },
+                    { name: 'material', in: 'query', schema: { type: 'string', example: 'glas (materiaal)' } },
+                    { name: 'hasParts', in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'isPartOf', in: 'query', schema: { type: 'boolean', default: false } }
                 ],
                 responses: {
                     200: { description: 'Successful response', content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } } },
@@ -546,78 +783,6 @@ export const swaggerDefinition = {
                 description: 'Alias for GET /v2/. Returns identical response.',
                 responses: {
                     200: { description: 'DCAT catalog', content: { 'application/ld+json': { schema: { type: 'object' } } } }
-                }
-            }
-        },
-
-        '/id/types': {
-            get: {
-                tags: ['Objects'],
-                summary: 'Object type index',
-                description: 'Returns all object types present in the collection with object counts and a ready-to-use filter URL.',
-                responses: {
-                    200: {
-                        description: 'Type index',
-                        content: {
-                            'application/ld+json': {
-                                schema: {
-                                    type: 'object',
-                                    properties: {
-                                        'hydra:totalItems': { type: 'integer' },
-                                        'hydra:member': {
-                                            type: 'array',
-                                            items: {
-                                                type: 'object',
-                                                properties: {
-                                                    '@id': { type: 'string', format: 'uri' },
-                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
-                                                    'rdfs:label': { type: 'string', example: 'pepervat' },
-                                                    'object_count': { type: 'integer', example: 42 },
-                                                    'filter': { type: 'string', format: 'uri' }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    500: { description: 'Server error' }
-                }
-            }
-        },
-        '/id/nationalities': {
-            get: {
-                tags: ['Agents'],
-                summary: 'Nationality index',
-                description: 'Returns all nationalities present in the agent records with agent counts and a ready-to-use filter URL.',
-                responses: {
-                    200: {
-                        description: 'Nationality index',
-                        content: {
-                            'application/ld+json': {
-                                schema: {
-                                    type: 'object',
-                                    properties: {
-                                        'hydra:totalItems': { type: 'integer' },
-                                        'hydra:member': {
-                                            type: 'array',
-                                            items: {
-                                                type: 'object',
-                                                properties: {
-                                                    '@type': { type: 'string', example: 'crm:E55_Type' },
-                                                    'rdfs:label': { type: 'string', example: 'België' },
-                                                    'agent_count': { type: 'integer', example: 312 },
-                                                    'filter': { type: 'string', format: 'uri' }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    500: { description: 'Server error' }
                 }
             }
         }

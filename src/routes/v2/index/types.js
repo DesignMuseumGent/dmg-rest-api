@@ -1,5 +1,9 @@
 import { supabase } from '../../../../supabaseClient.js'
 
+// src/utils/encodeParam.js
+export const encodeParam = (value) =>
+    encodeURIComponent(value.trim()).replace(/\(/g, '%28').replace(/\)/g, '%29')
+
 export function requestTypes(app, BASE_URI) {
     const typesHandler = async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json')
@@ -33,7 +37,8 @@ export function requestTypes(app, BASE_URI) {
                     "@type": "crm:E55_Type",
                     "rdfs:label": row.type_label,
                     "object_count": parseInt(row.object_count),
-                    "filter": `${BASE_URI}id/objects?type=${encodeURIComponent(row.type_label)}${onDisplay ? '&onDisplay=true' : ''}`                }))
+                    "filter": `${BASE_URI}id/objects?type=${encodeParam(row.type_label)}${onDisplay ? '&onDisplay=true' : ''}`
+                }))
             }
 
             return res.status(200).json(response)

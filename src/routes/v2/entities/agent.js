@@ -122,6 +122,66 @@ export function requestAgent(app, BASE_URI) {
                 obj["crm:P67i_is_referred_to_by"] = linguisticObjects;
             }
 
+            // extract thumbnail from wikipedia_bios — use first available across languages
+            const langPriority = ['nl', 'en', 'fr']
+            let thumbnail = null
+
+            if (biosRaw && typeof biosRaw === 'object' && !Array.isArray(biosRaw)) {
+                for (const lang of langPriority) {
+                    if (biosRaw[lang]?.thumbnail?.source) {
+                        thumbnail = biosRaw[lang].thumbnail
+                        break
+                    }
+                }
+            }
+
+            if (thumbnail) {
+                obj["crm:P65_shows_visual_item"] = {
+                    "@type": "crm:E36_Visual_Item",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300264863",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "digital image"
+                    },
+                    "crm:P138i_has_representation": {
+                        "@id": thumbnail.source,
+                        "@type": "crm:E38_Image",
+                        ...(thumbnail.width && { "crm:P43_has_dimension": [
+                                {
+                                    "@type": "crm:E54_Dimension",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300055647",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "width"
+                                    },
+                                    "crm:P90_has_value": thumbnail.width,
+                                    "crm:P91_has_unit": {
+                                        "@id": "http://vocab.getty.edu/aat/300266190",
+                                        "rdfs:label": "px"
+                                    }
+                                },
+                                {
+                                    "@type": "crm:E54_Dimension",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300055644",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "height"
+                                    },
+                                    "crm:P90_has_value": thumbnail.height,
+                                    "crm:P91_has_unit": {
+                                        "@id": "http://vocab.getty.edu/aat/300266190",
+                                        "rdfs:label": "px"
+                                    }
+                                }
+                            ]}),
+                    },
+                    "dcterms:license": "https://creativecommons.org/licenses/by-sa/4.0/",
+                    "crm:P67_refers_to": {
+                        "@id": biosRaw[langPriority.find(l => biosRaw[l]?.thumbnail?.source)]?.source
+                    }
+                }
+            }
+
             return res.status(200).json(obj);
 
         } catch (error) {

@@ -112,7 +112,7 @@ export function requestColors(app, BASE_URI) {
                     images: { '@id': 'crm:P138i_has_representation', '@type': '@id', '@container': '@list' },
                     thumbnail: { '@id': 'http://iiif.io/api/presentation/2#thumbnail', '@type': '@id' },
                 },
-                '@id': `${BASE_URI}/id/colors`,
+                '@id': `${BASE_URI}id/colors`,
                 '@type': 'hydra:Collection',
                 'rdfs:label': 'Color index',
                 'rdfs:comment': 'Color distribution across the Design Museum Gent collection with weighted statistics',
@@ -121,16 +121,16 @@ export function requestColors(app, BASE_URI) {
                     object_count: parseInt(row.object_count),
                     collection_share_pct: parseFloat(row.collection_share_pct),
                     avg_dominance_pct: parseFloat(row.avg_dominance_pct),
-                    filter: `${BASE_URI}/id/objects?color=${row.color}${onDisplay ? '&onDisplay=true' : ''}`,
-                    dominant: `${BASE_URI}/id/colors/dominant?color=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
+                    filter: `${BASE_URI}id/objects?color=${row.color}${onDisplay ? '&onDisplay=true' : ''}`,
+                    dominant: `${BASE_URI}id/colors/dominant?color=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
                 })),
                 css_colors: (cssData || []).map((row) => ({
                     value: row.color,
                     object_count: parseInt(row.object_count),
                     collection_share_pct: parseFloat(row.collection_share_pct),
                     avg_dominance_pct: parseFloat(row.avg_dominance_pct),
-                    filter: `${BASE_URI}/id/objects?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
-                    dominant: `${BASE_URI}/id/colors/dominant?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
+                    filter: `${BASE_URI}id/objects?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
+                    dominant: `${BASE_URI}id/colors/dominant?cssColor=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
                 })),
             };
 
@@ -190,7 +190,7 @@ export function requestColors(app, BASE_URI) {
                     images: { '@id': 'crm:P138i_has_representation', '@type': '@id', '@container': '@list' },
                     thumbnail: { '@id': 'http://iiif.io/api/presentation/2#thumbnail', '@type': '@id' },
                 },
-                '@id': `${BASE_URI}/id/colors/dominant?${filterParam}&limit=${limit}`,
+                '@id': `${BASE_URI}id/colors/dominant?${filterParam}&limit=${limit}`,
                 '@type': 'hydra:Collection',
                 'rdfs:label': `Objects most dominant in ${colorLabel}`,
                 'hydra:totalItems': (data || []).length,
@@ -198,7 +198,7 @@ export function requestColors(app, BASE_URI) {
                     const { primary, all } = buildImageRepresentations(row);
 
                     const member = {
-                        '@id': `${BASE_URI}/id/object/${row.objectNumber}`,
+                        '@id': `${BASE_URI}id/object/${row.objectNumber}`,
                         '@type': 'crm:E22_Human-Made_Object',
                         'rdfs:label': row.object_title_nl,
                         dominance_pct: parseFloat(row.dominance_pct),

@@ -14,6 +14,7 @@ export function requestObjects(app, BASE_URI) {
             const showColors = req.query.colors === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
             const onDisplay = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
+
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
                 : null
@@ -35,27 +36,36 @@ export function requestObjects(app, BASE_URI) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
             }
 
-            // build count query
-            let countQuery = supabase
-                .from('dmg_objects_LDES')
-                .select('objectNumber', { count: 'exact', head: true })
-
-            if (searchQuery) {
-                countQuery = countQuery.textSearch('search_vector', searchQuery, {
-                    type: 'websearch',
-                    config: 'dutch'
-                })
+            // ─────────────────────────────────────────────────────────────
+            // Apply the same set of filters to both the count and data queries.
+            // Unhealthy objects are NEVER returned by this endpoint.
+            // ─────────────────────────────────────────────────────────────
+            const applyFilters = (q) => {
+                q = q.eq('STATUS', 'HEALTHY')
+                if (onDisplay) q = q.eq('COLLECTION_PRESENTATION', true)
+                if (hasImages) q = q.not('iiif_manifest', 'is', null)
+                if (modifiedSince) q = q.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                if (colorFilter?.length > 0) q = q.contains('dominant_colors', colorFilter)
+                if (cssColorFilter?.length > 0) q = q.contains('dominant_css_colors', cssColorFilter)
+                if (typeFilter?.length > 0) q = q.contains('object_types', typeFilter)
+                if (hasParts) q = q.not('hasParts', 'is', null)
+                if (isPartOf) q = q.not('isPartOf', 'is', null)
+                if (materialFilter?.length > 0) q = q.contains('object_materials', materialFilter)
+                if (searchQuery) {
+                    q = q.textSearch('search_vector', searchQuery, {
+                        type: 'websearch',
+                        config: 'dutch'
+                    })
+                }
+                return q
             }
 
-            if (onDisplay) countQuery = countQuery.eq('COLLECTION_PRESENTATION', true)
-            if (hasImages) countQuery = countQuery.not('iiif_manifest', 'is', null)
-            if (modifiedSince) countQuery = countQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
-            if (colorFilter?.length > 0) countQuery = countQuery.contains('dominant_colors', colorFilter)
-            if (cssColorFilter?.length > 0) countQuery = countQuery.contains('dominant_css_colors', cssColorFilter)
-            if (typeFilter?.length > 0) countQuery = countQuery.contains('object_types', typeFilter)
-            if (hasParts) countQuery = countQuery.not('hasParts', 'is', null)
-            if (isPartOf) countQuery = countQuery.not('isPartOf', 'is', null)
-            if (materialFilter?.length > 0) countQuery = countQuery.contains('object_materials', materialFilter)
+            // build count query
+            let countQuery = applyFilters(
+                supabase
+                    .from('dmg_objects_LDES')
+                    .select('objectNumber', { count: 'exact', head: true })
+            )
 
             // build data query
             let selectFields
@@ -67,28 +77,13 @@ export function requestObjects(app, BASE_URI) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO, COLLECTION_PRESENTATION'
             }
 
-
-            let dataQuery = supabase
-                .from('dmg_objects_LDES')
-                .select(selectFields)
-                .order('objectNumber', { ascending: true })
-                .range(offset, offset + itemsPerPage - 1)
-
-            if (onDisplay) dataQuery = dataQuery.eq('COLLECTION_PRESENTATION', true)
-            if (hasImages) dataQuery = dataQuery.not('iiif_manifest', 'is', null)
-            if (modifiedSince) dataQuery = dataQuery.gte('generated_at_time', new Date(modifiedSince).toISOString())
-            if (colorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_colors', colorFilter)
-            if (cssColorFilter?.length > 0) dataQuery = dataQuery.contains('dominant_css_colors', cssColorFilter)
-            if (searchQuery) {
-                dataQuery = dataQuery.textSearch('search_vector', searchQuery, {
-                    type: 'websearch',
-                    config: 'dutch'
-                })
-            }
-            if (typeFilter?.length > 0) dataQuery = dataQuery.contains('object_types', typeFilter)
-            if (hasParts) dataQuery = dataQuery.not('hasParts', 'is', null)
-            if (isPartOf) dataQuery = dataQuery.not('isPartOf', 'is', null)
-            if (materialFilter?.length > 0) dataQuery = dataQuery.contains('object_materials', materialFilter)
+            let dataQuery = applyFilters(
+                supabase
+                    .from('dmg_objects_LDES')
+                    .select(selectFields)
+                    .order('objectNumber', { ascending: true })
+                    .range(offset, offset + itemsPerPage - 1)
+            )
 
             const [{ count, error: countError }, { data, error }] = await Promise.all([
                 countQuery,
@@ -106,7 +101,7 @@ export function requestObjects(app, BASE_URI) {
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)
-            const collectionId = `${BASE_URI}/id/objects`
+            const collectionId = `${BASE_URI}id/objects`
 
             const buildParams = (p) => {
                 const params = new URLSearchParams({
@@ -119,7 +114,7 @@ export function requestObjects(app, BASE_URI) {
                     ...(colorFilter && { color: colorFilter.join(',') }),
                     ...(cssColorFilter && { cssColor: cssColorFilter.join(',') }),
                     ...(searchQuery && { q: searchQuery }),
-                    ...(onDisplay && { onDisplay: 'true'}),
+                    ...(onDisplay && { onDisplay: 'true' }),
                     ...(typeFilter && { type: typeFilter.join(',') }),
                     ...(hasParts && { hasParts: 'true' }),
                     ...(isPartOf && { isPartOf: 'true' }),
@@ -140,6 +135,11 @@ export function requestObjects(app, BASE_URI) {
 
             const members = (data || [])
                 .filter(row => {
+                    // Keep dropping REMOVED routes and cross-redirects in JS. Note:
+                    // with STATUS=HEALTHY as default, most of these are already
+                    // filtered SQL-side, but a redirect could still legitimately
+                    // be marked HEALTHY (it's the route that's "elsewhere", not
+                    // the row itself), so we still need this guard.
                     if (!row["RESOLVES_TO"]) return true
                     const resolvedNumber = row["RESOLVES_TO"].replace("id/object/", "")
                     if (resolvedNumber.includes("REMOVED")) return false
@@ -149,7 +149,7 @@ export function requestObjects(app, BASE_URI) {
                 .map(row => {
                     if (!fullRecord) {
                         return {
-                            "@id": `${BASE_URI}/id/object/${row.objectNumber}`,
+                            "@id": `${BASE_URI}id/object/${row.objectNumber}`,
                             "@type": "crm:E22_Human-Made_Object",
                             "rdfs:label": row["object_title_nl"] ?? row.objectNumber,
                             ...(row["iiif_manifest"] && {

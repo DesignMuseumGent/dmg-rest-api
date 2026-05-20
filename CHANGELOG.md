@@ -7,6 +7,33 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.4.0] — 2026-05-19
+
+### Added
+
+- `crm:P138i_has_representation` on `GET /v2/id/object/{PID}` and on each `hydra:member` of `GET /v2/id/colors/dominant` — array of `crm:E38_Image` blocks with direct, validated IIIF image URIs, in canvas order
+  - Each `crm:E38_Image` carries `@id` (full-resolution IIIF URI), `thumbnail` (400px-wide IIIF derivative), `crm:P3_has_note` (attribution string) and `crm:P104_is_subject_to` → `crm:E30_Right` (rights statement URI)
+  - Lets clients render images without dereferencing the IIIF manifest first
+  - Omitted when an object has no validated images
+
+- `image` convenience field alongside `crm:P138i_has_representation` on the same endpoints — repeats the first image as a single object for clients that only need a thumbnail
+  - Not a CIDOC property — purely a developer shortcut, equivalent to `crm:P138i_has_representation[0]`
+  - JSON-LD consumers doing triple processing should ignore this field
+
+- Per-image rights and attribution on every image block
+  - `crm:P104_is_subject_to` resolves to the canonical rights URI (rightsstatements.org / Creative Commons)
+  - `crm:P3_has_note` carries the photographer / source / rightsholder string as recorded in the IIIF manifest
+
+### Changed
+
+- Image URIs returned by the API are now HEAD-validated against the IIIF image server — only URIs returning 2xx/3xx are included. Forbidden (`403`) and missing (`404`) images are pruned, so the image fields contain working links by construction.
+
+### Notes
+
+- Existing responses remain backwards compatible. Clients that read only `crm:P129i_is_subject_of` (the IIIF manifest reference) continue to work unchanged — the manifest link is still returned alongside the new fields.
+
+---
+
 ## [v2.3.0] — 2026-05-07
 
 ### Added

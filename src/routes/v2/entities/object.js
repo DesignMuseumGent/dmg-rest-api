@@ -1,4 +1,5 @@
 import { fetchObjectByID } from "../../../utils/parsers.js";
+import { applyImagesToObject } from "../../../utils/iiif_images.js"; // adjust path if your layout differs
 
 export function requestObject(app, BASE_URI) {
     const objectHandler = async (req, res) => {
@@ -31,10 +32,10 @@ export function requestObject(app, BASE_URI) {
                     return res.status(410).json({ error: "This object has been permanently removed from our collection." })
                 } else {
                     return res.status(301)
-                        .setHeader('Location', `${BASE_URI}/id/object/${resolvedNumber}`)
+                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
                         .json({
                             message: `This object has been merged into ${resolvedNumber}.`,
-                            resolved: `${BASE_URI}/id/object/${resolvedNumber}`
+                            resolved: `${BASE_URI}id/object/${resolvedNumber}`
                         })
                 }
             }
@@ -99,7 +100,7 @@ export function requestObject(app, BASE_URI) {
 
             if (isPartOf) {
                 obj["crm:P46i_forms_part_of"] = {
-                    "@id": `${BASE_URI}/id/object/${isPartOf}`,
+                    "@id": `${BASE_URI}id/object/${isPartOf}`,
                     "@type": "crm:E22_Human-Made_Object"
                 }
             }
@@ -111,11 +112,22 @@ export function requestObject(app, BASE_URI) {
 
                 if (parts.length > 0) {
                     obj["crm:P46_has_component"] = parts.map(p => ({
-                        "@id": `${BASE_URI}/id/object/${p}`,
+                        "@id": `${BASE_URI}id/object/${p}`,
                         "@type": "crm:E22_Human-Made_Object"
                     }))
                 }
             }
+
+            // ---------------------------------------------------------------
+            // IIIF images — direct, validated links with rights and attribution
+            // ---------------------------------------------------------------
+            // Adds:
+            //   - crm:P138i_has_representation : array of crm:E38_Image blocks
+            //                                    (the canonical CIDOC property)
+            //   - image : the first image, repeated as a convenience key
+            // No-op when the row has no validated images.
+            applyImagesToObject(obj, row)
+
             // color data — only when ?colors=true
             if (showColors) {
                 const colorsData = row["colors"] ?? null
@@ -253,7 +265,7 @@ export function requestObject(app, BASE_URI) {
                 if (resolvedNumber !== ObjectPID) {
                     return res
                         .status(301)
-                        .setHeader('Location', `${BASE_URI}/id/object/${resolvedNumber}`)
+                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
                         .end()
                 }
             }

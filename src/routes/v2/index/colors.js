@@ -1,79 +1,5 @@
 import { supabase } from '../../../../supabaseClient.js';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Build a smaller IIIF derivative URI from a full-resolution one.
- * Rewrites `/full/full/0/default.jpg` → `/full/{width},/0/default.jpg`.
- * Returns the original URI unchanged if it doesn't match the IIIF v2 pattern.
- */
-function iiifThumbnail(uri, width = 400) {
-    if (typeof uri !== 'string') return null;
-    return uri.replace('/full/full/0/default.jpg', `/full/${width},/0/default.jpg`);
-}
-
-/**
- * Build a CIDOC-CRM `crm:E38_Image` block from a stored IIIF image URI,
- * its rights statement and its attribution.
- *
- * Shape:
- *   {
- *     "@id":  "<image URI>",
- *     "@type": "crm:E38_Image",
- *     "thumbnail": "<400px-wide IIIF derivative>",
- *     "crm:P3_has_note": "<attribution>",
- *     "crm:P104_is_subject_to": {
- *       "@id": "<rights statement URI>",
- *       "@type": "crm:E30_Right"
- *     }
- *   }
- */
-function buildImageBlock(uri, license, attribution) {
-    if (!uri) return null;
-    const block = {
-        '@id': uri,
-        '@type': 'crm:E38_Image',
-    };
-    const thumb = iiifThumbnail(uri, 400);
-    if (thumb && thumb !== uri) block.thumbnail = thumb;
-    if (attribution) block['crm:P3_has_note'] = attribution;
-    if (license && typeof license === 'string') {
-        block['crm:P104_is_subject_to'] = {
-            '@id': license,
-            '@type': 'crm:E30_Right',
-        };
-    }
-    return block;
-}
-
-/**
- * Given the three aligned arrays the validator writes
- * (iiif_image_uris[], CC_Licenses[], attributions[]),
- * return { primary, all }: the first working image and the full array.
- *
- * CC_Licenses can also be a *status string* like "PERMISSION DENIED" for
- * objects where every image failed validation — we treat that as "no images".
- */
-function buildImageRepresentations(row) {
-    const uris = Array.isArray(row.iiif_image_uris) ? row.iiif_image_uris : [];
-    const licenses = Array.isArray(row.CC_Licenses) ? row.CC_Licenses : [];
-    const attributions = Array.isArray(row.attributions) ? row.attributions : [];
-
-    if (uris.length === 0) return { primary: null, all: [] };
-
-    const all = uris
-        .map((uri, i) => buildImageBlock(uri, licenses[i] ?? null, attributions[i] ?? null))
-        .filter(Boolean);
-
-    return { primary: all[0] ?? null, all };
-}
-
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
+import { applyImagesToObject } from '../../../utils/iiif_images.js'; // adjust path if your layout differs
 
 export function requestColors(app, BASE_URI) {
     const colorsHandler = async (req, res) => {
@@ -106,11 +32,6 @@ export function requestColors(app, BASE_URI) {
                     crm: 'http://www.cidoc-crm.org/cidoc-crm/',
                     rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
                     hydra: 'http://www.w3.org/ns/hydra/core#',
-                    // Convenience aliases so clients can use short keys and still
-                    // resolve to proper CIDOC predicates.
-                    image: { '@id': 'crm:P138i_has_representation', '@type': '@id' },
-                    images: { '@id': 'crm:P138i_has_representation', '@type': '@id', '@container': '@list' },
-                    thumbnail: { '@id': 'http://iiif.io/api/presentation/2#thumbnail', '@type': '@id' },
                 },
                 '@id': `${BASE_URI}id/colors`,
                 '@type': 'hydra:Collection',
@@ -186,27 +107,24 @@ export function requestColors(app, BASE_URI) {
                     crm: 'http://www.cidoc-crm.org/cidoc-crm/',
                     rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
                     hydra: 'http://www.w3.org/ns/hydra/core#',
-                    image: { '@id': 'crm:P138i_has_representation', '@type': '@id' },
-                    images: { '@id': 'crm:P138i_has_representation', '@type': '@id', '@container': '@list' },
-                    thumbnail: { '@id': 'http://iiif.io/api/presentation/2#thumbnail', '@type': '@id' },
                 },
                 '@id': `${BASE_URI}id/colors/dominant?${filterParam}&limit=${limit}`,
                 '@type': 'hydra:Collection',
                 'rdfs:label': `Objects most dominant in ${colorLabel}`,
                 'hydra:totalItems': (data || []).length,
                 'hydra:member': (data || []).map((row) => {
-                    const { primary, all } = buildImageRepresentations(row);
-
                     const member = {
-                        '@id': `${BASE_URI}id/object/${row.objectNumber}`,
+                        '@id': `${BASE_URI}/id/object/${row.objectNumber}`,
                         '@type': 'crm:E22_Human-Made_Object',
                         'rdfs:label': row.object_title_nl,
                         dominance_pct: parseFloat(row.dominance_pct),
                     };
 
-                    // Direct image links — primary for fast path, full list for completeness.
-                    if (primary) member.image = primary;
-                    if (all.length > 0) member.images = all;
+                    // Direct image links — same shape as /id/object/:ObjectPID.
+                    // Adds crm:P138i_has_representation (the canonical CIDOC
+                    // property) plus a convenience `image` key for clients
+                    // that just want a thumbnail.
+                    applyImagesToObject(member, row);
 
                     // Keep the manifest reference as the canonical IIIF entry point.
                     if (row.iiif_manifest) {

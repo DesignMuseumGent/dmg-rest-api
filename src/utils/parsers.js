@@ -286,7 +286,7 @@ export async function fetchObjectByID(objectNumber) {
         .eq('objectNumber', objectNumber),
     supabase
         .from('dmg_objects_media')
-        .select('url, type')
+        .select('url, type, title, date')
         .eq('objectNumber', objectNumber)
   ])
 

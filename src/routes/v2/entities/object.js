@@ -232,12 +232,11 @@ export function requestObject(app, BASE_URI) {
 
             if (media.length > 0) {
                 const mediaNodes = media.map(m => {
-                    const isVideo = m.type === 'VIDEO'
-                    const isAudio = m.type === 'AUDIO'
+                    const isVideo = m.type === 'video'
 
                     return {
                         "@id": m.url,
-                        "@type": isAudio ? "crm:E73_Information_Object" : "crm:E73_Information_Object",
+                        "@type": "crm:E73_Information_Object",
                         "crm:P2_has_type": isVideo
                             ? {
                                 "@id": "http://vocab.getty.edu/aat/300263419",
@@ -248,7 +247,27 @@ export function requestObject(app, BASE_URI) {
                                 "@id": "http://vocab.getty.edu/aat/300263472",
                                 "@type": "crm:E55_Type",
                                 "rdfs:label": "audio"
+                            },
+                        ...(m.title && {
+                            "crm:P102_has_title": {
+                                "@type": "crm:E35_Title",
+                                "rdfs:label": m.title
                             }
+                        }),
+                        ...(m.date && {
+                            "crm:P4_has_time-span": {
+                                "@type": "crm:E52_Time-Span",
+                                "rdfs:label": m.date,
+                                "crm:P82a_begin_of_the_begin": {
+                                    "@type": "xsd:gYear",
+                                    "@value": m.date
+                                },
+                                "crm:P82b_end_of_the_end": {
+                                    "@type": "xsd:gYear",
+                                    "@value": m.date
+                                }
+                            }
+                        })
                     }
                 })
 

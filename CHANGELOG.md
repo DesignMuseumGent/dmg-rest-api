@@ -19,7 +19,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 - Media and audio on object records — `crm:P129i_is_subject_of`
   - Video and audio resources from `dmg_objects_media` table are now included alongside the IIIF manifest
-  - Typed using Getty AAT: `300263419` (video), `300263472` (audio)
+  - Typed using Getty AAT: `300263419` (video), `300263472` (audio), title and year are included.
   - Non-breaking — IIIF manifest remains unchanged, media nodes are added to the existing array
 
 - `prov:generatedAtTime` documented in API reference for all entity endpoints

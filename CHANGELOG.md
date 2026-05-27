@@ -11,6 +11,8 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- Creative projects (`crm:P15i_was_motivation_of`) and media (`crm:P129i_is_subject_of`) enrichment on object records sourced from `dmg_objects_projects` and `dmg_objects_media` tables
+
 - `crm:P106i_forms_part_of` — sub-collection and provenance group membership on object records
   - Sourced from `collectie` field in the erfgoed API
   - Typed as `crm:E78_Curated_Holding` — distinct from physical koepelrecord relationships (`crm:P46i_forms_part_of`)

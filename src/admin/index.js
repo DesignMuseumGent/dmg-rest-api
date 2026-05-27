@@ -10,7 +10,7 @@ export function setupAdmin(app) {
     // ---------------------------------------------------------------------------
 
     const requireAuth = (req, res, next) => {
-        if (req.session?.authenticated) return next()
+        if (req.session?.user) return next()
         return res.redirect('/admin/login')
     }
 
@@ -19,16 +19,69 @@ export function setupAdmin(app) {
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/login', (req, res) => {
+        if (req.session?.user) return res.redirect('/admin')
         res.send(loginPage(req.query.error))
     })
 
-    adminRouter.post('/login', (req, res) => {
-        const { password } = req.body
-        if (password === process.env.ADMIN_PASSWORD) {
-            req.session.authenticated = true
-            return res.redirect('/admin')
+    adminRouter.post('/login', async (req, res) => {
+        const { email, password } = req.body
+
+        if (!email || !password) {
+            return res.redirect('/admin/login?error=missing')
         }
-        return res.redirect('/admin/login?error=1')
+
+        const { data: user, error } = await supabase
+            .from('dmg_admin_users')
+            .select('id, email, password, name, can_delete')
+            .eq('email', email.toLowerCase().trim())
+            .eq('password', password)          // ← direct comparison
+            .maybeSingle()
+
+        if (error || !user) {
+            return res.redirect('/admin/login?error=invalid')
+        }
+
+        await supabase
+            .from('dmg_admin_users')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', user.id)
+
+        req.session.user = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            canDelete: user.can_delete
+        }
+
+        return res.redirect('/admin')
+    })
+
+    // TEMPORARY DEBUG — remove after fixing
+    adminRouter.get('/debug-login', async (req, res) => {
+        const email = req.query.email
+        if (!email) return res.send('add ?email=your@email.com')
+
+        const { data: user, error } = await supabase
+            .from('dmg_admin_users')
+            .select('id, email, password_hash, name, can_delete')
+            .eq('email', email.toLowerCase().trim())
+            .maybeSingle()
+
+        if (!user) return res.send(`User not found. Error: ${JSON.stringify(error)}`)
+
+        const hashLength = user.password_hash?.length
+        const hashStart = user.password_hash?.substring(0, 10)
+        const hashEncoded = JSON.stringify(user.password_hash?.substring(0, 30))
+
+        res.send(`
+        <pre>
+            email: ${user.email}
+            hash length: ${hashLength}
+            hash start: ${hashStart}
+            hash encoded (first 30): ${hashEncoded}
+            valid bcrypt hash: ${user.password_hash?.startsWith('$2')}
+        </pre>
+    `)
     })
 
     adminRouter.get('/logout', (req, res) => {
@@ -41,14 +94,13 @@ export function setupAdmin(app) {
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/', requireAuth, (req, res) => {
-        res.send(dashboardPage())
+        res.send(dashboardPage(req.session.user))
     })
 
     // ---------------------------------------------------------------------------
     // MEDIA
     // ---------------------------------------------------------------------------
 
-    // media GET
     adminRouter.get('/media', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
 
@@ -61,22 +113,31 @@ export function setupAdmin(app) {
         if (search) query = query.ilike('objectNumber', `%${search}%`)
 
         const { data, error } = await query
-        res.send(mediaPage(data || [], error?.message, req.query.success, search))
+        res.send(mediaPage(data || [], error?.message, req.query.success, search, req.session.user))
     })
 
     adminRouter.post('/media/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, type, date } = req.body
         if (!objectNumber || !url || !type) return res.redirect('/admin/media?error=missing+required+fields')
 
-        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
+        const { data: obj } = await supabase
+            .from('dmg_objects_LDES')
+            .select('objectNumber')
+            .eq('objectNumber', objectNumber)
+            .maybeSingle()
+
         if (!obj) return res.redirect('/admin/media?error=object+not+found')
 
-        const { error } = await supabase.from('dmg_objects_media').insert({ objectNumber, title, url, type, date })
+        const { error } = await supabase
+            .from('dmg_objects_media')
+            .insert({ objectNumber, title, url, type, date })
+
         if (error) return res.redirect('/admin/media?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/media?success=1')
     })
 
     adminRouter.post('/media/delete/:id', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
         await supabase.from('dmg_objects_media').delete().eq('id', req.params.id)
         return res.redirect('/admin/media')
     })
@@ -85,7 +146,6 @@ export function setupAdmin(app) {
     // PROJECTS
     // ---------------------------------------------------------------------------
 
-    // projects GET
     adminRouter.get('/projects', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
 
@@ -98,22 +158,31 @@ export function setupAdmin(app) {
         if (search) query = query.ilike('objectNumber', `%${search}%`)
 
         const { data, error } = await query
-        res.send(projectsPage(data || [], error?.message, req.query.success, search))
+        res.send(projectsPage(data || [], error?.message, req.query.success, search, req.session.user))
     })
 
     adminRouter.post('/projects/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, date } = req.body
         if (!objectNumber || !title) return res.redirect('/admin/projects?error=missing+required+fields')
 
-        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
+        const { data: obj } = await supabase
+            .from('dmg_objects_LDES')
+            .select('objectNumber')
+            .eq('objectNumber', objectNumber)
+            .maybeSingle()
+
         if (!obj) return res.redirect('/admin/projects?error=object+not+found')
 
-        const { error } = await supabase.from('dmg_objects_projects').insert({ objectNumber, title, url, date })
+        const { error } = await supabase
+            .from('dmg_objects_projects')
+            .insert({ objectNumber, title, url, date })
+
         if (error) return res.redirect('/admin/projects?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/projects?success=1')
     })
 
     adminRouter.post('/projects/delete/:id', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
         await supabase.from('dmg_objects_projects').delete().eq('id', req.params.id)
         return res.redirect('/admin/projects')
     })
@@ -159,6 +228,11 @@ const styles = `
     header { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     header a { color: #ccc; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
     header a:hover { color: white; }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-user { color: #888; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    .header-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 0.5rem; }
+    .header-badge-admin { background: #2d3748; color: #a0aec0; }
+    .header-badge-viewer { background: #2d3748; color: #718096; }
     nav { background: #2a2a2a; padding: 0.75rem 2rem; display: flex; gap: 1.5rem; }
     nav a { color: #aaa; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
     nav a:hover, nav a.active { color: white; }
@@ -196,13 +270,15 @@ const styles = `
     a.external { color: #4a90d9; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
     .empty { color: #aaa; font-style: italic; padding: 2rem; text-align: center; font-family: 'Museum', sans-serif; }
     .results-count { font-size: 0.875rem; color: #888; margin-bottom: 0.75rem; font-family: 'Museum', sans-serif; }
+    .no-delete { color: #ddd; font-size: 0.8125rem; }
+    .permission-note { font-size: 0.8125rem; color: #aaa; margin-top: 0.75rem; font-family: 'Museum', sans-serif; }
 `
 
 // ---------------------------------------------------------------------------
 // LAYOUT
 // ---------------------------------------------------------------------------
 
-const layout = (title, content, currentPath = '') => `
+const layout = (title, content, currentPath = '', user = null) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -217,7 +293,17 @@ const layout = (title, content, currentPath = '') => `
         <a href="/admin" style="display: flex; align-items: center; text-decoration: none;">
             <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height: 28px; filter: invert(1);">
         </a>
-        <a href="/admin/logout" style="font-family: 'Museum', sans-serif; color: #ccc; text-decoration: none; font-size: 0.875rem;">Sign out</a>
+        <div class="header-right">
+            ${user ? `
+                <span class="header-user">
+                    ${user.name || user.email}
+                    <span class="header-badge ${user.canDelete ? 'header-badge-admin' : 'header-badge-viewer'}">
+                        ${user.canDelete ? 'admin' : 'viewer'}
+                    </span>
+                </span>
+            ` : ''}
+            <a href="/admin/logout">Sign out</a>
+        </div>
     </header>
     <nav>
         <a href="/admin" ${currentPath === '/' ? 'class="active"' : ''}>Dashboard</a>
@@ -248,7 +334,7 @@ const loginPage = (error) => `
         p { color: #888; font-size: 0.9375rem; margin-bottom: 1.5rem; font-family: 'Museum', sans-serif; }
         label { display: block; font-size: 0.75rem; font-weight: 500; color: #555; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Museum', sans-serif; }
         input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
-        input:focus { outline: none; border-color: #555; }
+        input:focus { outline: none; border-color: #555; box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
         button { width: 100%; padding: 0.75rem; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Museum', sans-serif; }
         button:hover { background: #333; }
         .error { background: #fff5f5; color: #c53030; padding: 0.75rem; border-radius: 6px; font-size: 0.9375rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
@@ -260,10 +346,13 @@ const loginPage = (error) => `
             <img src="/images/dmg-logo.svg" alt="Design Museum Gent">
         </div>
         <p>Collection API — Admin</p>
-        ${error ? '<div class="error">Incorrect password.</div>' : ''}
+        ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
+        ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
         <form method="POST" action="/admin/login">
+            <label>Email</label>
+            <input type="email" name="email" autofocus required autocomplete="email">
             <label>Password</label>
-            <input type="password" name="password" autofocus required>
+            <input type="password" name="password" required autocomplete="current-password">
             <button type="submit">Sign in</button>
         </form>
     </div>
@@ -274,7 +363,7 @@ const loginPage = (error) => `
 // DASHBOARD PAGE
 // ---------------------------------------------------------------------------
 
-const dashboardPage = () => layout('Dashboard', `
+const dashboardPage = (user) => layout('Dashboard', `
     <h1>Dashboard</h1>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
         <a href="/admin/media" style="text-decoration: none;">
@@ -290,13 +379,13 @@ const dashboardPage = () => layout('Dashboard', `
             </div>
         </a>
     </div>
-`, '/')
+`, '/', user)
 
 // ---------------------------------------------------------------------------
 // MEDIA PAGE
 // ---------------------------------------------------------------------------
 
-const mediaPage = (rows, error, success, search) => layout('Media', `
+const mediaPage = (rows, error, success, search, user) => layout('Media', `
     <h1>Media</h1>
 
     ${success ? '<div class="alert alert-success">Entry added successfully.</div>' : ''}
@@ -339,6 +428,7 @@ const mediaPage = (rows, error, success, search) => layout('Media', `
 
     <div class="card">
         <h2>Entries</h2>
+
         <form method="GET" action="/admin/media" class="search-bar">
             <div class="form-group">
                 <label>Filter by object number</label>
@@ -372,21 +462,23 @@ const mediaPage = (rows, error, success, search) => layout('Media', `
                     <td>${r.date || '—'}</td>
                     <td><a href="${r.url}" target="_blank" class="external">↗ link</a></td>
                     <td>
+                        ${user.canDelete ? `
                         <form method="POST" action="/admin/media/delete/${r.id}" style="display:inline">
                             <button type="submit" class="btn-danger" onclick="return confirm('Delete this entry?')">delete</button>
-                        </form>
+                        </form>` : '<span class="no-delete">—</span>'}
                     </td>
                 </tr>`).join('')}
             </tbody>
-        </table>`}
+        </table>
+        ${!user.canDelete ? '<p class="permission-note">You do not have permission to delete entries.</p>' : ''}`}
     </div>
-`, '/media')
+`, '/media', user)
 
 // ---------------------------------------------------------------------------
 // PROJECTS PAGE
 // ---------------------------------------------------------------------------
 
-const projectsPage = (rows, error, success, search) => layout('Projects', `
+const projectsPage = (rows, error, success, search, user) => layout('Projects', `
     <h1>Projects</h1>
 
     ${success ? '<div class="alert alert-success">Entry added successfully.</div>' : ''}
@@ -421,6 +513,7 @@ const projectsPage = (rows, error, success, search) => layout('Projects', `
 
     <div class="card">
         <h2>Entries</h2>
+
         <form method="GET" action="/admin/projects" class="search-bar">
             <div class="form-group">
                 <label>Filter by object number</label>
@@ -452,12 +545,14 @@ const projectsPage = (rows, error, success, search) => layout('Projects', `
                     <td>${r.date || '—'}</td>
                     <td>${r.url ? `<a href="${r.url}" target="_blank" class="external">↗ link</a>` : '—'}</td>
                     <td>
+                        ${user.canDelete ? `
                         <form method="POST" action="/admin/projects/delete/${r.id}" style="display:inline">
                             <button type="submit" class="btn-danger" onclick="return confirm('Delete this entry?')">delete</button>
-                        </form>
+                        </form>` : '<span class="no-delete">—</span>'}
                     </td>
                 </tr>`).join('')}
             </tbody>
-        </table>`}
+        </table>
+        ${!user.canDelete ? '<p class="permission-note">You do not have permission to delete entries.</p>' : ''}`}
     </div>
-`, '/projects')
+`, '/projects', user)

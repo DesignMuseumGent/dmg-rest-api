@@ -227,6 +227,43 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
+            // media — video and audio
+            const media = row["_media"] ?? []
+
+            if (media.length > 0) {
+                const mediaNodes = media.map(m => {
+                    const isVideo = m.type === 'VIDEO'
+                    const isAudio = m.type === 'AUDIO'
+
+                    return {
+                        "@id": m.url,
+                        "@type": isAudio ? "crm:E73_Information_Object" : "crm:E73_Information_Object",
+                        "crm:P2_has_type": isVideo
+                            ? {
+                                "@id": "http://vocab.getty.edu/aat/300263419",
+                                "@type": "crm:E55_Type",
+                                "rdfs:label": "video"
+                            }
+                            : {
+                                "@id": "http://vocab.getty.edu/aat/300263472",
+                                "@type": "crm:E55_Type",
+                                "rdfs:label": "audio"
+                            }
+                    }
+                })
+
+                // merge with existing P129i_is_subject_of (IIIF manifest)
+                const existing = obj["crm:P129i_is_subject_of"]
+                if (existing) {
+                    const existingArray = Array.isArray(existing) ? existing : [existing]
+                    obj["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
+                } else {
+                    obj["crm:P129i_is_subject_of"] = mediaNodes.length === 1
+                        ? mediaNodes[0]
+                        : mediaNodes
+                }
+            }
+
             if (row["generated_at_time"]) {
                 const lastModified = new Date(row["generated_at_time"]).toUTCString()
                 res.setHeader('Last-Modified', lastModified)

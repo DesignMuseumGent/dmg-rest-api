@@ -7,6 +7,35 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.5.0] — 2026-05-27
+
+### Added
+
+- `crm:P106i_forms_part_of` — sub-collection and provenance group membership on object records
+  - Sourced from `collectie` field in the erfgoed API
+  - Typed as `crm:E78_Curated_Holding` — distinct from physical koepelrecord relationships (`crm:P46i_forms_part_of`)
+  - Resolved to internal DMG concept URIs where available, with `owl:sameAs` pointing to the external Stad Gent URI
+  - Example: `"legaat Havermans"`, `"Val-Saint-Lambert"`
+
+- Media and audio on object records — `crm:P129i_is_subject_of`
+  - Video and audio resources from `dmg_objects_media` table are now included alongside the IIIF manifest
+  - Typed using Getty AAT: `300263419` (video), `300263472` (audio)
+  - Non-breaking — IIIF manifest remains unchanged, media nodes are added to the existing array
+
+- `prov:generatedAtTime` documented in API reference for all entity endpoints
+  - Explains the timestamp as the last harvest date, not the object creation date
+  - Links to `?modifiedSince=` and `ETag`/`Last-Modified` headers for incremental sync workflows
+
+- Wikipedia thumbnail on agent records — `crm:P65_shows_visual_item`
+  - When a Wikipedia thumbnail is available it is exposed as a `crm:E36_Visual_Item` with pixel dimensions
+  - Licensed under CC BY-SA 4.0 with source link
+  - First available thumbnail across Dutch, English and French Wikipedia is used
+
+### Notes
+
+- Stad Gent URIs (`stad.gent/id/...`) used in `owl:sameAs` throughout the API are persistent identifiers but **do not currently resolve** — documented in the API reference
+- All changes are non-breaking within v2 — no existing fields removed or renamed
+
 ## [v2.4.0] — 2026-05-19
 
 ### Added

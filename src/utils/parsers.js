@@ -279,7 +279,7 @@ export async function fetchByConceptID(ConceptPID) {
 }
 
 export async function fetchObjectByID(objectNumber) {
-  const [objectResult, mediaResult] = await Promise.all([
+  const [objectResult, mediaResult, projectsResult] = await Promise.all([
     supabase
         .from('dmg_objects_LDES')
         .select('objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, hasParts, isPartOf, generated_at_time')
@@ -287,14 +287,18 @@ export async function fetchObjectByID(objectNumber) {
     supabase
         .from('dmg_objects_media')
         .select('url, type, title, date')
+        .eq('objectNumber', objectNumber),
+    supabase
+        .from('dmg_objects_projects')
+        .select('url, title, date')
         .eq('objectNumber', objectNumber)
   ])
 
   if (objectResult.error) throw objectResult.error
   if (!objectResult.data || objectResult.data.length === 0) return []
 
-  // attach media to the row
   objectResult.data[0]._media = mediaResult.data || []
+  objectResult.data[0]._projects = projectsResult.data || []
 
   return objectResult.data
 }

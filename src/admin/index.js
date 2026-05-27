@@ -1,16 +1,7 @@
 import { Router } from 'express'
 import { supabase } from '../../supabaseClient.js'
-import session from 'express-session'
 
 export function setupAdmin(app) {
-
-    // session middleware — add to app before admin routes
-    app.use(session({
-        secret: process.env.ADMIN_SESSION_SECRET || 'dmg-admin-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { maxAge: 8 * 60 * 60 * 1000 } // 8 hours
-    }))
 
     const adminRouter = Router()
 
@@ -57,38 +48,30 @@ export function setupAdmin(app) {
     // MEDIA
     // ---------------------------------------------------------------------------
 
+    // media GET
     adminRouter.get('/media', requireAuth, async (req, res) => {
-        const { data, error } = await supabase
+        const search = req.query.q?.trim() || null
+
+        let query = supabase
             .from('dmg_objects_media')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(100)
+            .limit(200)
 
-        res.send(mediaPage(data || [], error))
+        if (search) query = query.ilike('objectNumber', `%${search}%`)
+
+        const { data, error } = await query
+        res.send(mediaPage(data || [], error?.message, req.query.success, search))
     })
 
     adminRouter.post('/media/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, type, date } = req.body
+        if (!objectNumber || !url || !type) return res.redirect('/admin/media?error=missing+required+fields')
 
-        if (!objectNumber || !url || !type) {
-            return res.redirect('/admin/media?error=missing+fields')
-        }
+        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
+        if (!obj) return res.redirect('/admin/media?error=object+not+found')
 
-        // verify object exists
-        const { data: obj } = await supabase
-            .from('dmg_objects_LDES')
-            .select('objectNumber')
-            .eq('objectNumber', objectNumber)
-            .maybeSingle()
-
-        if (!obj) {
-            return res.redirect('/admin/media?error=object+not+found')
-        }
-
-        const { error } = await supabase
-            .from('dmg_objects_media')
-            .insert({ objectNumber, title, url, type, date })
-
+        const { error } = await supabase.from('dmg_objects_media').insert({ objectNumber, title, url, type, date })
         if (error) return res.redirect('/admin/media?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/media?success=1')
     })
@@ -102,38 +85,30 @@ export function setupAdmin(app) {
     // PROJECTS
     // ---------------------------------------------------------------------------
 
+    // projects GET
     adminRouter.get('/projects', requireAuth, async (req, res) => {
-        const { data, error } = await supabase
+        const search = req.query.q?.trim() || null
+
+        let query = supabase
             .from('dmg_objects_projects')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(100)
+            .limit(200)
 
-        res.send(projectsPage(data || [], error))
+        if (search) query = query.ilike('objectNumber', `%${search}%`)
+
+        const { data, error } = await query
+        res.send(projectsPage(data || [], error?.message, req.query.success, search))
     })
 
     adminRouter.post('/projects/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, date } = req.body
+        if (!objectNumber || !title) return res.redirect('/admin/projects?error=missing+required+fields')
 
-        if (!objectNumber || !title) {
-            return res.redirect('/admin/projects?error=missing+fields')
-        }
+        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
+        if (!obj) return res.redirect('/admin/projects?error=object+not+found')
 
-        // verify object exists
-        const { data: obj } = await supabase
-            .from('dmg_objects_LDES')
-            .select('objectNumber')
-            .eq('objectNumber', objectNumber)
-            .maybeSingle()
-
-        if (!obj) {
-            return res.redirect('/admin/projects?error=object+not+found')
-        }
-
-        const { error } = await supabase
-            .from('dmg_objects_projects')
-            .insert({ objectNumber, title, url, date })
-
+        const { error } = await supabase.from('dmg_objects_projects').insert({ objectNumber, title, url, date })
         if (error) return res.redirect('/admin/projects?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/projects?success=1')
     })
@@ -147,68 +122,115 @@ export function setupAdmin(app) {
 }
 
 // ---------------------------------------------------------------------------
-// HTML TEMPLATES
+// FONTS & STYLES
 // ---------------------------------------------------------------------------
 
-const layout = (title, content) => `
+const dmgFont = `
+<style>
+    @font-face {
+        font-family: 'Museum';
+        src: url('/fonts/Museum-Light.otf') format('opentype');
+        font-weight: 300;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: 'Museum';
+        src: url('/fonts/Museum-Regular.otf') format('opentype');
+        font-weight: 400;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: 'Museum';
+        src: url('/fonts/Museum-Medium.otf') format('opentype');
+        font-weight: 500;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: 'Museum';
+        src: url('/fonts/Museum-Bold.otf') format('opentype');
+        font-weight: 700;
+        font-display: swap;
+    }
+</style>`
+
+const styles = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Museum', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header a { color: #ccc; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    header a:hover { color: white; }
+    nav { background: #2a2a2a; padding: 0.75rem 2rem; display: flex; gap: 1.5rem; }
+    nav a { color: #aaa; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    nav a:hover, nav a.active { color: white; }
+    main { max-width: 1000px; margin: 2rem auto; padding: 0 2rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; font-family: 'Museum', sans-serif; }
+    h2 { font-size: 1rem; font-weight: 500; margin-bottom: 1rem; color: #555; font-family: 'Museum', sans-serif; }
+    .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.75rem; font-weight: 500; color: #555; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Museum', sans-serif; }
+    input, select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9375rem; width: 100%; font-family: 'Museum', sans-serif; }
+    input:focus, select:focus { outline: none; border-color: #555; box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
+    .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 6px; font-size: 0.9375rem; cursor: pointer; font-weight: 500; font-family: 'Museum', sans-serif; }
+    .btn-primary { background: #1a1a1a; color: white; }
+    .btn-primary:hover { background: #333; }
+    .btn-danger { background: none; border: 1px solid #ddd; color: #999; font-size: 0.8125rem; padding: 0.25rem 0.625rem; cursor: pointer; border-radius: 4px; font-family: 'Museum', sans-serif; }
+    .btn-danger:hover { border-color: #e53e3e; color: #e53e3e; }
+    .search-bar { display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.25rem; }
+    .search-bar .form-group { flex: 1; margin: 0; }
+    .search-bar .btn { flex-shrink: 0; height: 38px; }
+    .search-clear { font-size: 0.8125rem; color: #999; text-decoration: none; align-self: center; font-family: 'Museum', sans-serif; }
+    .search-clear:hover { color: #333; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; font-family: 'Museum', sans-serif; }
+    th { text-align: left; padding: 0.625rem 0.75rem; font-size: 0.75rem; color: #888; border-bottom: 2px solid #eee; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+    td { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; font-family: 'Museum', sans-serif; }
+    .tag-video { background: #ebf4ff; color: #2b6cb0; }
+    .tag-audio { background: #f0fff4; color: #276749; }
+    .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9375rem; font-family: 'Museum', sans-serif; }
+    .alert-success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+    .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+    .object-link { font-family: 'Courier New', monospace; font-size: 0.875rem; color: #666; }
+    a.external { color: #4a90d9; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    .empty { color: #aaa; font-style: italic; padding: 2rem; text-align: center; font-family: 'Museum', sans-serif; }
+    .results-count { font-size: 0.875rem; color: #888; margin-bottom: 0.75rem; font-family: 'Museum', sans-serif; }
+`
+
+// ---------------------------------------------------------------------------
+// LAYOUT
+// ---------------------------------------------------------------------------
+
+const layout = (title, content, currentPath = '') => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} — DMG Admin</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
-        header { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        header a { color: #ccc; text-decoration: none; font-size: 0.875rem; }
-        header a:hover { color: white; }
-        nav { background: #2a2a2a; padding: 0.75rem 2rem; display: flex; gap: 1.5rem; }
-        nav a { color: #aaa; text-decoration: none; font-size: 0.875rem; }
-        nav a:hover, nav a.active { color: white; }
-        main { max-width: 1000px; margin: 2rem auto; padding: 0 2rem; }
-        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
-        h2 { font-size: 1.125rem; margin-bottom: 1rem; color: #555; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
-        .form-group.full { grid-column: 1 / -1; }
-        label { font-size: 0.8125rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.03em; }
-        input, select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9375rem; width: 100%; }
-        input:focus, select:focus { outline: none; border-color: #666; }
-        .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 6px; font-size: 0.9375rem; cursor: pointer; font-weight: 500; }
-        .btn-primary { background: #1a1a1a; color: white; }
-        .btn-primary:hover { background: #333; }
-        .btn-danger { background: none; border: 1px solid #ddd; color: #999; font-size: 0.8125rem; padding: 0.25rem 0.625rem; cursor: pointer; border-radius: 4px; }
-        .btn-danger:hover { border-color: #e53e3e; color: #e53e3e; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
-        th { text-align: left; padding: 0.625rem 0.75rem; font-size: 0.8125rem; color: #888; border-bottom: 2px solid #eee; text-transform: uppercase; letter-spacing: 0.03em; }
-        td { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-        tr:last-child td { border-bottom: none; }
-        .tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-        .tag-video { background: #ebf4ff; color: #2b6cb0; }
-        .tag-audio { background: #f0fff4; color: #276749; }
-        .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9375rem; }
-        .alert-success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
-        .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
-        .object-link { font-family: monospace; font-size: 0.875rem; color: #666; }
-        a.external { color: #4a90d9; font-size: 0.875rem; }
-        .empty { color: #aaa; font-style: italic; padding: 2rem; text-align: center; }
-    </style>
+    ${dmgFont}
+    <style>${styles}</style>
 </head>
 <body>
     <header>
-        <strong>DMG Admin</strong>
-        <a href="/admin/logout">Sign out</a>
+        <a href="/admin" style="display: flex; align-items: center; text-decoration: none;">
+            <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height: 28px; filter: invert(1);">
+        </a>
+        <a href="/admin/logout" style="font-family: 'Museum', sans-serif; color: #ccc; text-decoration: none; font-size: 0.875rem;">Sign out</a>
     </header>
     <nav>
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/media">Media</a>
-        <a href="/admin/projects">Projects</a>
+        <a href="/admin" ${currentPath === '/' ? 'class="active"' : ''}>Dashboard</a>
+        <a href="/admin/media" ${currentPath === '/media' ? 'class="active"' : ''}>Media</a>
+        <a href="/admin/projects" ${currentPath === '/projects' ? 'class="active"' : ''}>Projects</a>
     </nav>
     <main>${content}</main>
 </body>
 </html>`
+
+// ---------------------------------------------------------------------------
+// LOGIN PAGE
+// ---------------------------------------------------------------------------
 
 const loginPage = (error) => `
 <!DOCTYPE html>
@@ -216,23 +238,28 @@ const loginPage = (error) => `
 <head>
     <meta charset="UTF-8">
     <title>DMG Admin — Login</title>
+    ${dmgFont}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        body { font-family: 'Museum', -apple-system, sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .login-card { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); width: 360px; }
-        h1 { font-size: 1.375rem; margin-bottom: 0.5rem; }
-        p { color: #888; font-size: 0.9375rem; margin-bottom: 1.5rem; }
-        label { display: block; font-size: 0.8125rem; font-weight: 600; color: #555; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.03em; }
-        input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; }
-        button { width: 100%; padding: 0.75rem; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; }
+        .logo { margin-bottom: 1.5rem; }
+        .logo img { height: 32px; }
+        p { color: #888; font-size: 0.9375rem; margin-bottom: 1.5rem; font-family: 'Museum', sans-serif; }
+        label { display: block; font-size: 0.75rem; font-weight: 500; color: #555; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Museum', sans-serif; }
+        input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
+        input:focus { outline: none; border-color: #555; }
+        button { width: 100%; padding: 0.75rem; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Museum', sans-serif; }
         button:hover { background: #333; }
-        .error { background: #fff5f5; color: #c53030; padding: 0.75rem; border-radius: 6px; font-size: 0.9375rem; margin-bottom: 1rem; }
+        .error { background: #fff5f5; color: #c53030; padding: 0.75rem; border-radius: 6px; font-size: 0.9375rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <h1>DMG Admin</h1>
-        <p>Design Museum Gent — Collection API</p>
+        <div class="logo">
+            <img src="/images/dmg-logo.svg" alt="Design Museum Gent">
+        </div>
+        <p>Collection API — Admin</p>
         ${error ? '<div class="error">Incorrect password.</div>' : ''}
         <form method="POST" action="/admin/login">
             <label>Password</label>
@@ -243,28 +270,37 @@ const loginPage = (error) => `
 </body>
 </html>`
 
+// ---------------------------------------------------------------------------
+// DASHBOARD PAGE
+// ---------------------------------------------------------------------------
+
 const dashboardPage = () => layout('Dashboard', `
     <h1>Dashboard</h1>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
         <a href="/admin/media" style="text-decoration: none;">
             <div class="card" style="cursor: pointer;">
                 <h2>Media</h2>
-                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem;">Add video and audio resources linked to collection objects.</p>
+                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem; font-family: 'Museum', sans-serif;">Add video and audio resources linked to collection objects.</p>
             </div>
         </a>
         <a href="/admin/projects" style="text-decoration: none;">
             <div class="card" style="cursor: pointer;">
                 <h2>Projects</h2>
-                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem;">Add creative projects inspired by or using collection objects.</p>
+                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem; font-family: 'Museum', sans-serif;">Add creative projects inspired by or using collection objects.</p>
             </div>
         </a>
     </div>
-`)
+`, '/')
 
-const mediaPage = (rows, error) => layout('Media', `
+// ---------------------------------------------------------------------------
+// MEDIA PAGE
+// ---------------------------------------------------------------------------
+
+const mediaPage = (rows, error, success, search) => layout('Media', `
     <h1>Media</h1>
 
-    ${error ? `<div class="alert alert-error">${error.message}</div>` : ''}
+    ${success ? '<div class="alert alert-success">Entry added successfully.</div>' : ''}
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
 
     <div class="card">
         <h2>Add media</h2>
@@ -302,8 +338,20 @@ const mediaPage = (rows, error) => layout('Media', `
     </div>
 
     <div class="card">
-        <h2>Recent entries</h2>
-        ${rows.length === 0 ? '<p class="empty">No media entries yet.</p>' : `
+        <h2>Entries</h2>
+        <form method="GET" action="/admin/media" class="search-bar">
+            <div class="form-group">
+                <label>Filter by object number</label>
+                <input type="text" name="q" value="${search || ''}" placeholder="1987, 0913, ...">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+            ${search ? '<a href="/admin/media" class="search-clear">Clear</a>' : ''}
+        </form>
+
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
+    : `
+        <p class="results-count">${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>
         <table>
             <thead>
                 <tr>
@@ -332,12 +380,17 @@ const mediaPage = (rows, error) => layout('Media', `
             </tbody>
         </table>`}
     </div>
-`)
+`, '/media')
 
-const projectsPage = (rows, error) => layout('Projects', `
+// ---------------------------------------------------------------------------
+// PROJECTS PAGE
+// ---------------------------------------------------------------------------
+
+const projectsPage = (rows, error, success, search) => layout('Projects', `
     <h1>Projects</h1>
 
-    ${error ? `<div class="alert alert-error">${error.message}</div>` : ''}
+    ${success ? '<div class="alert alert-success">Entry added successfully.</div>' : ''}
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
 
     <div class="card">
         <h2>Add project</h2>
@@ -367,8 +420,20 @@ const projectsPage = (rows, error) => layout('Projects', `
     </div>
 
     <div class="card">
-        <h2>Recent entries</h2>
-        ${rows.length === 0 ? '<p class="empty">No project entries yet.</p>' : `
+        <h2>Entries</h2>
+        <form method="GET" action="/admin/projects" class="search-bar">
+            <div class="form-group">
+                <label>Filter by object number</label>
+                <input type="text" name="q" value="${search || ''}" placeholder="1987, 0913, ...">
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+            ${search ? '<a href="/admin/projects" class="search-clear">Clear</a>' : ''}
+        </form>
+
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
+    : `
+        <p class="results-count">${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>
         <table>
             <thead>
                 <tr>
@@ -395,4 +460,4 @@ const projectsPage = (rows, error) => layout('Projects', `
             </tbody>
         </table>`}
     </div>
-`)
+`, '/projects')

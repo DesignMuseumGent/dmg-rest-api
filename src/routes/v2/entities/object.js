@@ -283,6 +283,46 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
+            // projects — creative projects inspired by or using this object
+            const projects = row["_projects"] ?? []
+
+            if (projects.length > 0) {
+                obj["crm:P15i_was_motivation_of"] = projects.map(p => ({
+                    "@type": "crm:E7_Activity",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300404591",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "creative project"
+                    },
+                    ...(p.title && {
+                        "crm:P102_has_title": {
+                            "@type": "crm:E35_Title",
+                            "rdfs:label": p.title
+                        }
+                    }),
+                    ...(p.url && {
+                        "crm:P129i_is_subject_of": {
+                            "@id": p.url,
+                            "@type": "crm:E73_Information_Object"
+                        }
+                    }),
+                    ...(p.date && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": p.date,
+                            "crm:P82a_begin_of_the_begin": {
+                                "@type": "xsd:gYear",
+                                "@value": p.date
+                            },
+                            "crm:P82b_end_of_the_end": {
+                                "@type": "xsd:gYear",
+                                "@value": p.date
+                            }
+                        }
+                    })
+                }))
+            }
+
             if (row["generated_at_time"]) {
                 const lastModified = new Date(row["generated_at_time"]).toUTCString()
                 res.setHeader('Last-Modified', lastModified)

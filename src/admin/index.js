@@ -34,7 +34,7 @@ export function setupAdmin(app) {
             .from('dmg_admin_users')
             .select('id, email, password, name, can_delete')
             .eq('email', email.toLowerCase().trim())
-            .eq('password', password)          // ← direct comparison
+            .eq('password', password)
             .maybeSingle()
 
         if (error || !user) {
@@ -54,34 +54,6 @@ export function setupAdmin(app) {
         }
 
         return res.redirect('/admin')
-    })
-
-    // TEMPORARY DEBUG — remove after fixing
-    adminRouter.get('/debug-login', async (req, res) => {
-        const email = req.query.email
-        if (!email) return res.send('add ?email=your@email.com')
-
-        const { data: user, error } = await supabase
-            .from('dmg_admin_users')
-            .select('id, email, password_hash, name, can_delete')
-            .eq('email', email.toLowerCase().trim())
-            .maybeSingle()
-
-        if (!user) return res.send(`User not found. Error: ${JSON.stringify(error)}`)
-
-        const hashLength = user.password_hash?.length
-        const hashStart = user.password_hash?.substring(0, 10)
-        const hashEncoded = JSON.stringify(user.password_hash?.substring(0, 30))
-
-        res.send(`
-        <pre>
-            email: ${user.email}
-            hash length: ${hashLength}
-            hash start: ${hashStart}
-            hash encoded (first 30): ${hashEncoded}
-            valid bcrypt hash: ${user.password_hash?.startsWith('$2')}
-        </pre>
-    `)
     })
 
     adminRouter.get('/logout', (req, res) => {
@@ -191,8 +163,10 @@ export function setupAdmin(app) {
 }
 
 // ---------------------------------------------------------------------------
-// FONTS & STYLES
+// FONT STACK — Museum with safe system fallbacks
 // ---------------------------------------------------------------------------
+
+const FONT_STACK = `'Museum', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`
 
 const dmgFont = `
 <style>
@@ -200,78 +174,87 @@ const dmgFont = `
         font-family: 'Museum';
         src: url('/fonts/Museum-Light.otf') format('opentype');
         font-weight: 300;
+        font-style: normal;
         font-display: swap;
     }
     @font-face {
         font-family: 'Museum';
         src: url('/fonts/Museum-Regular.otf') format('opentype');
         font-weight: 400;
+        font-style: normal;
         font-display: swap;
     }
     @font-face {
         font-family: 'Museum';
         src: url('/fonts/Museum-Medium.otf') format('opentype');
         font-weight: 500;
+        font-style: normal;
         font-display: swap;
     }
     @font-face {
         font-family: 'Museum';
         src: url('/fonts/Museum-Bold.otf') format('opentype');
         font-weight: 700;
+        font-style: normal;
         font-display: swap;
     }
 </style>`
 
+// ---------------------------------------------------------------------------
+// SHARED STYLES
+// ---------------------------------------------------------------------------
+
 const styles = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Museum', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #333; }
+    body { font-family: ${FONT_STACK}; background: #f5f5f5; color: #333; }
     header { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header a { color: #ccc; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    header a { color: #ccc; text-decoration: none; font-size: 0.875rem; font-family: ${FONT_STACK}; }
     header a:hover { color: white; }
     .header-right { display: flex; align-items: center; gap: 1rem; }
-    .header-user { color: #888; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
-    .header-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 0.5rem; }
+    .header-user { color: #888; font-size: 0.875rem; font-family: ${FONT_STACK}; }
+    .header-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 0.5rem; font-family: ${FONT_STACK}; }
     .header-badge-admin { background: #2d3748; color: #a0aec0; }
     .header-badge-viewer { background: #2d3748; color: #718096; }
     nav { background: #2a2a2a; padding: 0.75rem 2rem; display: flex; gap: 1.5rem; }
-    nav a { color: #aaa; text-decoration: none; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
+    nav a { color: #aaa; text-decoration: none; font-size: 0.875rem; font-family: ${FONT_STACK}; }
     nav a:hover, nav a.active { color: white; }
     main { max-width: 1000px; margin: 2rem auto; padding: 0 2rem; }
-    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; font-family: 'Museum', sans-serif; }
-    h2 { font-size: 1rem; font-weight: 500; margin-bottom: 1rem; color: #555; font-family: 'Museum', sans-serif; }
+    h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; font-family: ${FONT_STACK}; }
+    h2 { font-size: 1rem; font-weight: 500; margin-bottom: 1rem; color: #555; font-family: ${FONT_STACK}; }
+    p { font-family: ${FONT_STACK}; }
     .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
     .form-group.full { grid-column: 1 / -1; }
-    label { font-size: 0.75rem; font-weight: 500; color: #555; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Museum', sans-serif; }
-    input, select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9375rem; width: 100%; font-family: 'Museum', sans-serif; }
+    label { font-size: 0.75rem; font-weight: 500; color: #555; text-transform: uppercase; letter-spacing: 0.06em; font-family: ${FONT_STACK}; }
+    input, select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9375rem; width: 100%; font-family: ${FONT_STACK}; }
     input:focus, select:focus { outline: none; border-color: #555; box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
-    .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 6px; font-size: 0.9375rem; cursor: pointer; font-weight: 500; font-family: 'Museum', sans-serif; }
+    .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 6px; font-size: 0.9375rem; cursor: pointer; font-weight: 500; font-family: ${FONT_STACK}; }
     .btn-primary { background: #1a1a1a; color: white; }
     .btn-primary:hover { background: #333; }
-    .btn-danger { background: none; border: 1px solid #ddd; color: #999; font-size: 0.8125rem; padding: 0.25rem 0.625rem; cursor: pointer; border-radius: 4px; font-family: 'Museum', sans-serif; }
+    .btn-danger { background: none; border: 1px solid #ddd; color: #999; font-size: 0.8125rem; padding: 0.25rem 0.625rem; cursor: pointer; border-radius: 4px; font-family: ${FONT_STACK}; }
     .btn-danger:hover { border-color: #e53e3e; color: #e53e3e; }
     .search-bar { display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.25rem; }
     .search-bar .form-group { flex: 1; margin: 0; }
     .search-bar .btn { flex-shrink: 0; height: 38px; }
-    .search-clear { font-size: 0.8125rem; color: #999; text-decoration: none; align-self: center; font-family: 'Museum', sans-serif; }
+    .search-clear { font-size: 0.8125rem; color: #999; text-decoration: none; align-self: center; font-family: ${FONT_STACK}; }
     .search-clear:hover { color: #333; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; font-family: 'Museum', sans-serif; }
-    th { text-align: left; padding: 0.625rem 0.75rem; font-size: 0.75rem; color: #888; border-bottom: 2px solid #eee; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
-    td { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; font-family: ${FONT_STACK}; }
+    th { text-align: left; padding: 0.625rem 0.75rem; font-size: 0.75rem; color: #888; border-bottom: 2px solid #eee; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; font-family: ${FONT_STACK}; }
+    td { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; vertical-align: middle; font-family: ${FONT_STACK}; }
     tr:last-child td { border-bottom: none; }
-    .tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; font-family: 'Museum', sans-serif; }
+    .tag { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; font-family: ${FONT_STACK}; }
     .tag-video { background: #ebf4ff; color: #2b6cb0; }
     .tag-audio { background: #f0fff4; color: #276749; }
-    .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9375rem; font-family: 'Museum', sans-serif; }
+    .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9375rem; font-family: ${FONT_STACK}; }
     .alert-success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
     .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
     .object-link { font-family: 'Courier New', monospace; font-size: 0.875rem; color: #666; }
-    a.external { color: #4a90d9; font-size: 0.875rem; font-family: 'Museum', sans-serif; }
-    .empty { color: #aaa; font-style: italic; padding: 2rem; text-align: center; font-family: 'Museum', sans-serif; }
-    .results-count { font-size: 0.875rem; color: #888; margin-bottom: 0.75rem; font-family: 'Museum', sans-serif; }
+    a.external { color: #4a90d9; font-size: 0.875rem; font-family: ${FONT_STACK}; }
+    .empty { color: #aaa; font-style: italic; padding: 2rem; text-align: center; font-family: ${FONT_STACK}; }
+    .results-count { font-size: 0.875rem; color: #888; margin-bottom: 0.75rem; font-family: ${FONT_STACK}; }
     .no-delete { color: #ddd; font-size: 0.8125rem; }
-    .permission-note { font-size: 0.8125rem; color: #aaa; margin-top: 0.75rem; font-family: 'Museum', sans-serif; }
+    .permission-note { font-size: 0.8125rem; color: #aaa; margin-top: 0.75rem; font-family: ${FONT_STACK}; }
 `
 
 // ---------------------------------------------------------------------------
@@ -327,17 +310,17 @@ const loginPage = (error) => `
     ${dmgFont}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Museum', -apple-system, sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        body { font-family: ${FONT_STACK}; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .login-card { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); width: 360px; }
         .logo { margin-bottom: 1.5rem; }
         .logo img { height: 32px; }
-        p { color: #888; font-size: 0.9375rem; margin-bottom: 1.5rem; font-family: 'Museum', sans-serif; }
-        label { display: block; font-size: 0.75rem; font-weight: 500; color: #555; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'Museum', sans-serif; }
-        input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
+        p { color: #888; font-size: 0.9375rem; margin-bottom: 1.5rem; font-family: ${FONT_STACK}; }
+        label { display: block; font-size: 0.75rem; font-weight: 500; color: #555; margin-bottom: 0.375rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: ${FONT_STACK}; }
+        input { width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; font-family: ${FONT_STACK}; }
         input:focus { outline: none; border-color: #555; box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
-        button { width: 100%; padding: 0.75rem; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: 'Museum', sans-serif; }
+        button { width: 100%; padding: 0.75rem; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; font-family: ${FONT_STACK}; }
         button:hover { background: #333; }
-        .error { background: #fff5f5; color: #c53030; padding: 0.75rem; border-radius: 6px; font-size: 0.9375rem; margin-bottom: 1rem; font-family: 'Museum', sans-serif; }
+        .error { background: #fff5f5; color: #c53030; padding: 0.75rem; border-radius: 6px; font-size: 0.9375rem; margin-bottom: 1rem; font-family: ${FONT_STACK}; }
     </style>
 </head>
 <body>
@@ -348,11 +331,11 @@ const loginPage = (error) => `
         <p>Collection API — Admin</p>
         ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
         ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
-        <form method="POST" action="/admin/login">
+        <form method="POST" action="/admin/login" autocomplete="off">
             <label>Email</label>
-            <input type="email" name="email" autofocus required autocomplete="email">
+            <input type="email" name="email" autofocus required autocomplete="off">
             <label>Password</label>
-            <input type="password" name="password" required autocomplete="current-password">
+            <input type="password" name="password" required autocomplete="new-password">
             <button type="submit">Sign in</button>
         </form>
     </div>
@@ -369,13 +352,13 @@ const dashboardPage = (user) => layout('Dashboard', `
         <a href="/admin/media" style="text-decoration: none;">
             <div class="card" style="cursor: pointer;">
                 <h2>Media</h2>
-                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem; font-family: 'Museum', sans-serif;">Add video and audio resources linked to collection objects.</p>
+                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem;">Add video and audio resources linked to collection objects.</p>
             </div>
         </a>
         <a href="/admin/projects" style="text-decoration: none;">
             <div class="card" style="cursor: pointer;">
                 <h2>Projects</h2>
-                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem; font-family: 'Museum', sans-serif;">Add creative projects inspired by or using collection objects.</p>
+                <p style="color: #888; font-size: 0.9375rem; margin-top: 0.5rem;">Add creative projects inspired by or using collection objects.</p>
             </div>
         </a>
     </div>
@@ -428,7 +411,6 @@ const mediaPage = (rows, error, success, search, user) => layout('Media', `
 
     <div class="card">
         <h2>Entries</h2>
-
         <form method="GET" action="/admin/media" class="search-bar">
             <div class="form-group">
                 <label>Filter by object number</label>
@@ -513,7 +495,6 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
 
     <div class="card">
         <h2>Entries</h2>
-
         <form method="GET" action="/admin/projects" class="search-bar">
             <div class="form-group">
                 <label>Filter by object number</label>

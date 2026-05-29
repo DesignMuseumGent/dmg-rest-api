@@ -6,14 +6,21 @@ export function requestExhibition(app, BASE_URI) {
         res.setHeader('Content-Disposition', 'inline');
 
         try {
-            const record = await fetchExhibitionById(req.params.exhibitionPID)
+            const [recordResult, mediaResult] = await Promise.all([
+                fetchExhibitionById(req.params.exhibitionPID),
+                supabase
+                    .from('dmg_exhibitions_media')
+                    .select('url, title, date, type')
+                    .eq('exh_PID', req.params.exhibitionPID)
+            ])
 
-            if (!record || record.length === 0) {
+            if (!recordResult || recordResult.length === 0) {
                 return res.status(404).json({ error: 'Exhibition not found' })
             }
 
-            const row = record[0]
+            const row = recordResult[0]
             const exh = row["json_ld_v2"]
+            const media = mediaResult.data || []
 
             // add internal PID
             if (row["exh_PID"]) {
@@ -38,7 +45,7 @@ export function requestExhibition(app, BASE_URI) {
                 }
             }
 
-            // remove any existing appellations for languages we're about to add
+            // remove existing appellations for languages we're about to add
             const langsToAdd = ["NLD", "FRA", "ENG"]
             if (Array.isArray(exh["crm:P1_is_identified_by"])) {
                 exh["crm:P1_is_identified_by"] = exh["crm:P1_is_identified_by"].filter(node => {
@@ -90,6 +97,41 @@ export function requestExhibition(app, BASE_URI) {
                 ]
             }
 
+            // media
+            if (media.length > 0) {
+                const mediaNodes = media.map(m => ({
+                    "@id": m.url,
+                    "@type": "crm:E73_Information_Object",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300263419",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "video"
+                    },
+                    ...(m.title && {
+                        "crm:P102_has_title": {
+                            "@type": "crm:E35_Title",
+                            "rdfs:label": m.title
+                        }
+                    }),
+                    ...(m.date && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": m.date,
+                            "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
+                            "crm:P82b_end_of_the_end": { "@type": "xsd:gYear", "@value": m.date }
+                        }
+                    })
+                }))
+
+                const existing = exh["crm:P129i_is_subject_of"]
+                if (existing) {
+                    const existingArray = Array.isArray(existing) ? existing : [existing]
+                    exh["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
+                } else {
+                    exh["crm:P129i_is_subject_of"] = mediaNodes.length === 1 ? mediaNodes[0] : mediaNodes
+                }
+            }
+
             // cache headers
             if (row["generated_at_time"]) {
                 const lastModified = new Date(row["generated_at_time"]).toUTCString()
@@ -108,7 +150,6 @@ export function requestExhibition(app, BASE_URI) {
 
     const headHandler = async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json')
-
         try {
             const { data, error } = await supabase
                 .from('dmg_tentoonstelling_LDES')
@@ -127,7 +168,6 @@ export function requestExhibition(app, BASE_URI) {
             }
 
             return res.status(200).end()
-
         } catch (error) {
             console.error('Error handling HEAD request:', error)
             return res.status(500).end()

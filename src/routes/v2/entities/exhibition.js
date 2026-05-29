@@ -1,4 +1,5 @@
 import { fetchExhibitionById } from "../../../utils/parsers.js";
+import { supabase } from '../../../../supabaseClient.js';
 
 export function requestExhibition(app, BASE_URI) {
     const exhibitionHandler = async (req, res) => {

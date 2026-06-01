@@ -11,7 +11,6 @@ export function requestObjects(app, BASE_URI) {
             const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
             const fullRecord = req.query.fullRecord === 'true'
             const hasImages = req.query.hasImages === 'true'
-            const showColors = req.query.colors === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
             const onDisplay = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
 
@@ -24,6 +23,8 @@ export function requestObjects(app, BASE_URI) {
             const cssColorFilter = req.query.cssColor
                 ? req.query.cssColor.split(',').map(c => c.trim())
                 : null
+            const showColors = req.query.colors === 'true'
+            const hasColors = req.query.hasColors === 'true'
             const offset = (page - 1) * itemsPerPage
             const searchQuery = req.query.q ?? null
             const hasParts = req.query.hasParts === 'true'
@@ -44,6 +45,7 @@ export function requestObjects(app, BASE_URI) {
                 q = q.eq('STATUS', 'HEALTHY')
                 if (onDisplay) q = q.eq('COLLECTION_PRESENTATION', true)
                 if (hasImages) q = q.not('iiif_manifest', 'is', null)
+                if (hasColors) q = q.not('colors', 'is', null)
                 if (modifiedSince) q = q.gte('generated_at_time', new Date(modifiedSince).toISOString())
                 if (colorFilter?.length > 0) q = q.contains('dominant_colors', colorFilter)
                 if (cssColorFilter?.length > 0) q = q.contains('dominant_css_colors', cssColorFilter)
@@ -90,6 +92,8 @@ export function requestObjects(app, BASE_URI) {
                 dataQuery
             ])
 
+
+
             if (countError) {
                 console.error('Count error details:', JSON.stringify(countError, null, 2))
                 return res.status(500).json({ error: 'Error fetching objects', details: countError.message })
@@ -113,6 +117,7 @@ export function requestObjects(app, BASE_URI) {
                     ...(showColors && { colors: 'true' }),
                     ...(colorFilter && { color: colorFilter.join(',') }),
                     ...(cssColorFilter && { cssColor: cssColorFilter.join(',') }),
+                    ...(hasColors && { hasColors: 'true' }),
                     ...(searchQuery && { q: searchQuery }),
                     ...(onDisplay && { onDisplay: 'true' }),
                     ...(typeFilter && { type: typeFilter.join(',') }),

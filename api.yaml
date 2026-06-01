@@ -2,971 +2,117 @@ openapi: 3.0.0
 
 info:
   title: Design Museum Gent REST API
-  version: 1.0.0
-servers:
-  - url: https://data.designmuseumgent.be/v2/
-    description: current version
-  - url: https://data.designmuseumgent.be/v1/
-    description: deprecated
+  version: 2.8.0
+  description: CIDOC-CRM compliant JSON-LD REST API for the Design Museum Gent collection.
+  contact:
+    name: Olivier Van D'huynslager
+    email: olivier.vandhuynslager@stad.gent
+    url: https://data.designmuseumgent.be
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
+servers:
+  - url: https://data.designmuseumgent.be/v2
+    description: Production (v2 — current)
+  - url: https://data.designmuseumgent.be/v1
+    description: v1 (deprecated — sunset 31 December 2026)
 
 externalDocs:
-  url: https://api.designmuseumgent.be/api-documentation/
-  #description: find more information here
+  url: https://api.designmuseumgent.be
+  description: Full API documentation
 
-paths:
-  # OBJECTS
-  /id/objects:
-    get:
-      #summary: API ENDPOINT to GET a LIST OF OBJECTS from the collection of Design Museum Gent.
-      description: a list of data describing objects from the collection of Design Museum Gent
-      tags:
-        - collections
-      parameters:
-        - in: query
-          name: pageNumber
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated objects based on the limit)
-          example: 2
-        - in: query
-          name: itemsPerPage
-          schema:
-            type: integer
-          description: set the number of objects to return per page (default is 20)
-          example: 1
-        - in: query
-          name: license
-          schema:
-            type: string  # Corrected from varstring to string
-          description: filter the objects based on their creative commons license (default all)
-          example: CC0
-        - in: query
-          name: fullRecord
-          schema:
-            type: boolean
-          description: show full records, containing all metadata per object or a limited view (default True)
-          example: true
-      responses:
-        "200":
-          description: Succesful request containing a paginated collection of all the objects (metadata + digital reproduction) in JSON-LD format making use of Linked Art and Cidoc-CRM.
-          content:
-            application/ld+json:
-              schema:
-                type: object
-                properties:
-                  "@context":
-                    type: array
-                  "@type":
-                    type: string
-                  "@id":
-                    type: string
-                  "hydra:totalItems":
-                    type: integer
-                  "hydra:view":
-                    type: object
-                    properties:
-                      "@id":
-                        type: string
-                      "@type":
-                        type: string
-                      "hydra:first":
-                        type: string
-                      "hydra:last":
-                        type: string
-                      "hydra:previous":
-                        type: string
-                      "hydra:next":
-                        type: string
-                  "GecureerdeCollectie.curator":
-                    type: string
-                  "GecureerdeCollectie.bestaatUit":
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ObjectRecord'
-
-  /id/object/{objectNumber}:
-    get:
-      #summary: API endpoint to GET a SINGLE OBJECT from the collection of Design Museum Gent.
-      description: API endpoint to GET a SINGLE OBJECT from the collection of Design Museum Gent using the internal identifier.
-      tags:
-        - single entities
-      parameters:
-        - in: path
-          name: objectNumber
-          schema:
-            type: string
-          description: set the identifier for the record that needs to e retrieved.
-          example: 1990-0008
-
-        - in: query
-          name: easy
-          schema:
-            type: boolean
-          description: switch between FULL RECORD containing ALL METADATA or an abstracted, simplified view of the RECORD. (default FALSE)
-          example: false
-
-      responses:
-        "200":
-          description: Returns a JSON-LD object containing exhaustive metadata on a single object from the collection of Design Museum Gent. The metadata exposes relationships to other data objects that are published by the museum such as other objects, agents, concepts, exhibitions, etc. Based on the parameters, this will be a complex object or an easy abstraction of the metadata of the object.
-          content:
-            application/ld+json:
-              schema:
-                anyOf:
-                  - $ref: '#/components/schemas/ObjectRecord'
-                  - $ref: '#/components/schemas/ObjectRecordEasy'
-        "410":
-          description:
-          content:
-            application/json:
-              schema:
-                "410": "the object is permanently removed from our collection"
-
-        "422":
-          description: response when the syntax of the request is correct, but the object record doesn't exist.
-          content:
-            application/json:
-              schema:
-                "422": "Oops. the syntax of your request is correct, but data on this object has either not yet been published or we are working on repairing this link."
-
-        "429":
-          description: rate limit exceeded
-          content:
-            application/json:
-              schema:
-                object:
-                properties:
-                  status:
-                    description: HTTP response code of the error
-                    type: string
-                  error:
-                    description: description of the error
-                    type: string
-
-        "500":
-          description:
-          content:
-            application/json:
-              schema:
-                "error": "Error fetching object data"
-
-  /id/exhibitions:
-    get:
-      #summary: API ENDPOINT to GET a LIST OF EXHIBITONS related to the collection of Design Museum Gent.
-      description: a list of data describing exhibitions related to, and exposing relations with the the collection of Design Museum Gent. To retrieve all metadata on a given exhibtion or on all exhibitions, follow the link in the @id property, which exposes the URL for the API endpoint of that specific exhibition.
-      tags:
-        - collections
-      parameters:
-        - in: query
-          name: pageNumber
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated objects based on the limit)
-          example: 2
-        - in: query
-          name: itemsPerPage
-          schema:
-            type: integer
-          description: set the number of objects to return per page (default is 20)
-          example: 1
-        - in: query
-          name: fullRecord
-          schema:
-            type: boolean
-          description: show full records, containing all metadata per exhibition or a limited view (default true)
-          example: true
-
-      responses:
-        "200":
-          description: a json-ld object containing exhibitions related to the collection and program of the museum.
-          content:
-            application/ld+json:
-              schema:
-                $ref: '#/components/schemas/exhibitions'
-
-  /id/exhibition/{exhibitionPID}:
-    get:
-      tags:
-        - single entities
-      parameters:
-        - in: path
-          name: exhibitionPID
-          schema:
-            type: string
-          description: set the identifier for the record of the exhibtion that needs to be retrieved.
-          example: TE_1993-009
-      responses:
-        "200":
-          description: a json-ld object containing metadata on a single exhibition related to the collection and program of the museum.
-          content:
-            application/ld+json:
-              schema:
-                $ref: '#/components/schemas/exhibition'
-
-        "500":
-          description:
-          content:
-            application/json:
-              schema:
-                error: "Error fetching exhibition data"
-
-  /id/agents/:
-    get:
-      tags:
-        - collections
-      parameters:
-        - in: query
-          name: pageNumber
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated objects based on the limit)
-          example: 2
-        - in: query
-          name: itemsPerPage
-          schema:
-            type: integer
-          description: set the number of objects to return per page (default is 20)
-          example: 1
-        - in: query
-          name: fullRecord
-          schema:
-            type: boolean
-          description: show full records, containing all metadata per object or a limited view (default False)
-          example: true
-
-      responses:
-        "200":
-          description: Succesful request containing a paginated collection of all the agents related to the programming and collection of Design Museum Gent in JSON-LD format making use of Linked Art and Cidoc-CRM.
-          content:
-            application/ld+json:
-              schema:
-                type: object
-                properties:
-                  "@context":
-                    type: array
-                  "@type":
-                    type: string
-                  "@id":
-                    type: string
-                  "hydra:totalItems":
-                    type: integer
-                  "hydra:view":
-                    type: object
-                    properties:
-                      "@id":
-                        type: string
-                      "@type":
-                        type: string
-                      "hydra:first":
-                        type: string
-                      "hydra:last":
-                        type: string
-                      "hydra:previous":
-                        type: string
-                      "hydra:next":
-                        type: string
-                  "GecureerdeCollectie.curator":
-                    type: string
-                  "GecureerdeCollectie.bestaatUit":
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/agent-record'
-  # agent
-  /id/agent/{agentPID}:
-    get:
-      tags:
-        - single entities
-      parameters:
-         - in: path
-           name: agentPID
-           schema:
-             type: string
-           description: set the identifier for the record of the agent/organisation that needs to be retrieved.
-           example: DMG-A-03483
-
-      responses:
-        "200":
-          description: Succesful request containing a record of an agent related to the programming and collection of Design Museum Gent in JSON-LD format making use of Linked Art and Cidoc-CRM.
-          content:
-            application/ld+json:
-              schema:
-                $ref: '#/components/schemas/agent-record'
-        "500":
-          description:
-          content:
-            application/json:
-              schema:
-                error: "Error fetching agent data"
-
-  # concepts (collections)
-  /id/concepts:
-    get:
-      description: a list of dataobjects describing concepts related to, and exposing relations with the the collection of Design Museum Gent.
-      tags:
-        - collections
-      parameters:
-        - in: query
-          name: pageNumber
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated concepts based on the limit)
-          example: 2
-        - in: query
-          name: itemsPerPage
-          schema:
-            type: integer
-          description: set the number of concepts to return per page (default is 20)
-          example: 1
-        - in: query
-          name: fullRecord
-          schema:
-            type: boolean
-          description: fetch full record or abstracted version (with link to full record)
-          example: true
-      responses:
-        "200":
-          description: Succesful request containing a paginated collection of all the concepts
-          content:
-            application/ld+json:
-              schema:
-                type: object
-                properties:
-                  "@context":
-                    type: array
-                  "@type":
-                    type: string
-                  "@id":
-                    type: string
-                  "hydra:totalItems":
-                    type: integer
-                  "hydra:view":
-                    type: object
-                    properties:
-                      "@id":
-                        type: string
-                      "@type":
-                        type: string
-                      "hydra:first":
-                        type: string
-                      "hydra:last":
-                        type: string
-                      "hydra:previous":
-                        type: string
-                      "hydra:next":
-                        type: string
-                  "GecureerdeCollectie.curator":
-                    type: "string"
-                  "GecureerdeCollectie.bestaatUit":
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ConceptRecord'
-
-  # CONCEPT (single entitity)
-  /id/concept/{id}:
-    get:
-      tags:
-        - single entities
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-          description: set the identifier (priref) for the record tof the agent/organisation
-          example: 530009310
-      responses:
-        "200":
-          description: succesful request of a record on a concept
-          content:
-            application/ld+json:
-              schema:
-                $ref: '#/components/schemas/ConceptRecord'
-
-  # COLORS (curated sets)
-  /color-api/{color}:
-    get:
-      description: curated API that allows agents to query objects from the collection of Design Museum Gent based various color systems.
-      tags:
-        - curated sets
-      parameters:
-        - in: path
-          name: color
-          schema:
-            type: string
-          description: target color to fetch items from the colletion from.
-          example: vanilla
-        - in: query
-          name: fuzzy
-          schema:
-            type: boolean
-          description: set fuzzy search or not
-          example: false
-        - in: query
-          name: pageNumber
-          schema:
-            type: integer
-          description: set the offset of the get request (recursively move through paginated concepts based on the limit)
-          example: 2
-        - in: query
-          name: itemsPerPage
-          schema:
-            type: integer
-          description: set the number of concepts to return per page (default is 20)
-          example: 1
-      responses:
-        "200":
-          description:
-            application/ld+json:
-              schema:
-                "@context":
-                  type: array
-                "@type":
-                  type: string
-                "@id":
-                  type: string
-                "hydra:totalItems":
-                  type: integer
-                "hydra:view":
-                  type: object
-                  properties:
-                    "@id":
-                      type: string
-                    "@type":
-                      type: string
-                    "hydra:first":
-                      type: string
-                    "hydra:last":
-                      type: string
-                    "hydra:previous":
-                      type: string
-                    "hydra:next":
-                      type: string
-                "GecureerdeCollectie.curator":
-                  type: string
-                "hydra:description":
-                  type: string
-                "GecureerdeCollectie.bestaatUit":
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ObjectRecord'
-
-  /billboardseries:
-    get:
-      description: API containing metadata on all the billboards shown during the billboardseries.
-      tags:
-        - curated sets
-      responses:
-        "200":
-          description: successful request
-          content:
-            application/ld+json:
-              schema:
-                type: object
-                properties:
-                  "@context":
-                    type: array
-
-
-  /lost-in-diffusion:
-    get:
-      description: API containing ML generated content from the "Lost In Diffusion" project (2024-2025)
-      tags:
-        - curated sets
-      resonses:
-        "200":
-          description: successful request
-          content:
-            application/ld+json:
-              schema:
-                type: object
-                properties:
-                  "@context":
-                    type: array
-
-## list of components.
+tags:
+  - name: Objects
+    description: Collection objects
+  - name: Agents
+    description: Persons and organisations
+  - name: Exhibitions
+    description: Exhibition archive
+  - name: Concepts
+    description: Thesaurus terms
+  - name: Colors
+    description: Color index and statistics
+  - name: Discovery
+    description: Index endpoints for types, materials, nationalities and roles
+  - name: Private
+    description: Authenticated private streams
+  - name: DCAT
+    description: Data catalog
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: query
+      name: apiKey
+      description: API key for private endpoints
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API key for private endpoints (preferred)
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        default: 1
+    itemsPerPage:
+      name: itemsPerPage
+      in: query
+      description: Number of items per page (max 100)
+      schema:
+        type: integer
+        default: 10
+        maximum: 100
+    fullRecord:
+      name: fullRecord
+      in: query
+      description: Return full CIDOC-CRM records instead of lightweight stubs
+      schema:
+        type: boolean
+        default: false
+    modifiedSince:
+      name: modifiedSince
+      in: query
+      description: Only return records modified on or after this date. Format YYYY-MM-DD
+      schema:
+        type: string
+        format: date
+        example: "2026-05-01"
+    searchQuery:
+      name: q
+      in: query
+      description: Full text search on titles, descriptions and identifiers. Supports phrases, OR, and negation (-keramiek)
+      schema:
+        type: string
+        example: roze glas
+    onDisplay:
+      name: onDisplay
+      in: query
+      description: Only return objects currently on display in the collection presentation
+      schema:
+        type: boolean
+        default: false
+
   schemas:
-    ObjectRecord:
+    HydraCollection:
       type: object
       properties:
-        "@id":
-          type: string
-          description: "The unique identifier for the object."
         "@context":
           type: object
-        "prov:generatedAtTime":
-          type: string  # Corrected type from date to string
-        "http://xmlns.com/foaf/0.1/page":
-          type: object
-          properties:
-            "@id":
-              type: string
-        "http://purl.org/dc/terms/isPartOf":
-          type: array
-          items:
-            type: object
-            properties:
-              "http://www.cidoc-crm.org/cidoc-crm/P16_used_specific_object":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-                  "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                    type: object
-                    properties:
-                      "@id":
-                        type: string
-                  "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
-                    type: object
-                    properties:
-                      "@language":
-                        type: string
-                      "@value":
-                        type: string
-                  "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
-                    type: object
-                    properties:
-                      "@type":
-                        type: string
-                      "@value":
-                        type: string
-        "http://purl.org/dc/terms/isVersionOf":
-          type: object
-          properties:
-            "@id":
-              type: string
-        "http://www.w3.org/ns/adms#identifier":
-          type: array
-          items:
-            type: object
-            properties:
-              "@type":
-                type: string
-              "skos:notation":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-                  "@value":
-                    type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                type: object
-                properties:
-                  "@id":
-                    type: string
-                  "label":
-                    type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
-          type: object
-          properties:
-            "@value":
-              type: string
-            "@language":
-              type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P102_has_title":
-          type: object
-          properties:
-            "@value":
-              type: string
-            "@language":
-              type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P45_consists_of":
-          type: object
-          properties:
-            "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-              type: array
-              items:
-                type: object
-                properties:
-                  "@id":
-                    type: string
-                  "label":
-                    type: string
-                  "skos:prefLabel":
-                    type: object
-                    properties:
-                      "@value":
-                        type: string
-                      "@language":
-                        type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P43_has_dimension":
-          type: array
-          items:
-            type: object
-            properties:
-              "@type":
-                type: string
-              "https://schema.org/value":
-                type: object
-                properties:
-                  "@id":
-                    type: string
-              "https://schema.org/unitText":
-                type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                type: object
-                properties:
-                  "@id":
-                    type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P46i_forms_part_of":
-          type: array
-          items:
-            type: object
-            properties:
-              "@id":
-                type: string
-              "@type":
-                type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                type: object
-                properties:
-                  "@id":
-                    type: string
-                  "label":
-                    type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
-                type: object
-                properties:
-                  "@id":
-                    type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P129i_is_subject_of":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "@type":
-              type: string
-            "http://purl.org/dc/terms/conformsTo":
-              type: object
-              properties:
-                "@id":
-                  type: string
-                "@type":
-                  type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P108i_was_produced_by":
-          type: array
-          items:
-            type: object
-            properties:
-              "@type":
-                type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-                  "@value":
-                    type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by":
-                type: object
-                properties:
-                  "equivalent":
-                    type: object
-                    properties:
-                      "@id":
-                        type: string
-                      "label":
-                        type: object
-                        properties:
-                          "@value":
-                            type: string
-                          "@language":
-                            type: string
-              "http://www.cidoc-crm.org/cidoc-crm/P32_used_general_technique":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-                  "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                    type: array
-                    items:
-                      oneOf:
-                      - type: object
-                        properties:
-                          "@id":
-                            type: string
-                          "label":
-                            type: string
-                      - type: object
-                        properties:
-                          "@id":
-                            type: string
-                          "skos:prefLabel":
-                            type: object
-                            properties:
-                              "@value":
-                                type: string
-                              "@language":
-                                type: string
-        "http://www.cidoc-crm.org/cidoc-crm/P67i_is_reffered_to_by":
-          type: object
-          properties:
-            "@type":
-              type: string
-            "http://www.cidoc-crm.org/cidoc-crm/P94i_was_created_by":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "http://www.cidoc-crm.org/cidoc-crm/P4_has_time-span":
-                  type: object
-                  properties:
-                    "@type":
-                      type: string
-                    "@value":
-                      type: string
-                "http://www.cidoc-crm.org/cidoc-crm/P7_took_place_at":
-                  type: object
-                "http://www.cidoc-crm.org/cidoc-crm/P14_carried_out_by":
-                  type: object
-                  properties:
-                    "equivalent":
-                      type: object
-                      properties:
-                        "@id":
-                          type: string
-                        "@label":
-                          type: object
-                          properties:
-                            "@value":
-                              type: string
-                            "@language":
-                              type: string
-
-        "http://www.cidoc-crm.org/cidoc-crm/P55_has_current_location":
-          type: object
-          properties:
-            "opmerking":
-              type: string
-
-        "http://www.cidoc-crm.org/cidoc-crm/P24i_changed_ownership_through":
-          type: object
-          properties:
-            "@type":
-              type: text
-            "http://wwww.cidoc-crm.org/cidoc-crm/P4_has_time-span":
-              type: object
-              properties:
-                "@type":
-                  type: text
-                "http://data.europa.eu/m8g/endTime":
-                  type: object
-                  properties:
-                    "@type":
-                      type: string
-                    "@value":
-                      type: string
-                "http://data.europa.eu/m8g/startTime":
-                  type: object
-                  properties:
-                    "@type":
-                      type: string
-                    "@value":
-                      type: string
-            "http://www.cidoc-crm.org/cidoc-crm/P7_took_place_at":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "http://www.cidoc-crm.org/cidoc-crm/P2_has_type":
-                  type: array
-                  items:
-                    oneOf:
-                      - type: object
-                        properties:
-                          "@id":
-                            type: string
-                          "label":
-                            type: string
-                      - type: object
-                        properties:
-                          "@id":
-                            type: string
-                          "skos:prefLabel":
-                            type: object
-                            properties:
-                               "@value":
-                                  type: string
-                               "@language":
-                                  type: string
-
-    ObjectRecordEasy:
-      type: object
-      description: data model of the easy representation of an object from the collection.
-      properties:
         "@id":
           type: string
-        "media":
-          type: array
-        "title":
-          type: string
-        "description":
-          type: string
-        "objectNumber":
-          type: string
-
-    # EXHIBITION
-    exhibition:
-      type: object
-      properties:
-        "@id":
-          type: string
+          format: uri
         "@type":
           type: string
-        "@context":
-          type: object
-          properties:
-            "la":
-              type: string
-            "cest":
-              type: string
-            "foaf":
-              type: string
-            "prov":
-              type: string
-            "skos":
-              type: string
-            "cidoc":
-              type: string
-            "label":
-              type: string
-            "inhoud":
-              type: string
-            "foaf:page":
-              type: object
-              properties:
-                "@type":
-                  type: string
-            "opmerking":
-              type: string
-            "equivalent":
-              type: object
-              properties:
-                "@id":
-                  type: string
-                "@type":
-                  type: string
-            "dcterms:isVersionOf":
-              type: object
-              properties:
-                "@type":
-                  type: string
-        "foaf:page":
-          type: string
-        "cidoc:P2_has_type":
-          type: object
-          properties:
-            "@id":
-              type: string
-        "prov:generatedAtTime":
-          type: string
-        "cidoc:P4_has_time-span":
-          type: object
-          properties:
-            "@type":
-              type: string
-            "@language":
-              type: string
-        "cidoc:P7_took_place_at":
-          type: object
-          properties:
-            "@type":
-              type: string
-            "equivalent":
-              type: object
-              properties:
-                "@id":
-                  type: string
-                "skos:prefLabel":
-                  type: object
-                  properties:
-                    "@value":
-                      type: string
-                    "@language":
-                      type: string
-        "cidoc:P1_is_identified_by":
-          "@type":
-            type: string
-          "inhoud":
-            type: object
-            properties:
-              "@value":
-                type: string
-              "@language":
-                type: string
-        "cidoc:P16_used_specific_object":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "@type":
-              type: string
-            "cidoc:P102_has_title":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "@value":
-                  type: string
-            "http://www.w3.org/ns/adms#identifier":
-              type: array
-              items:
-                type: object
-                properties:
-                  "skos:notation":
-                    type: object
-                    properties:
-                      "@type":
-                        type: string
-                      "@value":
-                        type: string
-        "http://purl.org/dc/terms/isVersionOf":
-          type: object
-          properties:
-            "@id":
-              type: string
-        "http://www.w3.org/ns/adms#identifier":
-          type: array
-          items:
-            oneOf:
-              - type: object
-                properties:
-                  "@type":
-                    type: string
-                  "skos:notation":
-                    type: object
-                    properties:
-                      "@type":
-                        type: string
-                      "@value":
-                        type: string
-              - type: object
-                properties:
-                  "skos:notation":
-                    type: object
-                    properties:
-                      "@type":
-                        type: string
-                      "@value":
-                        type: string
-
-    # EXHIBITIONS
-    exhibitions:
-      type: object
-      properties:
-        "@context":
-          type: array
-          items:
-            type: object
-            properties:
-              "cidoc":
-                type: string
-              "hydra":
-                type: string
-        "@type":
-          type: string
-        "@id":
-          type: string
+          example: hydra:Collection
+        "hydra:totalItems":
+          type: integer
         "hydra:view":
           type: object
           properties:
@@ -978,297 +124,813 @@ components:
               type: string
             "hydra:last":
               type: string
-            "hydra:previous":
-              type: string
             "hydra:next":
               type: string
-        "GecureerdeCollectie.curator":
-          type: string
-        "GecureerdeCollectie.bestaatUit":
+            "hydra:previous":
+              type: string
+        "hydra:member":
           type: array
           items:
             type: object
-            properties:
-              "@id":
-                type: string
-              "@type":
-                type: string
-              "cidoc:P1_is_identified_by":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-                  "inhoud":
-                    type: object
-                    properties:
-                      "@value":
-                        type: string
-                      "@language":
-                        type: string
-    # CONCEPT
-    ConceptRecord:
+
+    ErrorResponse:
       type: object
       properties:
-        "@id":
-          type: string
-          description: id for the version object
-        "@type":
-          type: string
-          description: type of the object -> skos:Concept
-        "@context":
-          type: object
-          properties:
-            "owl":
-              type: string
-            "skos":
-              type: string
-            "opmerking":
-              type: string
-            "owl:sameAs":
-              type: object
-              properties:
-                "@type":
-                  type: string
-            "skos:inScheme":
-              type: object
-              properties:
-                "@type":
-                  type: string
-            "dcterms:isVersionOf":
-              type: object
-              properties:
-                "@type":
-                  type: string
-        "opmerking":
-          description: type of object in the database, (material, objectname, onderwerp, ...)
-          type: array
-          items:
-            type: object
-            properties:
-              "@value":
-                type: string
-              "@language":
-                type: string
-        "owl:sameAs":
-          type: string
-        "skos:broader":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "skos.prefLabel":
-              type: object
-              properties:
-                "@value":
-                  type: string
-                "@language":
-                  type: string
-        "skos:inScheme":
-          type: string
-        "skos:narrower":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "skos.prefLabel":
-              type: object
-              properties:
-                "@value":
-                  type: string
-                "@language":
-                  type: string
-        "skos.prefLabel":
-          type: object
-          properties:
-            "@value":
-              type: string
-            "@language":
-              type:
-        "skos:scopeNote":
-          type: string
-        "http://purl.org/dc/terms/isVersionOf":
-          type: string
-        "http://www.w3.org/ns/adms#identifier":
-          type: object
-          properties:
-            "@type":
-              type: string
-            "skos:notation":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "@value":
-                  type: string
-        "http://www.w3.org/ns/prov#generatedAtTime":
+        error:
           type: string
 
-    # AGENT
-    agent-record:
+    IndexCollection:
       type: object
       properties:
-        "@id":
-          type: string
-          description: the persistent uniform rescource indicator (PURI) for the record.
-        "@type":
-          type: string
-          description: type of the object described (oragnisation or person)
         "@context":
           type: object
-          description: context files used to describe the object.
-          properties:
-            "@owl":
-              type: string
-            "skos":
-              type: string
-            "opmerking":
-              type: string
-            "owl:sameAs":
-              type: object
-              properties:
-                "@type":
-                  type: string
-            "skos:inScheme":
-              type: object
-              properties:
-                "@type":
-                  type: string
-            "dcterms:isVersionOf":
-                type: object
-                properties:
-                  "@type":
-                    type: string
-        "skos:inScheme":
+        "@id":
           type: string
-        "http://purl.org/dc/terms/isVersionOf":
-          type: object
-          properties:
-            "@id":
-              type: string
-              description: object from which tbis record is a version (a moment in time).
-        "https://wwww.w3.org/ns/adms/#identifier":
+          format: uri
+        "@type":
+          type: string
+          example: hydra:Collection
+        "hydra:totalItems":
+          type: integer
+        "hydra:member":
           type: array
-          description: list of identifiers used to describe this object in different databases / catalogues.
           items:
-            oneOf:
-              - type: object
-                properties:
-                  "@id":
-                    type: string
-                  "@type":
-                    type: string
-                  "skos:notation":
-                    type: object
-                    properties:
-                      "@type":
-                        type: string
-                      "@value":
-                        #database identifier
-                        type: string
-                        description: identifier used in the collection registration system (database).
-              - type: object
-                properties :
-                   "@id":
-                      type: string
-                   "skos:notation":
-                      type: object
-                      properties:
-                        "@type":
-                          type: string
-                        "@value":
-                          #persistent identifier
-                          type: string
-                          description: identifier used to identify the agent (PURI).
-        "http://www.w3.org/ns/prov#generatedAtTime":
-          type: string
-          description: timestamp when the versioned object was generated.
-        "http://www.w3.org/ns/prov#wasAttributedTo":
-          type: object
-          description: other records, subject pages, that refer to the same object
-          properties:
-              "@id":
-                type: string
-                description: PURL to the record, that refers to the same entity. (fe. Wikidata, Ulan, AAT, TNG, ..)
-        "owl:sameAs":
-          type: array
-          description: list of PURLs to other resources describing this object (cf. RKD, Wikidata, Flanders architecture, ULAN, ...)
-          items:
-            type: string
-        "https://data.vlaanderen.be/ns/persoon#geslacht":
-          type: object
-          properties:
-            "@type":
-              type: string
-            "@value":
-              #persistent identifier
-              type: string
-              description: assigned sex to the person in the database (this might no be up to date, we advise double chacking before using this).
-        "https://data.vlaanderen.be/ns/persoon#heeftGeboorte":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "@type":
-              type: string
-            "https://data.vlaanderen.be/ns/persoon#datum":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "@value":
-                  type: string
-                  description: birthdate of the agent.
-            "https://data.vlaanderen.be/ns/persoon#plaats":
-              type: object
-              properties:
-                "@id":
-                  description: URI to the birthplaces in TGN
-                  type: string
-                "@type":
-                  type: string
-        "https://data.vlaanderen.be/ns/persoon#heeftOverlijden":
-          type: object
-          properties:
-            "@id":
-              type: string
-            "@type":
-              type: string
-            "https://data.vlaanderen.be/ns/persoon#datum":
-              type: object
-              properties:
-                "@type":
-                  type: string
-                "@value":
-                  type: string
-                  description: date of decease of the agent.
-            "https://data.vlaanderen.be/ns/persoon#plaats":
-              type: object
-              properties:
-                "@id":
-                  description: place of decease of the agent.
-                  type: string
-                "@type":
-                  type: string
-        "http://xmlns.com/foaf/0.1/familyName":
-          type: string
-          description: family name of the agent
-        "http://xmlns.com/foaf/0.1/givenName":
-          type: string
-          description: sirname of the agent.
-        "https://data.vlaanderen.be/ns/persoon#volledigeNaam":
-          type: string
-          description: full name of the agent.
-        "https://data.vlaanderen.be/ns/persoon#heeftNationaliteit":
-          "@id":
-            type: string
-          "@type":
-            type: string
-          "http://www.cidoc-crm.org/cidoc-crm/P3_has_note":
             type: object
             properties:
-              "@value":
+              "@type":
                 type: string
-                description: nationality of the agent
-              "language":
+              "rdfs:label":
                 type: string
-                description: language of the label.
+              "object_count":
+                type: integer
+              "filter":
+                type: string
+                format: uri
+
+paths:
+
+  # ---------------------------------------------------------------------------
+  # OBJECTS
+  # ---------------------------------------------------------------------------
+
+  /id/objects:
+    get:
+      tags: [Objects]
+      summary: Paginated collection of all objects
+      description: >
+        Returns a Hydra paginated collection of objects. Supports full records,
+        image filter, color filter, type filter, material filter, full text search,
+        incremental harvesting and collection presentation filter.
+        Pagination links are also exposed via RFC 8288 Link headers.
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/itemsPerPage'
+        - $ref: '#/components/parameters/fullRecord'
+        - $ref: '#/components/parameters/modifiedSince'
+        - $ref: '#/components/parameters/searchQuery'
+        - $ref: '#/components/parameters/onDisplay'
+        - name: hasImages
+          in: query
+          description: Only return objects that have a IIIF manifest
+          schema:
+            type: boolean
+            default: false
+        - name: hasParts
+          in: query
+          description: Only return koepelrecords — objects that have physical components
+          schema:
+            type: boolean
+            default: false
+        - name: isPartOf
+          in: query
+          description: Only return components — objects that belong to a larger set
+          schema:
+            type: boolean
+            default: false
+        - name: type
+          in: query
+          description: Filter by object type label. Comma-separated for multiple (AND). Use /v2/id/types to discover available values.
+          schema:
+            type: string
+            example: vaas
+        - name: material
+          in: query
+          description: Filter by material label. Comma-separated for multiple (AND). Use /v2/id/materials to discover available values.
+          schema:
+            type: string
+            example: glas (materiaal)
+        - name: color
+          in: query
+          description: Filter by base color. Comma-separated for multiple (AND). Available values at /v2/id/colors.
+          schema:
+            type: string
+            example: pink,grey
+        - name: cssColor
+          in: query
+          description: Filter by CSS color name. Comma-separated for multiple (AND). Use /v2/id/colors to discover available values.
+          schema:
+            type: string
+            example: Old rose
+        - name: colors
+          in: query
+          description: Include color data in full records. Requires fullRecord=true.
+          schema:
+            type: boolean
+            default: false
+        - name: hasColors
+          in: query
+          description: >
+            Only return objects that have been processed by the color tagger.
+            Useful for knowing what is indexed. Separate from ?colors=true which
+            includes the color data in the response.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Successful response
+          headers:
+            Link:
+              schema:
+                type: string
+              description: RFC 8288 pagination links (first, last, next, prev)
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "400":
+          description: Invalid modifiedSince format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /id/object/{ObjectPID}:
+    get:
+      tags: [Objects]
+      summary: Single object record
+      description: >
+        Returns a single object as CIDOC-CRM compliant JSON-LD.
+        Handles resolver redirects (301) and permanently removed objects (410).
+        Includes ETag and Last-Modified headers for cache validation.
+      parameters:
+        - name: ObjectPID
+          in: path
+          required: true
+          description: Object identifier (DMG object number)
+          schema:
+            type: string
+            example: "1987-1105"
+        - name: colors
+          in: query
+          description: Include color data
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Object found
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Cache validation token
+            Last-Modified:
+              schema:
+                type: string
+              description: Timestamp of last harvest
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/ld+json:
+              schema:
+                type: object
+        "301":
+          description: Object has been merged — follow Location header
+        "404":
+          description: Object not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "410":
+          description: Object permanently removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    head:
+      tags: [Objects]
+      summary: Check if an object exists
+      description: >
+        Lightweight existence check without fetching the full payload.
+        Returns the same status codes as GET but with no response body.
+        Includes ETag and Last-Modified headers for cache validation.
+      parameters:
+        - name: ObjectPID
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1987-1105"
+      responses:
+        "200":
+          description: Object exists
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+        "301":
+          description: Object has been merged — follow Location header
+        "404":
+          description: Object not found
+        "410":
+          description: Object permanently removed
+
+  # ---------------------------------------------------------------------------
+  # AGENTS
+  # ---------------------------------------------------------------------------
+
+  /id/agents:
+    get:
+      tags: [Agents]
+      summary: Paginated collection of all agents
+      description: >
+        Returns a Hydra paginated collection of agents (persons and organisations).
+        Supports full text search, nationality filter and role filter.
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/itemsPerPage'
+        - $ref: '#/components/parameters/fullRecord'
+        - $ref: '#/components/parameters/modifiedSince'
+        - $ref: '#/components/parameters/searchQuery'
+        - name: nationality
+          in: query
+          description: Filter by nationality (Dutch country name). Comma-separated for multiple (AND). Use /v2/id/nationalities to discover available values.
+          schema:
+            type: string
+            example: België
+        - name: role
+          in: query
+          description: Filter by role in the collection. Use /v2/id/roles to discover available values.
+          schema:
+            type: string
+            example: designer
+      responses:
+        "200":
+          description: Successful response
+          headers:
+            Link:
+              schema:
+                type: string
+              description: RFC 8288 pagination links
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "400":
+          description: Invalid modifiedSince format
+        "500":
+          description: Server error
+
+  /id/agent/{agentPID}:
+    get:
+      tags: [Agents]
+      summary: Single agent record
+      description: >
+        Returns a single agent as CIDOC-CRM compliant JSON-LD, enriched with
+        Wikipedia biographies, thumbnail image and exhibition participation.
+      parameters:
+        - name: agentPID
+          in: path
+          required: true
+          description: Agent identifier
+          schema:
+            type: string
+            example: DMG-A-00162
+      responses:
+        "200":
+          description: Agent found
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+          content:
+            application/ld+json:
+              schema:
+                type: object
+        "404":
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Server error
+    head:
+      tags: [Agents]
+      summary: Check if an agent exists
+      description: Lightweight existence check. Includes ETag and Last-Modified headers for cache validation.
+      parameters:
+        - name: agentPID
+          in: path
+          required: true
+          schema:
+            type: string
+            example: DMG-A-00162
+      responses:
+        "200":
+          description: Agent exists
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+        "404":
+          description: Agent not found
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # EXHIBITIONS
+  # ---------------------------------------------------------------------------
+
+  /id/exhibitions:
+    get:
+      tags: [Exhibitions]
+      summary: Paginated collection of all exhibitions
+      description: Returns a Hydra paginated collection of exhibitions from the Design Museum Gent archive.
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/itemsPerPage'
+        - $ref: '#/components/parameters/fullRecord'
+        - $ref: '#/components/parameters/modifiedSince'
+      responses:
+        "200":
+          description: Successful response
+          headers:
+            Link:
+              schema:
+                type: string
+              description: RFC 8288 pagination links
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "500":
+          description: Server error
+
+  /id/exhibition/{exhibitionPID}:
+    get:
+      tags: [Exhibitions]
+      summary: Single exhibition record
+      description: >
+        Returns a single exhibition as CIDOC-CRM compliant JSON-LD with multilingual
+        titles, descriptions, time span, object links and media.
+      parameters:
+        - name: exhibitionPID
+          in: path
+          required: true
+          description: Exhibition identifier
+          schema:
+            type: string
+            example: TE_2020-001
+      responses:
+        "200":
+          description: Exhibition found
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+          content:
+            application/ld+json:
+              schema:
+                type: object
+        "404":
+          description: Exhibition not found
+        "500":
+          description: Server error
+    head:
+      tags: [Exhibitions]
+      summary: Check if an exhibition exists
+      description: Lightweight existence check. Includes ETag and Last-Modified headers for cache validation.
+      parameters:
+        - name: exhibitionPID
+          in: path
+          required: true
+          schema:
+            type: string
+            example: TE_2020-001
+      responses:
+        "200":
+          description: Exhibition exists
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+        "404":
+          description: Exhibition not found
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # CONCEPTS
+  # ---------------------------------------------------------------------------
+
+  /id/concepts:
+    get:
+      tags: [Concepts]
+      summary: Paginated collection of the thesaurus
+      description: Returns a Hydra paginated collection of thesaurus concepts used to describe objects in the collection.
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/itemsPerPage'
+        - $ref: '#/components/parameters/fullRecord'
+        - $ref: '#/components/parameters/modifiedSince'
+        - $ref: '#/components/parameters/searchQuery'
+      responses:
+        "200":
+          description: Successful response
+          headers:
+            Link:
+              schema:
+                type: string
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "500":
+          description: Server error
+
+  /id/concept/{ConceptPID}:
+    get:
+      tags: [Concepts]
+      summary: Single concept record
+      description: Returns a single thesaurus concept as CIDOC-CRM + SKOS JSON-LD with multilingual labels, scope notes and hierarchy.
+      parameters:
+        - name: ConceptPID
+          in: path
+          required: true
+          description: Concept identifier
+          schema:
+            type: string
+            example: "530000049"
+      responses:
+        "200":
+          description: Concept found
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+          content:
+            application/ld+json:
+              schema:
+                type: object
+        "404":
+          description: Concept not found
+        "500":
+          description: Server error
+    head:
+      tags: [Concepts]
+      summary: Check if a concept exists
+      description: Lightweight existence check. Includes ETag and Last-Modified headers for cache validation.
+      parameters:
+        - name: ConceptPID
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "530000049"
+      responses:
+        "200":
+          description: Concept exists
+          headers:
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+        "404":
+          description: Concept not found
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # COLORS
+  # ---------------------------------------------------------------------------
+
+  /id/colors:
+    get:
+      tags: [Colors]
+      summary: Color index with weighted statistics
+      description: >
+        Returns all available base colors and CSS color names with weighted
+        distribution statistics across the collection. Supports ?onDisplay=true
+        to filter to collection presentation objects only.
+      parameters:
+        - $ref: '#/components/parameters/onDisplay'
+      responses:
+        "200":
+          description: Color index
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                properties:
+                  base_colors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                          example: pink
+                        object_count:
+                          type: integer
+                          example: 1243
+                        collection_share_pct:
+                          type: number
+                          example: 8.4
+                        avg_dominance_pct:
+                          type: number
+                          example: 22.1
+                        filter:
+                          type: string
+                          format: uri
+                        dominant:
+                          type: string
+                          format: uri
+                  css_colors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                          example: Old rose
+                        object_count:
+                          type: integer
+                          example: 312
+                        collection_share_pct:
+                          type: number
+                          example: 0.94
+                        avg_dominance_pct:
+                          type: number
+                          example: 22.1
+                        filter:
+                          type: string
+                          format: uri
+                        dominant:
+                          type: string
+                          format: uri
+        "500":
+          description: Server error
+
+  /id/colors/dominant:
+    get:
+      tags: [Colors]
+      summary: Objects most dominant in a specific color
+      description: Returns objects sorted by the dominance percentage of a specific base color or CSS color name.
+      parameters:
+        - name: color
+          in: query
+          description: Base color to rank by
+          schema:
+            type: string
+            example: black
+        - name: cssColor
+          in: query
+          description: CSS color name to rank by
+          schema:
+            type: string
+            example: Old rose
+        - name: limit
+          in: query
+          description: Number of results (max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        "200":
+          description: Dominant objects
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "400":
+          description: Missing color or cssColor parameter
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # DISCOVERY
+  # ---------------------------------------------------------------------------
+
+  /id/types:
+    get:
+      tags: [Discovery]
+      summary: Object type index
+      description: All object types in the collection with object counts and filter URLs. Supports ?onDisplay=true.
+      parameters:
+        - $ref: '#/components/parameters/onDisplay'
+      responses:
+        "200":
+          description: Type index
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/IndexCollection'
+        "500":
+          description: Server error
+
+  /id/materials:
+    get:
+      tags: [Discovery]
+      summary: Material index
+      description: All materials in the collection with object counts and filter URLs. Supports ?onDisplay=true.
+      parameters:
+        - $ref: '#/components/parameters/onDisplay'
+      responses:
+        "200":
+          description: Material index
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/IndexCollection'
+        "500":
+          description: Server error
+
+  /id/nationalities:
+    get:
+      tags: [Discovery]
+      summary: Nationality index
+      description: All nationalities in the agent records with agent counts and filter URLs.
+      responses:
+        "200":
+          description: Nationality index
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/IndexCollection'
+        "500":
+          description: Server error
+
+  /id/roles:
+    get:
+      tags: [Discovery]
+      summary: Agent role index
+      description: All roles agents play in the collection (designer, producer) with agent counts and filter URLs.
+      responses:
+        "200":
+          description: Role index
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/IndexCollection'
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # PRIVATE
+  # ---------------------------------------------------------------------------
+
+  /id/private/objects:
+    get:
+      tags: [Private]
+      summary: Authenticated private objects stream
+      description: >
+        Returns the full private collection stream. Requires a valid API key
+        passed as ?apiKey= or x-api-key header. Supports all the same filters
+        as the public objects endpoint.
+      security:
+        - ApiKeyAuth: []
+        - ApiKeyHeader: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/itemsPerPage'
+        - $ref: '#/components/parameters/fullRecord'
+        - $ref: '#/components/parameters/modifiedSince'
+        - $ref: '#/components/parameters/searchQuery'
+        - $ref: '#/components/parameters/onDisplay'
+        - name: hasImages
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: colors
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: color
+          in: query
+          schema:
+            type: string
+            example: pink
+        - name: cssColor
+          in: query
+          schema:
+            type: string
+            example: Old rose
+        - name: type
+          in: query
+          schema:
+            type: string
+            example: vaas
+        - name: material
+          in: query
+          schema:
+            type: string
+            example: glas (materiaal)
+        - name: hasParts
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: isPartOf
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: hasColors
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/HydraCollection'
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Server error
+
+  # ---------------------------------------------------------------------------
+  # DCAT
+  # ---------------------------------------------------------------------------
+
+  /:
+    get:
+      tags: [DCAT]
+      summary: DCAT data catalog
+      description: Machine-readable DCAT catalog describing all available datasets.
+      responses:
+        "200":
+          description: DCAT catalog
+          content:
+            application/ld+json:
+              schema:
+                type: object
+
+  /dcat:
+    get:
+      tags: [DCAT]
+      summary: DCAT data catalog (alias)
+      description: Alias for GET /v2/. Returns identical response.
+      responses:
+        "200":
+          description: DCAT catalog
+          content:
+            application/ld+json:
+              schema:
+                type: object

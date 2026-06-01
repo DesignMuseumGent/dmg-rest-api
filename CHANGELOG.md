@@ -11,6 +11,8 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- `?hasColors=true` filter on `/v2/id/objects` — returns only objects processed by the color tagger, independent of `?colors=true` which includes color data in the response
+
 - Creative projects (`crm:P15i_was_motivation_of`) and media (`crm:P129i_is_subject_of`) enrichment on object records sourced from `dmg_objects_projects` and `dmg_objects_media` tables
 
 - `crm:P106i_forms_part_of` — sub-collection and provenance group membership on object records

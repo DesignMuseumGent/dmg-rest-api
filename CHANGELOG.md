@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - `?language=NLD/FRA/ENG` filter on `/v2/id/objects` — returns only objects that have a title in the specified language, useful for identifying incomplete translations
 - `?language=NLD/FRA/ENG` filter extended to `/v2/id/concepts` and `/v2/id/exhibitions` — returns only records with content in the specified language
 - `?hasColors=true` filter on `/v2/id/objects` — returns only objects processed by the color tagger, independent of `?colors=true` which includes color data in the response
+- `?agent=DMG-A-XXXXX` filter on `/v2/id/objects` — returns all objects linked to a specific agent as designer (`crm:P94i_was_created_by`) or producer (`crm:P108i_was_produced_by`)
 
 ## [v2.5.0] — 2026-05-27
 

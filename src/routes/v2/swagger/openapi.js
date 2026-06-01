@@ -2,7 +2,7 @@ export const swaggerDefinition = {
     openapi: '3.0.0',
     info: {
         title: 'Design Museum Gent API',
-        version: '2.7.0',
+        version: '2.8.0',
         description: 'CIDOC-CRM compliant JSON-LD REST API for the Design Museum Gent collection.',
         contact: {
             name: "Olivier Van D'huynslager",
@@ -83,8 +83,14 @@ export const swaggerDefinition = {
             onDisplay: {
                 name: 'onDisplay',
                 in: 'query',
-                description: 'Only return objects currently on view in the collection presentation',
+                description: 'Only return objects currently on display in the collection presentation',
                 schema: { type: 'boolean', default: false }
+            },
+            language: {
+                name: 'language',
+                in: 'query',
+                description: 'Filter by available translation. Only return records that have content in the specified language. Supported: NLD, FRA, ENG.',
+                schema: { type: 'string', example: 'FRA' }
             }
         },
         schemas: {
@@ -175,7 +181,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Objects'],
                 summary: 'Paginated collection of all objects',
-                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, type filter, material filter, full text search, incremental harvesting and collection presentation filter.',
+                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, type filter, material filter, agent filter, full text search, incremental harvesting and collection presentation filter. Pagination links are also exposed via RFC 8288 Link headers.',
                 parameters: [
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
@@ -183,6 +189,7 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/modifiedSince' },
                     { $ref: '#/components/parameters/searchQuery' },
                     { $ref: '#/components/parameters/onDisplay' },
+                    { $ref: '#/components/parameters/language' },
                     {
                         name: 'hasImages',
                         in: 'query',
@@ -190,15 +197,33 @@ export const swaggerDefinition = {
                         schema: { type: 'boolean', default: false }
                     },
                     {
+                        name: 'hasParts',
+                        in: 'query',
+                        description: 'Only return koepelrecords — objects that have physical components',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'isPartOf',
+                        in: 'query',
+                        description: 'Only return components — objects that belong to a parent koepelrecord',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'hasColors',
+                        in: 'query',
+                        description: 'Only return objects that have been processed by the color tagger. Separate from ?colors=true which includes color data in the response.',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
                         name: 'colors',
                         in: 'query',
-                        description: 'Include color data in full records',
+                        description: 'Include color data in full records. Requires fullRecord=true.',
                         schema: { type: 'boolean', default: false }
                     },
                     {
                         name: 'color',
                         in: 'query',
-                        description: 'Filter by base color. Comma-separated for multiple (AND). Available: red, orange, yellow, green, blue, purple, pink, brown, grey, black, white',
+                        description: 'Filter by base color. Comma-separated for multiple (AND). Available: red, orange, yellow, green, blue, purple, pink, brown, grey, black, white. Use /v2/id/colors to discover statistics.',
                         schema: { type: 'string', example: 'pink,grey' }
                     },
                     {
@@ -220,16 +245,10 @@ export const swaggerDefinition = {
                         schema: { type: 'string', example: 'glas (materiaal)' }
                     },
                     {
-                        name: 'hasParts',
+                        name: 'agent',
                         in: 'query',
-                        description: 'Only return koepelrecords — objects that have physical components',
-                        schema: { type: 'boolean', default: false }
-                    },
-                    {
-                        name: 'isPartOf',
-                        in: 'query',
-                        description: 'Only return components — objects that belong to a parent koepelrecord',
-                        schema: { type: 'boolean', default: false }
+                        description: 'Filter by agent PID or full URI. Returns all objects where the agent appears as designer (crm:P94i_was_created_by) or producer (crm:P108i_was_produced_by). Accepts DMG-A-00162 or full URI.',
+                        schema: { type: 'string', example: 'DMG-A-00162' }
                     }
                 ],
                 responses: {
@@ -321,7 +340,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Agents'],
                 summary: 'Paginated collection of all agents',
-                description: 'Returns a Hydra paginated collection of agents (persons and organisations). Supports full text search, nationality filter and role filter.',
+                description: 'Returns a Hydra paginated collection of agents (persons and organisations). Supports full text search, nationality filter, role filter, and Wikipedia biography filters.',
                 parameters: [
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
@@ -339,6 +358,18 @@ export const swaggerDefinition = {
                         in: 'query',
                         description: 'Filter by role in the collection. Use /v2/id/roles to discover available values.',
                         schema: { type: 'string', example: 'designer' }
+                    },
+                    {
+                        name: 'hasBio',
+                        in: 'query',
+                        description: 'Only return agents that have at least one Wikipedia biography in any language.',
+                        schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'language',
+                        in: 'query',
+                        description: 'Filter by available Wikipedia biography language. Only return agents that have a biography in the specified language. Supported: NLD, FRA, ENG.',
+                        schema: { type: 'string', example: 'FRA' }
                     }
                 ],
                 responses: {
@@ -359,7 +390,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Agents'],
                 summary: 'Single agent record',
-                description: 'Returns a single agent as CIDOC-CRM compliant JSON-LD, enriched with Wikipedia biographies and exhibition participation.',
+                description: 'Returns a single agent as CIDOC-CRM compliant JSON-LD, enriched with Wikipedia biographies, thumbnail image and exhibition participation.',
                 parameters: [
                     {
                         name: 'agentPID',
@@ -370,7 +401,15 @@ export const swaggerDefinition = {
                     }
                 ],
                 responses: {
-                    200: { description: 'Agent found', content: { 'application/ld+json': { schema: { type: 'object' } } } },
+                    200: {
+                        description: 'Agent found',
+                        headers: {
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
+                        },
+                        content: { 'application/ld+json': { schema: { type: 'object' } } }
+                    },
                     404: { description: 'Agent not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
                     500: { description: 'Server error' }
                 }
@@ -414,7 +453,8 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
                     { $ref: '#/components/parameters/fullRecord' },
-                    { $ref: '#/components/parameters/modifiedSince' }
+                    { $ref: '#/components/parameters/modifiedSince' },
+                    { $ref: '#/components/parameters/language' }
                 ],
                 responses: {
                     200: {
@@ -433,7 +473,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Exhibitions'],
                 summary: 'Single exhibition record',
-                description: 'Returns a single exhibition as CIDOC-CRM compliant JSON-LD with multilingual titles, descriptions, time span and object links.',
+                description: 'Returns a single exhibition as CIDOC-CRM compliant JSON-LD with multilingual titles, descriptions, time span, object links and media.',
                 parameters: [
                     {
                         name: 'exhibitionPID',
@@ -444,7 +484,15 @@ export const swaggerDefinition = {
                     }
                 ],
                 responses: {
-                    200: { description: 'Exhibition found', content: { 'application/ld+json': { schema: { type: 'object' } } } },
+                    200: {
+                        description: 'Exhibition found',
+                        headers: {
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
+                        },
+                        content: { 'application/ld+json': { schema: { type: 'object' } } }
+                    },
                     404: { description: 'Exhibition not found' },
                     500: { description: 'Server error' }
                 }
@@ -491,7 +539,8 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/itemsPerPage' },
                     { $ref: '#/components/parameters/fullRecord' },
                     { $ref: '#/components/parameters/modifiedSince' },
-                    { $ref: '#/components/parameters/searchQuery' }
+                    { $ref: '#/components/parameters/searchQuery' },
+                    { $ref: '#/components/parameters/language' }
                 ],
                 responses: {
                     200: {
@@ -521,7 +570,15 @@ export const swaggerDefinition = {
                     }
                 ],
                 responses: {
-                    200: { description: 'Concept found', content: { 'application/ld+json': { schema: { type: 'object' } } } },
+                    200: {
+                        description: 'Concept found',
+                        headers: {
+                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
+                        },
+                        content: { 'application/ld+json': { schema: { type: 'object' } } }
+                    },
                     404: { description: 'Concept not found' },
                     500: { description: 'Server error' }
                 }
@@ -818,14 +875,17 @@ export const swaggerDefinition = {
                     { $ref: '#/components/parameters/modifiedSince' },
                     { $ref: '#/components/parameters/searchQuery' },
                     { $ref: '#/components/parameters/onDisplay' },
-                    { name: 'hasImages', in: 'query', schema: { type: 'boolean', default: false } },
-                    { name: 'colors', in: 'query', schema: { type: 'boolean', default: false } },
-                    { name: 'color', in: 'query', schema: { type: 'string', example: 'pink' } },
-                    { name: 'cssColor', in: 'query', schema: { type: 'string', example: 'Old rose' } },
-                    { name: 'type', in: 'query', schema: { type: 'string', example: 'vaas' } },
-                    { name: 'material', in: 'query', schema: { type: 'string', example: 'glas (materiaal)' } },
-                    { name: 'hasParts', in: 'query', schema: { type: 'boolean', default: false } },
-                    { name: 'isPartOf', in: 'query', schema: { type: 'boolean', default: false } }
+                    { $ref: '#/components/parameters/language' },
+                    { name: 'hasImages',  in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'hasColors',  in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'colors',     in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'color',      in: 'query', schema: { type: 'string', example: 'pink' } },
+                    { name: 'cssColor',   in: 'query', schema: { type: 'string', example: 'Old rose' } },
+                    { name: 'type',       in: 'query', schema: { type: 'string', example: 'vaas' } },
+                    { name: 'material',   in: 'query', schema: { type: 'string', example: 'glas (materiaal)' } },
+                    { name: 'hasParts',   in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'isPartOf',   in: 'query', schema: { type: 'boolean', default: false } },
+                    { name: 'agent',      in: 'query', description: 'Filter by agent PID or full URI.', schema: { type: 'string', example: 'DMG-A-00162' } }
                 ],
                 responses: {
                     200: { description: 'Successful response', content: { 'application/ld+json': { schema: { $ref: '#/components/schemas/HydraCollection' } } } },

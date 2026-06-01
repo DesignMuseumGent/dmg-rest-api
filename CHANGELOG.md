@@ -7,14 +7,19 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.5.1] — 2026-06-21
+
+### Added
+
+- `?language=NLD/FRA/ENG` filter on `/v2/id/objects` — returns only objects that have a title in the specified language, useful for identifying incomplete translations
+- `?language=NLD/FRA/ENG` filter extended to `/v2/id/concepts` and `/v2/id/exhibitions` — returns only records with content in the specified language
+- `?hasColors=true` filter on `/v2/id/objects` — returns only objects processed by the color tagger, independent of `?colors=true` which includes color data in the response
+
 ## [v2.5.0] — 2026-05-27
 
 ### Added
 
-- `?hasColors=true` filter on `/v2/id/objects` — returns only objects processed by the color tagger, independent of `?colors=true` which includes color data in the response
-
 - Creative projects (`crm:P15i_was_motivation_of`) and media (`crm:P129i_is_subject_of`) enrichment on object records sourced from `dmg_objects_projects` and `dmg_objects_media` tables
-
 - `crm:P106i_forms_part_of` — sub-collection and provenance group membership on object records
   - Sourced from `collectie` field in the erfgoed API
   - Typed as `crm:E78_Curated_Holding` — distinct from physical koepelrecord relationships (`crm:P46i_forms_part_of`)

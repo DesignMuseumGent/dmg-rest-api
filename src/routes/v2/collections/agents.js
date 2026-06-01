@@ -13,7 +13,8 @@ export function requestAgents(app, BASE_URI) {
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery = req.query.q ?? null
             const offset = (page - 1) * itemsPerPage
-
+            const languageFilter = req.query.language ? req.query.language.toUpperCase() : null
+            const hasBio = req.query.hasBio === 'true'
             const roleFilter = req.query.role
                 ? req.query.role.split(',').map(r => r.trim().toLowerCase())
                 : null
@@ -23,7 +24,7 @@ export function requestAgents(app, BASE_URI) {
             }
 
             const selectFields = fullRecord
-                ? 'agent_ID, json_ld_v2, wikipedia_bios'
+                ? 'agent_ID, json_ld_v2, wikipedia_bios,has_bio_nl, has_bio_fr, has_bio_en'
                 : 'agent_ID, json_ld_v2'
 
             const nationalityFilter = req.query.nationality
@@ -35,6 +36,12 @@ export function requestAgents(app, BASE_URI) {
                 if (searchQuery) query = query.textSearch('search_vector', searchQuery, { type: 'websearch', config: 'simple' })
                 if (nationalityFilter?.length > 0) query = query.contains('nationalities', nationalityFilter)
                 if (roleFilter?.length > 0) query = query.contains('roles', roleFilter)
+                if (hasBio) query = query.not('wikipedia_bios', 'is', null)
+                if (languageFilter) {
+                    const colMap = { NLD: 'has_bio_nl', FRA: 'has_bio_fr', ENG: 'has_bio_en' }
+                    const col = colMap[languageFilter]
+                    if (col) query = query.eq(col, true)
+                }
                 return query
             }
 
@@ -73,7 +80,9 @@ export function requestAgents(app, BASE_URI) {
                     ...(modifiedSince && { modifiedSince }),
                     ...(searchQuery && { q: searchQuery }),
                     ...(nationalityFilter && { nationality: nationalityFilter.join(',') }),
-                    ...(roleFilter && { role: roleFilter.join(',') })
+                    ...(roleFilter && { role: roleFilter.join(',') }),
+                    ...(languageFilter && { language: languageFilter }),
+                    ...(hasBio && { hasBio: 'true' })
                 })
                 return `${collectionId}?${params.toString()}`
             }

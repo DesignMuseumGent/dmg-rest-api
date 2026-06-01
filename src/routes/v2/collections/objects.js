@@ -13,6 +13,7 @@ export function requestObjects(app, BASE_URI) {
             const hasImages = req.query.hasImages === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
             const onDisplay = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
+            const languageFilter = req.query.language?.toUpperCase().trim() || null
 
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
@@ -59,6 +60,11 @@ export function requestObjects(app, BASE_URI) {
                         config: 'dutch'
                     })
                 }
+                if (languageFilter) {
+                    const colMap = { NLD: 'object_title_nl', FRA: 'object_title_fr', ENG: 'object_title_en' }
+                    const col = colMap[languageFilter]
+                    if (col) q = q.not(col, 'is', null)
+                }
                 return q
             }
 
@@ -93,7 +99,6 @@ export function requestObjects(app, BASE_URI) {
             ])
 
 
-
             if (countError) {
                 console.error('Count error details:', JSON.stringify(countError, null, 2))
                 return res.status(500).json({ error: 'Error fetching objects', details: countError.message })
@@ -123,7 +128,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(typeFilter && { type: typeFilter.join(',') }),
                     ...(hasParts && { hasParts: 'true' }),
                     ...(isPartOf && { isPartOf: 'true' }),
-                    ...(materialFilter && { material: materialFilter.join(',') })
+                    ...(materialFilter && { material: materialFilter.join(',') }),
+                    ...(languageFilter && { language: languageFilter })
                 })
                 return `${collectionId}?${params.toString()}`
             }

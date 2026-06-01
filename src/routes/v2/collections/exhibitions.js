@@ -12,6 +12,9 @@ export function requestExhibitions(app, BASE_URI) {
             const fullRecord = req.query.fullRecord === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
             const offset = (page - 1) * itemsPerPage
+            const languageFilter = req.query.language?.toUpperCase().trim() || null
+            const colMap = { NLD: 'title_NL', FRA: 'title_FR', ENG: 'title_EN' }
+            const col = colMap[languageFilter]
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
@@ -21,8 +24,13 @@ export function requestExhibitions(app, BASE_URI) {
                 ? 'id, json_ld_v2, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN'
                 : 'id, exh_PID, title_NL'
 
+
             const applyFilters = (query) => {
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                if (languageFilter && col) {
+                    query = query.not(col, 'is', null)
+                    query = query.neq(col, 'unknown')
+                }
                 return query
             }
 
@@ -60,7 +68,8 @@ export function requestExhibitions(app, BASE_URI) {
                     page: p,
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
-                    ...(modifiedSince && { modifiedSince })
+                    ...(modifiedSince && { modifiedSince }),
+                    ...(languageFilter && { language: languageFilter })
                 })
                 return `${collectionId}?${params.toString()}`
             }

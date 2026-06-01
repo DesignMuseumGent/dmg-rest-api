@@ -13,6 +13,9 @@ export function requestConcepts(app, BASE_URI) {
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery = req.query.q ?? null
             const offset = (page - 1) * itemsPerPage
+            const languageFilter = req.query.language?.toUpperCase().trim() || null
+            const colMap = { NLD: 'concept_label_nl', FRA: 'concept_label_fr', ENG: 'concept_label_en' }
+            const col = colMap[languageFilter]
 
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince format. Use YYYY-MM-DD.' })
@@ -28,6 +31,8 @@ export function requestConcepts(app, BASE_URI) {
                     type: 'websearch',
                     config: 'dutch'
                 })
+                if (languageFilter && col) query = query.not(col, 'is', null)
+
                 return query
             }
 
@@ -66,7 +71,8 @@ export function requestConcepts(app, BASE_URI) {
                     itemsPerPage,
                     ...(fullRecord && { fullRecord: 'true' }),
                     ...(modifiedSince && { modifiedSince }),
-                    ...(searchQuery && { q: searchQuery })
+                    ...(searchQuery && { q: searchQuery }),
+                    ...(languageFilter && { language: languageFilter })
                 })
                 return `${collectionId}?${params.toString()}`
             }

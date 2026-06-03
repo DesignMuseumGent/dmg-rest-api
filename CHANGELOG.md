@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- `?date=YYYY/YYYY`, `?dateFrom=` and `?dateTo=` filters on `/v2/id/objects` — filter by production date range using EDTF interval notation; stored as indexed integer columns `production_year_begin` and `production_year_end`
 - `?language=NLD/FRA/ENG` filter on `/v2/id/objects` — returns only objects that have a title in the specified language, useful for identifying incomplete translations
 - `?language=NLD/FRA/ENG` filter extended to `/v2/id/concepts` and `/v2/id/exhibitions` — returns only records with content in the specified language
 - `?hasColors=true` filter on `/v2/id/objects` — returns only objects processed by the color tagger, independent of `?colors=true` which includes color data in the response

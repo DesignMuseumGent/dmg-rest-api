@@ -91,7 +91,8 @@ export const swaggerDefinition = {
                 in: 'query',
                 description: 'Filter by available translation. Only return records that have content in the specified language. Supported: NLD, FRA, ENG.',
                 schema: { type: 'string', example: 'FRA' }
-            }
+            },
+
         },
         schemas: {
             HydraCollection: {
@@ -249,6 +250,24 @@ export const swaggerDefinition = {
                         in: 'query',
                         description: 'Filter by agent PID or full URI. Returns all objects where the agent appears as designer (crm:P94i_was_created_by) or producer (crm:P108i_was_produced_by). Accepts DMG-A-00162 or full URI.',
                         schema: { type: 'string', example: 'DMG-A-00162' }
+                    },
+                    {
+                        name: 'date',
+                        in: 'query',
+                        description: 'Filter by production date range using EDTF interval notation (YYYY/YYYY). Returns objects whose production period overlaps with the given range. Use dateFrom and dateTo separately for more control.',
+                        schema: { type: 'string', example: '1950/1969' }
+                    },
+                    {
+                        name: 'dateFrom',
+                        in: 'query',
+                        description: 'Only return objects produced from this year onwards.',
+                        schema: { type: 'integer', example: 1950 }
+                    },
+                    {
+                        name: 'dateTo',
+                        in: 'query',
+                        description: 'Only return objects produced up to and including this year.',
+                        schema: { type: 'integer', example: 1969 }
                     }
                 ],
                 responses: {

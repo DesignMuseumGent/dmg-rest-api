@@ -23,6 +23,12 @@ export function requestObjects(app, BASE_URI) {
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery   = req.query.q ?? null
 
+            // parse ?dateFrom=1950&dateTo=1969
+            // also accept EDTF interval ?date=1950/1969
+            const dateParam = req.query.date ?? null
+            let dateFrom = req.query.dateFrom ? parseInt(req.query.dateFrom) : null
+            let dateTo   = req.query.dateTo   ? parseInt(req.query.dateTo)   : null
+
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
                 : null
@@ -83,6 +89,9 @@ export function requestObjects(app, BASE_URI) {
                         q = q.neq(col, 'unknown')
                     }
                 }
+                if (dateFrom) q = q.gte('production_year_end',   dateFrom)  // object ended after or on dateFrom
+                if (dateTo)   q = q.lte('production_year_begin', dateTo)    // object started before or on dateTo
+
                 return q
             }
 
@@ -109,7 +118,10 @@ export function requestObjects(app, BASE_URI) {
                     ...(typeFilter        && { type: typeFilter.join(',') }),
                     ...(materialFilter    && { material: materialFilter.join(',') }),
                     ...(languageFilter    && { language: languageFilter }),
-                    ...(agentFilter       && { agent: agentFilter })
+                    ...(agentFilter       && { agent: agentFilter }),
+                    ...(dateParam  && { date: dateParam }),
+                    ...(dateFrom && !dateParam && { dateFrom }),
+                    ...(dateTo   && !dateParam && { dateTo })
                 })
                 return `${collectionId}?${params.toString()}`
             }

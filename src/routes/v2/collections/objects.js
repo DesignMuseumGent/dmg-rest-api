@@ -23,12 +23,6 @@ export function requestObjects(app, BASE_URI) {
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery   = req.query.q ?? null
 
-            // parse ?dateFrom=1950&dateTo=1969
-            // also accept EDTF interval ?date=1950/1969
-            const dateParam = req.query.date ?? null
-            let dateFrom = req.query.dateFrom ? parseInt(req.query.dateFrom) : null
-            let dateTo   = req.query.dateTo   ? parseInt(req.query.dateTo)   : null
-
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
                 : null
@@ -50,8 +44,114 @@ export function requestObjects(app, BASE_URI) {
                     : `${BASE_URI}id/agent/${agentFilter}`
                 : null
 
+            // date range — accept EDTF interval ?date=1950/1969 or separate ?dateFrom= ?dateTo=
+            const dateParam = req.query.date ?? null
+            let dateFrom = req.query.dateFrom ? parseInt(req.query.dateFrom) : null
+            let dateTo   = req.query.dateTo   ? parseInt(req.query.dateTo)   : null
+
+            if (dateParam) {
+                const [from, to] = dateParam.split('/')
+                dateFrom = from ? parseInt(from.replace(/[~?%]/g, '')) : null
+                dateTo   = to   ? parseInt(to.replace(/[~?%]/g, ''))   : null
+            }
+
+            const conceptFilter = req.query.concept?.trim() || null
+            const conceptSearch = req.query.conceptSearch?.trim() || null
+
             if (modifiedSince && isNaN(new Date(modifiedSince).getTime())) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
+            }
+
+            // ─────────────────────────────────────────────────────────────
+            // BUILD PARAMS — defined early so it can be used in early returns
+            // ─────────────────────────────────────────────────────────────
+            const collectionId = `${BASE_URI}id/objects`
+
+            const buildParams = (p) => {
+                const params = new URLSearchParams({
+                    page: p,
+                    itemsPerPage,
+                    ...(fullRecord        && { fullRecord: 'true' }),
+                    ...(showColors        && { colors: 'true' }),
+                    ...(hasImages         && { hasImages: 'true' }),
+                    ...(hasColors         && { hasColors: 'true' }),
+                    ...(hasParts          && { hasParts: 'true' }),
+                    ...(isPartOf          && { isPartOf: 'true' }),
+                    ...(onDisplay         && { onDisplay: 'true' }),
+                    ...(modifiedSince     && { modifiedSince }),
+                    ...(searchQuery       && { q: searchQuery }),
+                    ...(colorFilter       && { color: colorFilter.join(',') }),
+                    ...(cssColorFilter    && { cssColor: cssColorFilter.join(',') }),
+                    ...(typeFilter        && { type: typeFilter.join(',') }),
+                    ...(materialFilter    && { material: materialFilter.join(',') }),
+                    ...(languageFilter    && { language: languageFilter }),
+                    ...(agentFilter       && { agent: agentFilter }),
+                    ...(dateParam         && { date: dateParam }),
+                    ...(dateFrom && !dateParam && { dateFrom }),
+                    ...(dateTo   && !dateParam && { dateTo }),
+                    ...(conceptFilter     && { concept: conceptFilter }),
+                    ...(conceptSearch     && { conceptSearch })
+                })
+                return `${collectionId}?${params.toString()}`
+            }
+
+            const emptyCollection = () => res.status(200).json({
+                "@context": {
+                    "crm": "http://www.cidoc-crm.org/cidoc-crm/",
+                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "hydra": "http://www.w3.org/ns/hydra/core#",
+                    "owl": "https://www.w3.org/2002/07/owl#"
+                },
+                "@id": collectionId,
+                "@type": "hydra:Collection",
+                "hydra:totalItems": 0,
+                "hydra:view": {
+                    "@id": buildParams(1),
+                    "@type": "hydra:PartialCollectionView",
+                    "hydra:first": buildParams(1),
+                    "hydra:last": buildParams(1)
+                },
+                "hydra:member": []
+            })
+
+            // ─────────────────────────────────────────────────────────────
+            // CONCEPT RESOLUTION — expand to include narrower concepts
+            // ─────────────────────────────────────────────────────────────
+            let conceptURIs = null
+            let conceptSearchURIs = null
+
+            if (conceptFilter) {
+                const conceptURI = conceptFilter.startsWith('http')
+                    ? conceptFilter
+                    : `${BASE_URI}id/concept/${conceptFilter}`
+                const conceptId = conceptURI.split('/concept/')[1]
+
+                const { data: expandedURIs } = await supabase
+                    .rpc('get_concept_uris_with_narrower', { root_ids: [conceptId] })
+
+                conceptURIs = expandedURIs?.length
+                    ? expandedURIs
+                    : [conceptURI]
+            }
+
+            if (conceptSearch) {
+                // step 1 — find matching concept IDs by label
+                const { data: conceptMatches } = await supabase
+                    .from('dmg_thesaurus_LDES')
+                    .select('id')
+                    .textSearch('search_vector', conceptSearch, { type: 'websearch', config: 'simple' })
+                    .limit(50)
+
+                if (!conceptMatches?.length) return emptyCollection()
+
+                // step 2 — expand to include all narrower concepts recursively
+                const rootIds = conceptMatches.map(c => String(c.id))
+                const { data: expandedURIs } = await supabase
+                    .rpc('get_concept_uris_with_narrower', { root_ids: rootIds })
+
+                conceptSearchURIs = expandedURIs?.length
+                    ? expandedURIs
+                    : conceptMatches.map(c => `https://data.designmuseumgent.be/v2/id/concept/${c.id}`)
             }
 
             // ─────────────────────────────────────────────────────────────
@@ -90,47 +190,19 @@ export function requestObjects(app, BASE_URI) {
                     }
                 }
                 if (dateFrom || dateTo) {
-                    // exclude objects with no date data entirely
                     q = q.not('production_year_begin', 'is', null)
                     q = q.not('production_year_end', 'is', null)
                 }
-                if (dateFrom) q = q.gte('production_year_end', dateFrom)
-                if (dateTo)   q = q.lte('production_year_begin', dateTo)
-
+                if (dateFrom)          q = q.gte('production_year_end', dateFrom)
+                if (dateTo)            q = q.lte('production_year_begin', dateTo)
+                if (conceptURIs)       q = q.overlaps('concept_uris', conceptURIs)
+                if (conceptSearchURIs) q = q.overlaps('concept_uris', conceptSearchURIs)
                 return q
             }
 
             // ─────────────────────────────────────────────────────────────
             // AGENT FILTER — via RPC (JSONB path query)
             // ─────────────────────────────────────────────────────────────
-            const collectionId = `${BASE_URI}id/objects`
-
-            const buildParams = (p) => {
-                const params = new URLSearchParams({
-                    page: p,
-                    itemsPerPage,
-                    ...(fullRecord        && { fullRecord: 'true' }),
-                    ...(showColors        && { colors: 'true' }),
-                    ...(hasImages         && { hasImages: 'true' }),
-                    ...(hasColors         && { hasColors: 'true' }),
-                    ...(hasParts          && { hasParts: 'true' }),
-                    ...(isPartOf          && { isPartOf: 'true' }),
-                    ...(onDisplay         && { onDisplay: 'true' }),
-                    ...(modifiedSince     && { modifiedSince }),
-                    ...(searchQuery       && { q: searchQuery }),
-                    ...(colorFilter       && { color: colorFilter.join(',') }),
-                    ...(cssColorFilter    && { cssColor: cssColorFilter.join(',') }),
-                    ...(typeFilter        && { type: typeFilter.join(',') }),
-                    ...(materialFilter    && { material: materialFilter.join(',') }),
-                    ...(languageFilter    && { language: languageFilter }),
-                    ...(agentFilter       && { agent: agentFilter }),
-                    ...(dateParam  && { date: dateParam }),
-                    ...(dateFrom && !dateParam && { dateFrom }),
-                    ...(dateTo   && !dateParam && { dateTo })
-                })
-                return `${collectionId}?${params.toString()}`
-            }
-
             if (agentURI) {
                 const { data: rpcData, error: rpcError } = await supabase
                     .rpc('get_objects_by_agent', { agent_uri: agentURI })
@@ -140,9 +212,9 @@ export function requestObjects(app, BASE_URI) {
                     return res.status(500).json({ error: 'Error fetching objects by agent' })
                 }
 
-                const allRows   = rpcData || []
-                const total     = allRows.length
-                const sliced    = allRows.slice(offset, offset + itemsPerPage)
+                const allRows    = rpcData || []
+                const total      = allRows.length
+                const sliced     = allRows.slice(offset, offset + itemsPerPage)
                 const totalPages = Math.ceil(total / itemsPerPage)
 
                 const hydraView = {

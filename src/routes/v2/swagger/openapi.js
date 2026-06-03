@@ -268,6 +268,18 @@ export const swaggerDefinition = {
                         in: 'query',
                         description: 'Only return objects produced up to and including this year.',
                         schema: { type: 'integer', example: 1969 }
+                    },
+                    {
+                        name: 'concept',
+                        in: 'query',
+                        description: 'Filter by thesaurus concept PID or full URI. Matches objects where the concept appears as object type, material, technique or sub-collection. Accepts 530000049 or full URI.',
+                        schema: { type: 'string', example: '530000049' }
+                    },
+                    {
+                        name: 'conceptSearch',
+                        in: 'query',
+                        description: 'Filter by concept label. Searches the thesaurus for matching concepts and returns objects tagged with any of them. Accepts partial labels ("stoel", "computer"). Use ?concept= for exact URI matching.',
+                        schema: { type: 'string', example: 'stoel' }
                     }
                 ],
                 responses: {

@@ -10,7 +10,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 ## [v2.5.2] — 2026-06-03
 
 - `?date=YYYY/YYYY`, `?dateFrom=` and `?dateTo=` filters on `/v2/id/objects` — filter by production date range using EDTF interval notation; stored as indexed integer columns `production_year_begin` and `production_year_end`
-
+- `?conceptSearch=` filter on `/v2/id/objects` — search the thesaurus by label and filter objects by matching concepts; complements exact `?concept=` URI matching
 
 ## [v2.5.1] — 2026-06-01
 

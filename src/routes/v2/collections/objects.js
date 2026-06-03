@@ -89,8 +89,13 @@ export function requestObjects(app, BASE_URI) {
                         q = q.neq(col, 'unknown')
                     }
                 }
-                if (dateFrom) q = q.gte('production_year_end',   dateFrom)  // object ended after or on dateFrom
-                if (dateTo)   q = q.lte('production_year_begin', dateTo)    // object started before or on dateTo
+                if (dateFrom || dateTo) {
+                    // exclude objects with no date data entirely
+                    q = q.not('production_year_begin', 'is', null)
+                    q = q.not('production_year_end', 'is', null)
+                }
+                if (dateFrom) q = q.gte('production_year_end', dateFrom)
+                if (dateTo)   q = q.lte('production_year_begin', dateTo)
 
                 return q
             }

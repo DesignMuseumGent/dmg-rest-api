@@ -61,7 +61,6 @@ export function setupAdmin(app) {
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/', requireAuth, async (req, res) => {
-        // fetch counts for dashboard stats
         const [
             { count: mediaCount },
             { count: projectsCount },
@@ -157,7 +156,7 @@ export function setupAdmin(app) {
     })
 
     // ---------------------------------------------------------------------------
-    // EXHIBITION MEDIA
+    // EXHIBITION AUTOCOMPLETE API
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/api/exhibitions', requireAuth, async (req, res) => {
@@ -173,6 +172,27 @@ export function setupAdmin(app) {
             label: r.title_NL || r.title_EN || r.exh_PID
         })))
     })
+
+    adminRouter.get('/api/exhibition-translations', requireAuth, async (req, res) => {
+        const pid = req.query.pid?.trim()
+        if (!pid) return res.json({})
+
+        const { data } = await supabase
+            .from('dmg_tentoonstelling_LDES')
+            .select('title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, json_ld_v2')
+            .eq('exh_PID', pid)
+            .maybeSingle()
+
+        if (!data) return res.json({})
+
+        const harvestedTitle = data.json_ld_v2?.['rdfs:label'] ?? null
+        const { json_ld_v2, ...rest } = data
+        res.json({ ...rest, harvestedTitle })
+    })
+
+    // ---------------------------------------------------------------------------
+    // EXHIBITION MEDIA
+    // ---------------------------------------------------------------------------
 
     adminRouter.get('/exhibitions', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
@@ -214,29 +234,12 @@ export function setupAdmin(app) {
     // EXHIBITION TRANSLATIONS
     // ---------------------------------------------------------------------------
 
-    adminRouter.get('/api/exhibition-translations', requireAuth, async (req, res) => {
-        const pid = req.query.pid?.trim()
-        if (!pid) return res.json({})
-
-        const { data } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, json_ld_v2')
-            .eq('exh_PID', pid)
-            .maybeSingle()
-
-        if (!data) return res.json({})
-
-        const harvestedTitle = data.json_ld_v2?.['rdfs:label'] ?? null
-        const { json_ld_v2, ...rest } = data
-        res.json({ ...rest, harvestedTitle })
-    })
-
     adminRouter.get('/translations', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
 
         let query = supabase
             .from('dmg_tentoonstelling_LDES')
-            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator')
+            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(type)')
             .order('id', { ascending: false })
             .limit(200)
 
@@ -292,10 +295,10 @@ const F    = `'Museum', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI'
 const MONO = `'Courier New', Courier, monospace`
 
 const fontFace = `<style>
-    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
-    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
-    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
-    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
+@font-face { font-family:'Museum'; src:url('/fonts/Museum-Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
+@font-face { font-family:'Museum'; src:url('/fonts/Museum-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:'Museum'; src:url('/fonts/Museum-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
+@font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
 </style>`
 
 const css = `
@@ -312,33 +315,33 @@ header a:hover { color:white; }
 .badge-admin { background:#2d3748; color:#a0aec0; }
 .badge-viewer { background:#2d3748; color:#718096; }
 
-nav { background:#2a2a2a; padding:0.75rem 2rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
+nav { background:#2a2a2a; padding:0.75rem 2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
 nav a { color:#aaa; text-decoration:none; font-size:0.875rem; }
 nav a:hover, nav a.active { color:white; }
-.nav-sep { color:#444; align-self:center; }
+.nav-sep { color:#444; font-size:0.75rem; }
 
 main { max-width:1100px; margin:2rem auto; padding:0 2rem; }
 h1 { font-size:1.5rem; font-weight:700; margin-bottom:1.5rem; }
 h2 { font-size:1rem; font-weight:500; margin-bottom:1rem; color:#555; }
-h3 { font-size:0.875rem; font-weight:700; margin-bottom:0.75rem; color:#333; text-transform:uppercase; letter-spacing:0.05em; }
+h3 { font-size:0.8125rem; font-weight:700; color:#333; text-transform:uppercase; letter-spacing:0.06em; }
 
 .card { background:white; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 .card-link { text-decoration:none; display:block; }
 .card-link .card { cursor:pointer; transition:box-shadow 0.15s; }
 .card-link .card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.12); }
-.card-link p { color:#888; font-size:0.9375rem; margin-top:0.5rem; }
-.card-stat { font-size:1.75rem; font-weight:700; color:#1a1a1a; margin-top:0.5rem; }
+.card-link p { color:#888; font-size:0.875rem; margin-top:0.375rem; }
+.card-stat { font-size:2rem; font-weight:700; color:#1a1a1a; margin:0.375rem 0 0; line-height:1; }
 
 .dashboard-section { margin-bottom:2rem; }
-.dashboard-section-title { font-size:0.75rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
-.dashboard-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+.dashboard-section-title { font-size:0.75rem; font-weight:600; color:#bbb; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
+.dashboard-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:1rem; }
 
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 .form-group { display:flex; flex-direction:column; gap:0.375rem; }
 .form-group.full { grid-column:1/-1; }
 label { font-size:0.75rem; font-weight:500; color:#555; text-transform:uppercase; letter-spacing:0.06em; }
 input, select, textarea { padding:0.5rem 0.75rem; border:1px solid #ddd; border-radius:6px; font-size:0.9375rem; width:100%; font-family:${F}; background:white; }
-textarea { resize:vertical; line-height:1.5; }
+textarea { resize:vertical; line-height:1.6; }
 input:focus, select:focus, textarea:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
 
 .btn { padding:0.5rem 1.25rem; border:none; border-radius:6px; font-size:0.9375rem; cursor:pointer; font-weight:500; font-family:${F}; }
@@ -371,15 +374,16 @@ tr:last-child td { border-bottom:none; }
 .count { font-size:0.875rem; color:#888; margin-bottom:0.75rem; }
 .no-perm { color:#ddd; font-size:0.8125rem; }
 .perm-note { font-size:0.8125rem; color:#aaa; margin-top:0.75rem; }
-
-.section-divider { margin:1.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
-
-.reference-box { background:#f8f8f8; border:1px solid #eee; border-radius:6px; padding:0.75rem 1rem; margin-top:0.75rem; display:none; }
-.reference-box-label { font-size:0.75rem; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.25rem; }
-.reference-box-value { color:#333; font-size:0.9375rem; }
-
 .check-yes { color:#276749; }
 .check-no  { color:#ddd; }
+
+.section-divider { display:flex; align-items:center; gap:0.75rem; margin:1.5rem 0 1rem; }
+.section-divider h3 { white-space:nowrap; }
+.section-divider::after { content:''; flex:1; border-top:1px solid #eee; }
+
+.reference-box { background:#f8f8f8; border:1px solid #eee; border-radius:6px; padding:0.75rem 1rem; margin-top:0.75rem; display:none; }
+.reference-label { font-size:0.75rem; font-weight:500; color:#aaa; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.25rem; }
+.reference-value { color:#333; font-size:0.9375rem; }
 
 .ac-wrap { position:relative; }
 .ac-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 6px 6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100; max-height:240px; overflow-y:auto; }
@@ -395,49 +399,177 @@ tr:last-child td { border-bottom:none; }
 `
 
 // ---------------------------------------------------------------------------
-// AUTOCOMPLETE SCRIPT — reusable across pages
+// LAYOUT
 // ---------------------------------------------------------------------------
 
-const acScript = (formId, clearFields = []) => `
-<script>
+const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title} — DMG Admin</title>
+${fontFace}
+<style>${css}</style>
+</head>
+<body>
+<header>
+    <a href="/admin" style="display:flex;align-items:center;text-decoration:none;">
+        <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height:28px;filter:invert(1);">
+    </a>
+    <div class="header-right">
+        ${user ? `<span class="header-user">${user.name || user.email}<span class="badge ${user.canDelete ? 'badge-admin' : 'badge-viewer'}">${user.canDelete ? 'admin' : 'viewer'}</span></span>` : ''}
+        <a href="/admin/logout">Sign out</a>
+    </div>
+</header>
+<nav>
+    <a href="/admin" ${path === '/' ? 'class="active"' : ''}>Dashboard</a>
+    <span class="nav-sep">·</span>
+    <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
+    <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
+    <span class="nav-sep">·</span>
+    <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
+    <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
+</nav>
+<main>${content}</main>
+</body>
+</html>`
+
+// ---------------------------------------------------------------------------
+// LOGIN PAGE
+// ---------------------------------------------------------------------------
+
+const loginPage = (error) => `<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMG Admin — Login</title>
+${fontFace}
+<style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:${F}; background:#f5f5f5; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .card { background:white; padding:2.5rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); width:360px; }
+    .logo { margin-bottom:1.5rem; }
+    .logo img { height:32px; }
+    p { color:#888; font-size:0.9375rem; margin-bottom:1.5rem; }
+    label { display:block; font-size:0.75rem; font-weight:500; color:#555; margin-bottom:0.375rem; text-transform:uppercase; letter-spacing:0.06em; }
+    input { width:100%; padding:0.625rem 0.875rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; margin-bottom:1rem; font-family:${F}; }
+    input:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
+    button { width:100%; padding:0.75rem; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:1rem; font-weight:500; cursor:pointer; font-family:${F}; }
+    button:hover { background:#333; }
+    .error { background:#fff5f5; color:#c53030; padding:0.75rem; border-radius:6px; font-size:0.9375rem; margin-bottom:1rem; }
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="logo"><img src="/images/dmg-logo.svg" alt="Design Museum Gent"></div>
+    <p>Collection API — Admin</p>
+    ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
+    ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
+    <form method="POST" action="/admin/login" autocomplete="off">
+        <label>Email</label>
+        <input type="email" name="email" autofocus required autocomplete="off">
+            <label>Password</label>
+            <input type="password" name="password" required autocomplete="new-password">
+                <button type="submit">Sign in</button>
+    </form>
+</div>
+</body>
+</html>`
+
+// ---------------------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------------------
+
+const mkAlert = (type, msg) =>
+`<div class="alert alert-${type}">${msg}</div>`
+
+const alerts = (success, error) => [
+success ? mkAlert('success', 'Saved successfully.') : '',
+error   ? mkAlert('error', error) : ''
+].join('')
+
+const searchBar = (action, value, label, placeholder) => `
+<form method="GET" action="${action}" class="search-bar">
+    <div class="form-group">
+        <label>${label}</label>
+        <input type="text" name="q" value="${value || ''}" placeholder="${placeholder}">
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+    ${value ? `<a href="${action}" class="search-clear">Clear</a>` : ''}
+</form>`
+
+const deleteBtn = (action, canDelete) => canDelete
+? `<form method="POST" action="${action}" style="display:inline">
+    <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button>
+</form>`
+: '<span class="no-perm">—</span>'
+
+const permNote = (canDelete) => canDelete ? '' :
+'<p class="perm-note">You do not have permission to delete entries.</p>'
+
+const resultCount = (n, search) =>
+`<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
+
+const sectionDivider = (title) =>
+`<div class="section-divider"><h3>${title}</h3></div>`
+
+const acWidget = () => `
+<div class="ac-wrap">
+    <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
+        <div class="ac-dropdown" id="ac-dropdown"></div>
+</div>
+<input type="hidden" name="exh_PID" id="ac-value" required>
+    <div class="ac-selected" id="ac-selected">
+        <span class="ac-selected-label" id="ac-label"></span>
+        <span class="ac-selected-pid" id="ac-pid"></span>
+        <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
+    </div>`
+
+    // prefillFields: array of field names to prefill from /api/exhibition-translations
+    const acScript = (prefillFields = []) => {
+    const prefillJs = prefillFields.length > 0 ? `
+        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
+            .then(r => r.json())
+            .then(d => {
+                const ref = document.getElementById('harvested-title-box')
+                const val = document.getElementById('harvested-title')
+                if (ref && val) {
+                    val.textContent  = d.harvestedTitle || '—'
+                    ref.style.display = 'block'
+                }
+                ${prefillFields.map(f => `
+                const f_${f} = document.querySelector('[name="${f}"]')
+                if (f_${f} && d['${f}'] != null) f_${f}.value = d['${f}']`).join('')}
+            })` : ''
+
+    const clearJs = prefillFields.map(f => `
+        const c_${f} = document.querySelector('[name="${f}"]')
+        if (c_${f}) c_${f}.value = ''`).join('')
+
+    return `<script>
 (function () {
     const input    = document.getElementById('ac-input')
     const dropdown = document.getElementById('ac-dropdown')
     const hidden   = document.getElementById('ac-value')
     const selected = document.getElementById('ac-selected')
-    const label    = document.getElementById('ac-label')
+    const lbl      = document.getElementById('ac-label')
     const pid      = document.getElementById('ac-pid')
     const clear    = document.getElementById('ac-clear')
-    const refBox   = document.getElementById('harvested-title-box')
-    const refVal   = document.getElementById('harvested-title')
-
     let timer
 
     dropdown.addEventListener('click', (e) => {
         const item = e.target.closest('[data-pid]')
         if (!item) return
-        hidden.value           = item.dataset.pid
-        label.textContent      = item.dataset.label
-        pid.textContent        = item.dataset.pid
+        const selectedPid   = item.dataset.pid
+        hidden.value        = selectedPid
+        lbl.textContent     = item.dataset.label
+        pid.textContent     = selectedPid
         selected.style.display = 'flex'
         input.style.display    = 'none'
         dropdown.style.display = 'none'
-        onSelect(item.dataset.pid)
+        ${prefillJs}
     })
-
-    function onSelect(selectedPid) {
-        ${clearFields.length > 0 ? `
-        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
-            .then(r => r.json())
-            .then(d => {
-                if (refBox && refVal) {
-                    refVal.textContent    = d.harvestedTitle || '—'
-                    refBox.style.display  = 'block'
-                }
-                ${clearFields.map(f => `if (d['${f}'] !== undefined && d['${f}'] !== null) { const el = document.querySelector('[name=${f}]'); if (el) el.value = d['${f}'] }`).join('\n                ')}
-            })
-        ` : ''}
-    }
 
     input.addEventListener('input', () => {
         clearTimeout(timer)
@@ -462,8 +594,9 @@ const acScript = (formId, clearFields = []) => `
         input.style.display    = 'block'
         selected.style.display = 'none'
         dropdown.style.display = 'none'
-        if (refBox) refBox.style.display = 'none'
-        ${clearFields.map(f => `const el_${f.replace(/[^a-z]/gi,'_')} = document.querySelector('[name=${f}]'); if (el_${f.replace(/[^a-z]/gi,'_')}) el_${f.replace(/[^a-z]/gi,'_')}.value = ''`).join('\n        ')}
+        const ref = document.getElementById('harvested-title-box')
+        if (ref) ref.style.display = 'none'
+        ${clearJs}
         input.focus()
     })
 
@@ -472,139 +605,13 @@ const acScript = (formId, clearFields = []) => `
     })
 })()
 </script>`
+}
 
-// ---------------------------------------------------------------------------
-// LAYOUT
-// ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // DASHBOARD
+    // ---------------------------------------------------------------------------
 
-const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} — DMG Admin</title>
-    ${fontFace}
-    <style>${css}</style>
-</head>
-<body>
-    <header>
-        <a href="/admin" style="display:flex;align-items:center;text-decoration:none;">
-            <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height:28px;filter:invert(1);">
-        </a>
-        <div class="header-right">
-            ${user ? `<span class="header-user">${user.name || user.email}<span class="badge ${user.canDelete ? 'badge-admin' : 'badge-viewer'}">${user.canDelete ? 'admin' : 'viewer'}</span></span>` : ''}
-            <a href="/admin/logout">Sign out</a>
-        </div>
-    </header>
-    <nav>
-        <a href="/admin" ${path === '/' ? 'class="active"' : ''}>Dashboard</a>
-        <span class="nav-sep">·</span>
-        <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
-        <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
-        <span class="nav-sep">·</span>
-        <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
-        <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
-    </nav>
-    <main>${content}</main>
-</body>
-</html>`
-
-// ---------------------------------------------------------------------------
-// LOGIN PAGE
-// ---------------------------------------------------------------------------
-
-const loginPage = (error) => `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMG Admin — Login</title>
-    ${fontFace}
-    <style>
-        * { box-sizing:border-box; margin:0; padding:0; }
-        body { font-family:${F}; background:#f5f5f5; display:flex; align-items:center; justify-content:center; min-height:100vh; }
-        .card { background:white; padding:2.5rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); width:360px; }
-        .logo { margin-bottom:1.5rem; }
-        .logo img { height:32px; }
-        p { color:#888; font-size:0.9375rem; margin-bottom:1.5rem; }
-        label { display:block; font-size:0.75rem; font-weight:500; color:#555; margin-bottom:0.375rem; text-transform:uppercase; letter-spacing:0.06em; }
-        input { width:100%; padding:0.625rem 0.875rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; margin-bottom:1rem; font-family:${F}; }
-        input:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
-        button { width:100%; padding:0.75rem; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:1rem; font-weight:500; cursor:pointer; font-family:${F}; }
-        button:hover { background:#333; }
-        .error { background:#fff5f5; color:#c53030; padding:0.75rem; border-radius:6px; font-size:0.9375rem; margin-bottom:1rem; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="logo"><img src="/images/dmg-logo.svg" alt="Design Museum Gent"></div>
-        <p>Collection API — Admin</p>
-        ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
-        ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
-        <form method="POST" action="/admin/login" autocomplete="off">
-            <label>Email</label>
-            <input type="email" name="email" autofocus required autocomplete="off">
-            <label>Password</label>
-            <input type="password" name="password" required autocomplete="new-password">
-            <button type="submit">Sign in</button>
-        </form>
-    </div>
-</body>
-</html>`
-
-// ---------------------------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------------------------
-
-const alert = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`
-
-const alerts = (success, error) => `
-    ${success ? alert('success', 'Entry added successfully.') : ''}
-    ${error ? alert('error', error) : ''}
-`
-
-const searchBar = (action, value, label, placeholder) => `
-    <form method="GET" action="${action}" class="search-bar">
-        <div class="form-group">
-            <label>${label}</label>
-            <input type="text" name="q" value="${value || ''}" placeholder="${placeholder}">
-        </div>
-        <button type="submit" class="btn btn-primary">Search</button>
-        ${value ? `<a href="${action}" class="search-clear">Clear</a>` : ''}
-    </form>
-`
-
-const deleteBtn = (action, canDelete) => canDelete
-    ? `<form method="POST" action="${action}" style="display:inline">
-           <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button>
-       </form>`
-    : '<span class="no-perm">—</span>'
-
-const permNote = (canDelete) => !canDelete
-    ? '<p class="perm-note">You do not have permission to delete entries.</p>'
-    : ''
-
-const resultCount = (n, search) =>
-    `<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
-
-const acWidget = () => `
-    <div class="ac-wrap">
-        <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
-        <div class="ac-dropdown" id="ac-dropdown"></div>
-    </div>
-    <input type="hidden" name="exh_PID" id="ac-value" required>
-    <div class="ac-selected" id="ac-selected">
-        <span class="ac-selected-label" id="ac-label"></span>
-        <span class="ac-selected-pid" id="ac-pid"></span>
-        <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
-    </div>
-`
-
-// ---------------------------------------------------------------------------
-// DASHBOARD
-// ---------------------------------------------------------------------------
-
-const dashboardPage = (user, stats) => layout('Dashboard', `
+    const dashboardPage = (user, stats) => layout('Dashboard', `
     <h1>Dashboard</h1>
 
     <div class="dashboard-section">
@@ -614,7 +621,7 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
                 <div class="card">
                     <h2>Object media</h2>
                     <div class="card-stat">${stats.mediaCount ?? '—'}</div>
-                    <p>Video and audio resources linked to objects.</p>
+                    <p>Video and audio resources linked to collection objects.</p>
                 </div>
             </a>
             <a href="/admin/projects" class="card-link">
@@ -641,7 +648,7 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
                 <div class="card">
                     <h2>Exhibition information</h2>
                     <div class="card-stat">${stats.translationsCount ?? '—'}</div>
-                    <p>Exhibitions with FR translations. Add multilingual titles, descriptions and curators.</p>
+                    <p>Exhibitions with FR translation. Add multilingual titles, descriptions and curators.</p>
                 </div>
             </a>
         </div>
@@ -652,25 +659,25 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
         <div class="dashboard-grid">
             <a href="https://data.designmuseumgent.be" target="_blank" class="card-link">
                 <div class="card">
-                    <h2>Documentation</h2>
-                    <p>data.designmuseumgent.be ↗</p>
+                    <h2>Documentation ↗</h2>
+                    <p>data.designmuseumgent.be</p>
                 </div>
             </a>
             <a href="/api-docs" target="_blank" class="card-link">
                 <div class="card">
-                    <h2>Swagger UI</h2>
-                    <p>Interactive API explorer ↗</p>
+                    <h2>Swagger UI ↗</h2>
+                    <p>Interactive API explorer.</p>
                 </div>
             </a>
         </div>
     </div>
-`, '/', user)
+    `, '/', user)
 
-// ---------------------------------------------------------------------------
-// OBJECT MEDIA PAGE
-// ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // OBJECT MEDIA PAGE
+    // ---------------------------------------------------------------------------
 
-const mediaPage = (rows, error, success, search, user) => layout('Object media', `
+    const mediaPage = (rows, error, success, search, user) => layout('Object media', `
     <h1>Object media</h1>
     ${alerts(success, error)}
 
@@ -713,8 +720,8 @@ const mediaPage = (rows, error, success, search, user) => layout('Object media',
         <h2>Entries</h2>
         ${searchBar('/admin/media', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
-    ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
-    : `
+        ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
+        : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Type</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -732,13 +739,13 @@ const mediaPage = (rows, error, success, search, user) => layout('Object media',
         </table>
         ${permNote(user.canDelete)}`}
     </div>
-`, '/media', user)
+    `, '/media', user)
 
-// ---------------------------------------------------------------------------
-// PROJECTS PAGE
-// ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // PROJECTS PAGE
+    // ---------------------------------------------------------------------------
 
-const projectsPage = (rows, error, success, search, user) => layout('Projects', `
+    const projectsPage = (rows, error, success, search, user) => layout('Projects', `
     <h1>Projects</h1>
     ${alerts(success, error)}
 
@@ -773,8 +780,8 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
         <h2>Entries</h2>
         ${searchBar('/admin/projects', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
-    ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
-    : `
+        ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
+        : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -791,13 +798,13 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
         </table>
         ${permNote(user.canDelete)}`}
     </div>
-`, '/projects', user)
+    `, '/projects', user)
 
-// ---------------------------------------------------------------------------
-// EXHIBITIONS MEDIA PAGE
-// ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // EXHIBITIONS MEDIA PAGE
+    // ---------------------------------------------------------------------------
 
-const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibition media', `
+    const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibition media', `
     <h1>Exhibition media</h1>
     ${alerts(success, error)}
 
@@ -832,8 +839,8 @@ const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibiti
         <h2>Entries</h2>
         ${searchBar('/admin/exhibitions', search, 'Filter by exhibition PID', 'TE_2020, ...')}
         ${rows.length === 0
-    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition media entries yet.'}</p>`
-    : `
+        ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition media entries yet.'}</p>`
+        : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Exhibition</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -851,36 +858,33 @@ const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibiti
         ${permNote(user.canDelete)}`}
     </div>
 
-    ${acScript('exh-form')}
-`, '/exhibitions', user)
+    ${acScript()}
+    `, '/exhibitions', user)
 
-// ---------------------------------------------------------------------------
-// EXHIBITION TRANSLATIONS PAGE
-// ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // EXHIBITION TRANSLATIONS PAGE
+    // ---------------------------------------------------------------------------
 
-const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
+    const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
     <h1>Exhibition information</h1>
-
-    ${success ? alert('success', 'Saved successfully.') : ''}
-    ${errorMsg ? alert('error', errorMsg) : ''}
+    ${alerts(success, errorMsg)}
 
     <div class="card">
-        <h2>Select exhibition</h2>
+        <h2>Add or update</h2>
         <form method="POST" action="/admin/translations/save">
+
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Exhibition *</label>
                     ${acWidget()}
                     <div class="reference-box" id="harvested-title-box">
-                        <span class="reference-box-label">Harvested title (NL — from source system)</span>
-                        <span class="reference-box-value" id="harvested-title"></span>
+                        <span class="reference-label">Harvested title (NL — from source system)</span>
+                        <span class="reference-value" id="harvested-title"></span>
                     </div>
                 </div>
             </div>
 
-            <div class="section-divider">
-                <h3>Titles</h3>
-            </div>
+            ${sectionDivider('Titles')}
             <div class="form-grid">
                 <div class="form-group">
                     <label>Title NL</label>
@@ -896,9 +900,7 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
                 </div>
             </div>
 
-            <div class="section-divider">
-                <h3>Descriptions</h3>
-            </div>
+            ${sectionDivider('Descriptions')}
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Description NL</label>
@@ -914,9 +916,7 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
                 </div>
             </div>
 
-            <div class="section-divider">
-                <h3>Curator</h3>
-            </div>
+            ${sectionDivider('Curator')}
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Curator</label>
@@ -934,8 +934,8 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
         <h2>Overview</h2>
         ${searchBar('/admin/translations', search, 'Filter by exhibition PID', 'TE_2020, ...')}
         ${rows.length === 0
-    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
-    : `
+        ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
+        : `
         ${resultCount(rows.length, search)}
         <table>
             <thead>
@@ -948,23 +948,36 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
                     <th>Desc FR</th>
                     <th>Desc EN</th>
                     <th>Curator</th>
+                    <th>Media</th>
                 </tr>
             </thead>
             <tbody>
-                ${rows.map(r => `
-                <tr>
-                    <td><span class="mono">${r.exh_PID || r.id}</span></td>
-                    <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
-                    <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
-                    <td class="${r.title_EN ? 'check-yes' : 'check-no'}" title="${r.title_EN || ''}">${r.title_EN ? '✓' : '—'}</td>
-                    <td class="${r.text_NL ? 'check-yes' : 'check-no'}">${r.text_NL ? '✓' : '—'}</td>
-                    <td class="${r.text_FR ? 'check-yes' : 'check-no'}">${r.text_FR ? '✓' : '—'}</td>
-                    <td class="${r.text_EN ? 'check-yes' : 'check-no'}">${r.text_EN ? '✓' : '—'}</td>
-                    <td>${r.curator || '—'}</td>
-                </tr>`).join('')}
+                ${rows.map(r => {
+            const media   = r.dmg_exhibitions_media || []
+            const videos  = media.filter(m => m.type === 'VIDEO').length
+            const audio   = media.filter(m => m.type === 'AUDIO').length
+            const mediaCell = media.length === 0
+                ? '<span class="check-no">—</span>'
+                : [
+                    videos > 0 ? `<span class="tag tag-video">${videos} video</span>` : '',
+                    audio  > 0 ? `<span class="tag tag-audio">${audio} audio</span>`  : ''
+                ].filter(Boolean).join(' ')
+            return `
+                    <tr>
+                        <td><span class="mono">${r.exh_PID || r.id}</span></td>
+                        <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
+                        <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
+                        <td class="${r.title_EN ? 'check-yes' : 'check-no'}" title="${r.title_EN || ''}">${r.title_EN ? '✓' : '—'}</td>
+                        <td class="${r.text_NL ? 'check-yes' : 'check-no'}">${r.text_NL ? '✓' : '—'}</td>
+                        <td class="${r.text_FR ? 'check-yes' : 'check-no'}">${r.text_FR ? '✓' : '—'}</td>
+                        <td class="${r.text_EN ? 'check-yes' : 'check-no'}">${r.text_EN ? '✓' : '—'}</td>
+                        <td>${r.curator || '—'}</td>
+                        <td>${mediaCell}</td>
+                    </tr>`
+        }).join('')}
             </tbody>
         </table>`}
     </div>
 
-    ${acScript('trans-form', ['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
-`, '/translations', user)
+    ${acScript(['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
+    `, '/translations', user)

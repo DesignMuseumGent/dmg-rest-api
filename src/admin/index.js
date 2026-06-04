@@ -60,8 +60,20 @@ export function setupAdmin(app) {
     // DASHBOARD
     // ---------------------------------------------------------------------------
 
-    adminRouter.get('/', requireAuth, (req, res) => {
-        res.send(dashboardPage(req.session.user))
+    adminRouter.get('/', requireAuth, async (req, res) => {
+        // fetch counts for dashboard stats
+        const [
+            { count: mediaCount },
+            { count: projectsCount },
+            { count: exhibitionsMediaCount },
+            { count: translationsCount }
+        ] = await Promise.all([
+            supabase.from('dmg_objects_media').select('*', { count: 'exact', head: true }),
+            supabase.from('dmg_objects_projects').select('*', { count: 'exact', head: true }),
+            supabase.from('dmg_exhibitions_media').select('*', { count: 'exact', head: true }),
+            supabase.from('dmg_tentoonstelling_LDES').select('*', { count: 'exact', head: true }).not('title_FR', 'is', null)
+        ])
+        res.send(dashboardPage(req.session.user, { mediaCount, projectsCount, exhibitionsMediaCount, translationsCount }))
     })
 
     // ---------------------------------------------------------------------------
@@ -198,6 +210,77 @@ export function setupAdmin(app) {
         return res.redirect('/admin/exhibitions')
     })
 
+    // ---------------------------------------------------------------------------
+    // EXHIBITION TRANSLATIONS
+    // ---------------------------------------------------------------------------
+
+    adminRouter.get('/api/exhibition-translations', requireAuth, async (req, res) => {
+        const pid = req.query.pid?.trim()
+        if (!pid) return res.json({})
+
+        const { data } = await supabase
+            .from('dmg_tentoonstelling_LDES')
+            .select('title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, json_ld_v2')
+            .eq('exh_PID', pid)
+            .maybeSingle()
+
+        if (!data) return res.json({})
+
+        const harvestedTitle = data.json_ld_v2?.['rdfs:label'] ?? null
+        const { json_ld_v2, ...rest } = data
+        res.json({ ...rest, harvestedTitle })
+    })
+
+    adminRouter.get('/translations', requireAuth, async (req, res) => {
+        const search = req.query.q?.trim() || null
+
+        let query = supabase
+            .from('dmg_tentoonstelling_LDES')
+            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator')
+            .order('id', { ascending: false })
+            .limit(200)
+
+        if (search) query = query.ilike('exh_PID', `%${search}%`)
+
+        const { data, error } = await query
+        res.send(translationsPage(data || [], error?.message, req.query.success, req.query.error, search, req.session.user))
+    })
+
+    adminRouter.post('/translations/save', requireAuth, async (req, res) => {
+        const { exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator } = req.body
+
+        if (!exh_PID) return res.redirect('/admin/translations?error=missing+exhibition')
+
+        const { data: exh } = await supabase
+            .from('dmg_tentoonstelling_LDES')
+            .select('id')
+            .eq('exh_PID', exh_PID)
+            .maybeSingle()
+
+        if (!exh) return res.redirect('/admin/translations?error=exhibition+not+found')
+
+        const payload = {}
+        if (title_NL?.trim()) payload.title_NL = title_NL.trim()
+        if (title_FR?.trim()) payload.title_FR = title_FR.trim()
+        if (title_EN?.trim()) payload.title_EN = title_EN.trim()
+        if (text_NL?.trim())  payload.text_NL  = text_NL.trim()
+        if (text_FR?.trim())  payload.text_FR  = text_FR.trim()
+        if (text_EN?.trim())  payload.text_EN  = text_EN.trim()
+        if (curator?.trim())  payload.curator  = curator.trim()
+
+        if (Object.keys(payload).length === 0) {
+            return res.redirect('/admin/translations?error=no+content+provided')
+        }
+
+        const { error } = await supabase
+            .from('dmg_tentoonstelling_LDES')
+            .update(payload)
+            .eq('exh_PID', exh_PID)
+
+        if (error) return res.redirect('/admin/translations?error=' + encodeURIComponent(error.message))
+        return res.redirect('/admin/translations?success=1')
+    })
+
     app.use('/admin', adminRouter)
 }
 
@@ -205,7 +288,7 @@ export function setupAdmin(app) {
 // FONT & STYLES
 // ---------------------------------------------------------------------------
 
-const F = `'Museum', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`
+const F    = `'Museum', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif`
 const MONO = `'Courier New', Courier, monospace`
 
 const fontFace = `<style>
@@ -220,7 +303,6 @@ const css = `
 body { font-family:${F}; background:#f5f5f5; color:#333; }
 a { font-family:${F}; }
 
-/* header */
 header { background:#1a1a1a; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
 header a { color:#ccc; text-decoration:none; font-size:0.875rem; }
 header a:hover { color:white; }
@@ -230,32 +312,35 @@ header a:hover { color:white; }
 .badge-admin { background:#2d3748; color:#a0aec0; }
 .badge-viewer { background:#2d3748; color:#718096; }
 
-/* nav */
-nav { background:#2a2a2a; padding:0.75rem 2rem; display:flex; gap:1.5rem; }
+nav { background:#2a2a2a; padding:0.75rem 2rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
 nav a { color:#aaa; text-decoration:none; font-size:0.875rem; }
 nav a:hover, nav a.active { color:white; }
+.nav-sep { color:#444; align-self:center; }
 
-/* main */
-main { max-width:1000px; margin:2rem auto; padding:0 2rem; }
+main { max-width:1100px; margin:2rem auto; padding:0 2rem; }
 h1 { font-size:1.5rem; font-weight:700; margin-bottom:1.5rem; }
 h2 { font-size:1rem; font-weight:500; margin-bottom:1rem; color:#555; }
+h3 { font-size:0.875rem; font-weight:700; margin-bottom:0.75rem; color:#333; text-transform:uppercase; letter-spacing:0.05em; }
 
-/* cards */
 .card { background:white; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 .card-link { text-decoration:none; display:block; }
-.card-link .card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.12); transition:box-shadow 0.15s; }
+.card-link .card { cursor:pointer; transition:box-shadow 0.15s; }
+.card-link .card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.12); }
 .card-link p { color:#888; font-size:0.9375rem; margin-top:0.5rem; }
-.dashboard-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
+.card-stat { font-size:1.75rem; font-weight:700; color:#1a1a1a; margin-top:0.5rem; }
 
-/* forms */
+.dashboard-section { margin-bottom:2rem; }
+.dashboard-section-title { font-size:0.75rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
+.dashboard-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 .form-group { display:flex; flex-direction:column; gap:0.375rem; }
 .form-group.full { grid-column:1/-1; }
 label { font-size:0.75rem; font-weight:500; color:#555; text-transform:uppercase; letter-spacing:0.06em; }
-input, select { padding:0.5rem 0.75rem; border:1px solid #ddd; border-radius:6px; font-size:0.9375rem; width:100%; font-family:${F}; background:white; }
-input:focus, select:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
+input, select, textarea { padding:0.5rem 0.75rem; border:1px solid #ddd; border-radius:6px; font-size:0.9375rem; width:100%; font-family:${F}; background:white; }
+textarea { resize:vertical; line-height:1.5; }
+input:focus, select:focus, textarea:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
 
-/* buttons */
 .btn { padding:0.5rem 1.25rem; border:none; border-radius:6px; font-size:0.9375rem; cursor:pointer; font-weight:500; font-family:${F}; }
 .btn-primary { background:#1a1a1a; color:white; }
 .btn-primary:hover { background:#333; }
@@ -263,20 +348,17 @@ input:focus, select:focus { outline:none; border-color:#555; box-shadow:0 0 0 3p
 .btn-ghost { background:none; border:1px solid #ddd; color:#999; }
 .btn-ghost:hover { border-color:#e53e3e; color:#e53e3e; }
 
-/* search bar */
 .search-bar { display:flex; gap:0.75rem; align-items:flex-end; margin-bottom:1.25rem; }
 .search-bar .form-group { flex:1; margin:0; }
 .search-bar .btn { flex-shrink:0; height:38px; }
 .search-clear { font-size:0.8125rem; color:#999; text-decoration:none; align-self:center; }
 .search-clear:hover { color:#333; }
 
-/* table */
 table { width:100%; border-collapse:collapse; font-size:0.9375rem; }
 th { text-align:left; padding:0.625rem 0.75rem; font-size:0.75rem; color:#888; border-bottom:2px solid #eee; text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
 td { padding:0.75rem; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
 tr:last-child td { border-bottom:none; }
 
-/* misc */
 .tag { display:inline-block; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700; }
 .tag-video { background:#ebf4ff; color:#2b6cb0; }
 .tag-audio { background:#f0fff4; color:#276749; }
@@ -290,7 +372,15 @@ tr:last-child td { border-bottom:none; }
 .no-perm { color:#ddd; font-size:0.8125rem; }
 .perm-note { font-size:0.8125rem; color:#aaa; margin-top:0.75rem; }
 
-/* autocomplete */
+.section-divider { margin:1.5rem 0 1rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
+
+.reference-box { background:#f8f8f8; border:1px solid #eee; border-radius:6px; padding:0.75rem 1rem; margin-top:0.75rem; display:none; }
+.reference-box-label { font-size:0.75rem; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.25rem; }
+.reference-box-value { color:#333; font-size:0.9375rem; }
+
+.check-yes { color:#276749; }
+.check-no  { color:#ddd; }
+
 .ac-wrap { position:relative; }
 .ac-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 6px 6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100; max-height:240px; overflow-y:auto; }
 .ac-item { padding:0.625rem 0.875rem; cursor:pointer; font-size:0.9375rem; border-bottom:1px solid #f5f5f5; }
@@ -303,6 +393,85 @@ tr:last-child td { border-bottom:none; }
 .ac-clear { font-size:0.8125rem; color:#999; text-decoration:none; margin-left:0.25rem; }
 .ac-clear:hover { color:#c53030; }
 `
+
+// ---------------------------------------------------------------------------
+// AUTOCOMPLETE SCRIPT — reusable across pages
+// ---------------------------------------------------------------------------
+
+const acScript = (formId, clearFields = []) => `
+<script>
+(function () {
+    const input    = document.getElementById('ac-input')
+    const dropdown = document.getElementById('ac-dropdown')
+    const hidden   = document.getElementById('ac-value')
+    const selected = document.getElementById('ac-selected')
+    const label    = document.getElementById('ac-label')
+    const pid      = document.getElementById('ac-pid')
+    const clear    = document.getElementById('ac-clear')
+    const refBox   = document.getElementById('harvested-title-box')
+    const refVal   = document.getElementById('harvested-title')
+
+    let timer
+
+    dropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('[data-pid]')
+        if (!item) return
+        hidden.value           = item.dataset.pid
+        label.textContent      = item.dataset.label
+        pid.textContent        = item.dataset.pid
+        selected.style.display = 'flex'
+        input.style.display    = 'none'
+        dropdown.style.display = 'none'
+        onSelect(item.dataset.pid)
+    })
+
+    function onSelect(selectedPid) {
+        ${clearFields.length > 0 ? `
+        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
+            .then(r => r.json())
+            .then(d => {
+                if (refBox && refVal) {
+                    refVal.textContent    = d.harvestedTitle || '—'
+                    refBox.style.display  = 'block'
+                }
+                ${clearFields.map(f => `if (d['${f}'] !== undefined && d['${f}'] !== null) { const el = document.querySelector('[name=${f}]'); if (el) el.value = d['${f}'] }`).join('\n                ')}
+            })
+        ` : ''}
+    }
+
+    input.addEventListener('input', () => {
+        clearTimeout(timer)
+        const q = input.value.trim()
+        if (q.length < 2) { dropdown.style.display = 'none'; return }
+        timer = setTimeout(async () => {
+            const res  = await fetch('/admin/api/exhibitions?q=' + encodeURIComponent(q))
+            const data = await res.json()
+            if (!data.length) { dropdown.style.display = 'none'; return }
+            dropdown.innerHTML = data.map(d =>
+                '<div class="ac-item" data-pid="' + d.pid + '" data-label="' + d.label.replace(/"/g, '&quot;') + '">' +
+                d.label + '<span class="ac-item-pid">' + d.pid + '</span></div>'
+            ).join('')
+            dropdown.style.display = 'block'
+        }, 250)
+    })
+
+    clear.addEventListener('click', (e) => {
+        e.preventDefault()
+        hidden.value           = ''
+        input.value            = ''
+        input.style.display    = 'block'
+        selected.style.display = 'none'
+        dropdown.style.display = 'none'
+        if (refBox) refBox.style.display = 'none'
+        ${clearFields.map(f => `const el_${f.replace(/[^a-z]/gi,'_')} = document.querySelector('[name=${f}]'); if (el_${f.replace(/[^a-z]/gi,'_')}) el_${f.replace(/[^a-z]/gi,'_')}.value = ''`).join('\n        ')}
+        input.focus()
+    })
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ac-wrap')) dropdown.style.display = 'none'
+    })
+})()
+</script>`
 
 // ---------------------------------------------------------------------------
 // LAYOUT
@@ -329,9 +498,12 @@ const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
     </header>
     <nav>
         <a href="/admin" ${path === '/' ? 'class="active"' : ''}>Dashboard</a>
+        <span class="nav-sep">·</span>
         <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
         <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
+        <span class="nav-sep">·</span>
         <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
+        <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
     </nav>
     <main>${content}</main>
 </body>
@@ -384,9 +556,11 @@ const loginPage = (error) => `<!DOCTYPE html>
 // HELPERS
 // ---------------------------------------------------------------------------
 
+const alert = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`
+
 const alerts = (success, error) => `
-    ${success ? '<div class="alert alert-success">Entry added successfully.</div>' : ''}
-    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    ${success ? alert('success', 'Entry added successfully.') : ''}
+    ${error ? alert('error', error) : ''}
 `
 
 const searchBar = (action, value, label, placeholder) => `
@@ -413,31 +587,82 @@ const permNote = (canDelete) => !canDelete
 const resultCount = (n, search) =>
     `<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
 
+const acWidget = () => `
+    <div class="ac-wrap">
+        <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
+        <div class="ac-dropdown" id="ac-dropdown"></div>
+    </div>
+    <input type="hidden" name="exh_PID" id="ac-value" required>
+    <div class="ac-selected" id="ac-selected">
+        <span class="ac-selected-label" id="ac-label"></span>
+        <span class="ac-selected-pid" id="ac-pid"></span>
+        <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
+    </div>
+`
+
 // ---------------------------------------------------------------------------
 // DASHBOARD
 // ---------------------------------------------------------------------------
 
-const dashboardPage = (user) => layout('Dashboard', `
+const dashboardPage = (user, stats) => layout('Dashboard', `
     <h1>Dashboard</h1>
-    <div class="dashboard-grid">
-        <a href="/admin/media" class="card-link">
-            <div class="card">
-                <h2>Object media</h2>
-                <p>Add video and audio resources linked to collection objects.</p>
-            </div>
-        </a>
-        <a href="/admin/projects" class="card-link">
-            <div class="card">
-                <h2>Projects</h2>
-                <p>Add creative projects inspired by or using collection objects.</p>
-            </div>
-        </a>
-        <a href="/admin/exhibitions" class="card-link">
-            <div class="card">
-                <h2>Exhibition media</h2>
-                <p>Add video resources linked to exhibitions.</p>
-            </div>
-        </a>
+
+    <div class="dashboard-section">
+        <div class="dashboard-section-title">Objects</div>
+        <div class="dashboard-grid">
+            <a href="/admin/media" class="card-link">
+                <div class="card">
+                    <h2>Object media</h2>
+                    <div class="card-stat">${stats.mediaCount ?? '—'}</div>
+                    <p>Video and audio resources linked to objects.</p>
+                </div>
+            </a>
+            <a href="/admin/projects" class="card-link">
+                <div class="card">
+                    <h2>Projects</h2>
+                    <div class="card-stat">${stats.projectsCount ?? '—'}</div>
+                    <p>Creative projects inspired by collection objects.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="dashboard-section-title">Exhibitions</div>
+        <div class="dashboard-grid">
+            <a href="/admin/exhibitions" class="card-link">
+                <div class="card">
+                    <h2>Exhibition media</h2>
+                    <div class="card-stat">${stats.exhibitionsMediaCount ?? '—'}</div>
+                    <p>Video resources linked to exhibitions.</p>
+                </div>
+            </a>
+            <a href="/admin/translations" class="card-link">
+                <div class="card">
+                    <h2>Exhibition information</h2>
+                    <div class="card-stat">${stats.translationsCount ?? '—'}</div>
+                    <p>Exhibitions with FR translations. Add multilingual titles, descriptions and curators.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="dashboard-section-title">API</div>
+        <div class="dashboard-grid">
+            <a href="https://data.designmuseumgent.be" target="_blank" class="card-link">
+                <div class="card">
+                    <h2>Documentation</h2>
+                    <p>data.designmuseumgent.be ↗</p>
+                </div>
+            </a>
+            <a href="/api-docs" target="_blank" class="card-link">
+                <div class="card">
+                    <h2>Swagger UI</h2>
+                    <p>Interactive API explorer ↗</p>
+                </div>
+            </a>
+        </div>
     </div>
 `, '/', user)
 
@@ -578,25 +803,11 @@ const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibiti
 
     <div class="card">
         <h2>Add video</h2>
-        <form method="POST" action="/admin/exhibitions/add" id="exh-form">
+        <form method="POST" action="/admin/exhibitions/add">
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Exhibition *</label>
-                    <div class="ac-wrap">
-                        <input
-                            type="text"
-                            id="ac-input"
-                            placeholder="Search by title or PID..."
-                            autocomplete="off"
-                        >
-                        <div class="ac-dropdown" id="ac-dropdown"></div>
-                    </div>
-                    <input type="hidden" name="exh_PID" id="ac-value" required>
-                    <div class="ac-selected" id="ac-selected">
-                        <span class="ac-selected-label" id="ac-label"></span>
-                        <span class="ac-selected-pid" id="ac-pid"></span>
-                        <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
-                    </div>
+                    ${acWidget()}
                 </div>
                 <div class="form-group full">
                     <label>URL *</label>
@@ -640,59 +851,120 @@ const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibiti
         ${permNote(user.canDelete)}`}
     </div>
 
-    <script>
-    (function () {
-        const input    = document.getElementById('ac-input')
-        const dropdown = document.getElementById('ac-dropdown')
-        const hidden   = document.getElementById('ac-value')
-        const selected = document.getElementById('ac-selected')
-        const label    = document.getElementById('ac-label')
-        const pid      = document.getElementById('ac-pid')
-        const clear    = document.getElementById('ac-clear')
-
-        let timer
-
-        // delegated click — works regardless of when items are rendered
-        dropdown.addEventListener('click', (e) => {
-            const item = e.target.closest('[data-pid]')
-            if (!item) return
-            hidden.value       = item.dataset.pid
-            label.textContent  = item.dataset.label
-            pid.textContent    = item.dataset.pid
-            selected.style.display = 'flex'
-            input.style.display    = 'none'
-            dropdown.style.display = 'none'
-        })
-
-        input.addEventListener('input', () => {
-            clearTimeout(timer)
-            const q = input.value.trim()
-            if (q.length < 2) { dropdown.style.display = 'none'; return }
-            timer = setTimeout(async () => {
-                const res  = await fetch('/admin/api/exhibitions?q=' + encodeURIComponent(q))
-                const data = await res.json()
-                if (!data.length) { dropdown.style.display = 'none'; return }
-                dropdown.innerHTML = data.map(d =>
-                    '<div class="ac-item" data-pid="' + d.pid + '" data-label="' + d.label.replace(/"/g, '&quot;') + '">' +
-                    d.label + '<span class="ac-item-pid">' + d.pid + '</span></div>'
-                ).join('')
-                dropdown.style.display = 'block'
-            }, 250)
-        })
-
-        clear.addEventListener('click', (e) => {
-            e.preventDefault()
-            hidden.value           = ''
-            input.value            = ''
-            input.style.display    = 'block'
-            selected.style.display = 'none'
-            dropdown.style.display = 'none'
-            input.focus()
-        })
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.ac-wrap')) dropdown.style.display = 'none'
-        })
-    })()
-    </script>
+    ${acScript('exh-form')}
 `, '/exhibitions', user)
+
+// ---------------------------------------------------------------------------
+// EXHIBITION TRANSLATIONS PAGE
+// ---------------------------------------------------------------------------
+
+const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
+    <h1>Exhibition information</h1>
+
+    ${success ? alert('success', 'Saved successfully.') : ''}
+    ${errorMsg ? alert('error', errorMsg) : ''}
+
+    <div class="card">
+        <h2>Select exhibition</h2>
+        <form method="POST" action="/admin/translations/save">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Exhibition *</label>
+                    ${acWidget()}
+                    <div class="reference-box" id="harvested-title-box">
+                        <span class="reference-box-label">Harvested title (NL — from source system)</span>
+                        <span class="reference-box-value" id="harvested-title"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider">
+                <h3>Titles</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Title NL</label>
+                    <input type="text" name="title_NL" placeholder="Nederlandstalige titel">
+                </div>
+                <div class="form-group">
+                    <label>Title FR</label>
+                    <input type="text" name="title_FR" placeholder="Titre en français">
+                </div>
+                <div class="form-group full">
+                    <label>Title EN</label>
+                    <input type="text" name="title_EN" placeholder="English title">
+                </div>
+            </div>
+
+            <div class="section-divider">
+                <h3>Descriptions</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Description NL</label>
+                    <textarea name="text_NL" rows="4" placeholder="Nederlandstalige beschrijving"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Description FR</label>
+                    <textarea name="text_FR" rows="4" placeholder="Description en français"></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Description EN</label>
+                    <textarea name="text_EN" rows="4" placeholder="English description"></textarea>
+                </div>
+            </div>
+
+            <div class="section-divider">
+                <h3>Curator</h3>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Curator</label>
+                    <input type="text" name="curator" placeholder="Name of the curator">
+                </div>
+            </div>
+
+            <div style="margin-top:1.5rem;">
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Overview</h2>
+        ${searchBar('/admin/translations', search, 'Filter by exhibition PID', 'TE_2020, ...')}
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
+    : `
+        ${resultCount(rows.length, search)}
+        <table>
+            <thead>
+                <tr>
+                    <th>Exhibition</th>
+                    <th>Title NL</th>
+                    <th>Title FR</th>
+                    <th>Title EN</th>
+                    <th>Desc NL</th>
+                    <th>Desc FR</th>
+                    <th>Desc EN</th>
+                    <th>Curator</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(r => `
+                <tr>
+                    <td><span class="mono">${r.exh_PID || r.id}</span></td>
+                    <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
+                    <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
+                    <td class="${r.title_EN ? 'check-yes' : 'check-no'}" title="${r.title_EN || ''}">${r.title_EN ? '✓' : '—'}</td>
+                    <td class="${r.text_NL ? 'check-yes' : 'check-no'}">${r.text_NL ? '✓' : '—'}</td>
+                    <td class="${r.text_FR ? 'check-yes' : 'check-no'}">${r.text_FR ? '✓' : '—'}</td>
+                    <td class="${r.text_EN ? 'check-yes' : 'check-no'}">${r.text_EN ? '✓' : '—'}</td>
+                    <td>${r.curator || '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`}
+    </div>
+
+    ${acScript('trans-form', ['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
+`, '/translations', user)

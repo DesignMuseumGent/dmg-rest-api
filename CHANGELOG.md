@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- Exhibition installation views (zaalzichten) from Supabase storage bucket (`exhibition_views/{exh_PID}/`) are now exposed on exhibition records as `crm:P138i_has_representation`, typed as Getty AAT `300210730` (exhibition view) — all images in the subfolder matching the exhibition PID are included
 - Exhibition poster images from Supabase storage bucket (`posters`) are now exposed on exhibition records as `crm:P65_shows_visual_item`, typed as Getty AAT `300027221` (poster) — filename pattern `TE_YYYY-NNN.jpeg` matches the exhibition PID
 
 - Publications on exhibition records — `crm:P129i_is_subject_of`

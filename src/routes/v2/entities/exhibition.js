@@ -9,7 +9,7 @@ export function requestExhibition(app, BASE_URI) {
         try {
             const exhibitionPID = req.params.exhibitionPID
 
-            const [recordResult, mediaResult, publicationsResult] = await Promise.all([
+            const [recordResult, mediaResult, publicationsResult, viewsResult] = await Promise.all([
                 fetchExhibitionById(exhibitionPID),
                 supabase
                     .from('dmg_exhibitions_media')
@@ -18,7 +18,10 @@ export function requestExhibition(app, BASE_URI) {
                 supabase
                     .from('dmg_exhibitions_publications')
                     .select('title, url, year')
-                    .eq('exh_PID', exhibitionPID)
+                    .eq('exh_PID', exhibitionPID),
+                supabase.storage
+                    .from('exhibition_views')
+                    .list(exhibitionPID, { limit: 100, sortBy: { column: 'name', order: 'asc' } })
             ])
 
             if (!recordResult || recordResult.length === 0) {
@@ -29,6 +32,7 @@ export function requestExhibition(app, BASE_URI) {
             const exh          = row["json_ld_v2"]
             const media        = mediaResult.data || []
             const publications = publicationsResult.data || []
+            const views        = (viewsResult.data || []).filter(f => f.name && !f.name.startsWith('.'))
 
             // resolve poster from storage bucket — try common extensions
             const SUPABASE_URL = process.env.SUPABASE_URL
@@ -144,6 +148,32 @@ export function requestExhibition(app, BASE_URI) {
                         "rdfs:label": "poster"
                     }
                 }
+            }
+
+            // exhibition views from storage bucket
+            if (views.length > 0) {
+                const SUPABASE_URL = process.env.SUPABASE_URL
+                const bucketBase = `${SUPABASE_URL}/storage/v1/object/public/exhibition_views/${exhibitionPID}`
+
+                exh["crm:P138i_has_representation"] = views.map((f, i) => ({
+                    "@id": `${bucketBase}/${f.name}`,
+                    "@type": "crm:E36_Visual_Item",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300210730",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "exhibition view"
+                    },
+                    "rdfs:label": f.name.replace(/\.[^.]+$/, ''),
+                    "crm:P43_has_dimension": [
+                        ...(f.metadata?.width  ? [{ "@type": "crm:E54_Dimension", "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055647", "rdfs:label": "width" },  "crm:P90_has_value": f.metadata.width,  "crm:P91_has_unit": { "rdfs:label": "px" } }] : []),
+                        ...(f.metadata?.height ? [{ "@type": "crm:E54_Dimension", "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055644", "rdfs:label": "height" }, "crm:P90_has_value": f.metadata.height, "crm:P91_has_unit": { "rdfs:label": "px" } }] : [])
+                    ].filter(d => d) || undefined
+                }))
+
+                // strip empty dimensions array if nothing was set
+                exh["crm:P138i_has_representation"].forEach(v => {
+                    if (!v["crm:P43_has_dimension"]?.length) delete v["crm:P43_has_dimension"]
+                })
             }
 
             // existing nodes from json_ld_v2 (e.g. IIIF manifest)

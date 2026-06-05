@@ -93,8 +93,8 @@ export function requestExhibitions(app, BASE_URI) {
                 if (!fullRecord) {
                     return {
                         "@id": row["exh_PID"]
-                            ? `${BASE_URI}/id/exhibition/${row["exh_PID"]}`
-                            : `${BASE_URI}/id/exhibition/${row.id}`,
+                            ? `${BASE_URI}id/exhibition/${row["exh_PID"]}`
+                            : `${BASE_URI}id/exhibition/${row.id}`,
                         "@type": "crm:E7_Activity",
                         "rdfs:label": row["title_NL"] ?? row.id
                     }
@@ -104,10 +104,10 @@ export function requestExhibitions(app, BASE_URI) {
 
                 if (row["exh_PID"]) {
                     const pid = row["exh_PID"]
-                    exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
+                    exh["@id"] = `${BASE_URI}id/exhibition/${pid}`
 
                     const identifier = {
-                        "@id": `${BASE_URI}/id/exhibition/${pid}/identifier/intern`,
+                        "@id": `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
                         "@type": "crm:E42_Identifier",
                         "rdfs:label": pid,
                         "crm:P2_has_type": {

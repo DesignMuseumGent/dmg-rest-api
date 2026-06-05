@@ -188,6 +188,34 @@ export function setupAdmin(app) {
         res.json({ ...rest, harvestedTitle })
     })
 
+    adminRouter.get('/api/exhibition-assets', requireAuth, async (req, res) => {
+        const pids = req.query.pids?.split(',').filter(Boolean) || []
+        if (!pids.length) return res.json({})
+
+        const SUPABASE_URL = process.env.SUPABASE_URL
+        const results = {}
+
+        await Promise.all(pids.map(async (pid) => {
+            const [posterResult, viewsResult] = await Promise.all([
+                Promise.any([
+                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpeg`, { method: 'HEAD' }),
+                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpg`,  { method: 'HEAD' }),
+                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.png`,  { method: 'HEAD' })
+                ]).catch(() => null),
+                supabase.storage
+                    .from('exhibition_views')
+                    .list(pid, { limit: 100 })
+            ])
+
+            results[pid] = {
+                hasPoster: posterResult?.ok ?? false,
+                viewCount: (viewsResult.data || []).filter(f => f.name && !f.name.startsWith('.')).length
+            }
+        }))
+
+        res.json(results)
+    })
+
     // ---------------------------------------------------------------------------
     // EXHIBITION MEDIA
     // ---------------------------------------------------------------------------
@@ -402,10 +430,11 @@ tr:last-child td { border-bottom:none; }
 .tag { display:inline-block; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700; }
 .tag-video { background:#ebf4ff; color:#2b6cb0; }
 .tag-audio { background:#f0fff4; color:#276749; }
-.tag-pub { background:#faf5ff; color:#6b46c1; }
+.tag-pub   { background:#faf5ff; color:#6b46c1; }
+.tag-views { background:#fef3c7; color:#92400e; }
 .alert { padding:0.75rem 1rem; border-radius:6px; margin-bottom:1rem; font-size:0.9375rem; }
 .alert-success { background:#f0fff4; color:#276749; border:1px solid #c6f6d5; }
-.alert-error { background:#fff5f5; color:#c53030; border:1px solid #fed7d7; }
+.alert-error   { background:#fff5f5; color:#c53030; border:1px solid #fed7d7; }
 .mono { font-family:${MONO}; font-size:0.875rem; color:#666; }
 .link { color:#4a90d9; font-size:0.875rem; }
 .empty { color:#aaa; font-style:italic; padding:2rem; text-align:center; }
@@ -643,6 +672,46 @@ const acScript = (prefillFields = []) => {
 })()
 </script>`
 }
+
+// asset checker script — separate from acScript to avoid nesting conflicts
+const assetCheckerScript = () => `<script>
+(function () {
+    const rows = document.querySelectorAll('tr[data-pid]')
+    const pids = [...new Set([...rows].map(r => r.dataset.pid).filter(Boolean))]
+    if (!pids.length) return
+
+    const chunk = (arr, n) => Array.from(
+        { length: Math.ceil(arr.length / n) },
+        (_, i) => arr.slice(i * n, i * n + n)
+    )
+
+    chunk(pids, 20).forEach(batch => {
+        fetch('/admin/api/exhibition-assets?pids=' + batch.join(','))
+            .then(r => r.json())
+            .then(data => {
+                batch.forEach(pid => {
+                    const asset = data[pid]
+                    if (!asset) return
+
+                    const posterCell = document.querySelector('.asset-poster[data-pid="' + pid + '"]')
+                    const viewsCell  = document.querySelector('.asset-views[data-pid="'  + pid + '"]')
+
+                    if (posterCell) {
+                        posterCell.innerHTML = asset.hasPoster
+                            ? '<span class="check-yes">&#10003;</span>'
+                            : '<span class="check-no">&#8212;</span>'
+                    }
+                    if (viewsCell) {
+                        viewsCell.innerHTML = asset.viewCount > 0
+                            ? '<span class="tag tag-views">' + asset.viewCount + '</span>'
+                            : '<span class="check-no">&#8212;</span>'
+                    }
+                })
+            })
+            .catch(() => {})
+    })
+})()
+</script>`
 
 // ---------------------------------------------------------------------------
 // DASHBOARD
@@ -1023,8 +1092,9 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
             ${sectionDivider('Curator')}
             <div class="form-grid">
                 <div class="form-group full">
-                    <label>Curator</label>
-                    <input type="text" name="curator" placeholder="Name of the curator">
+                    <label>Curator(s)</label>
+                    <input type="text" name="curator" placeholder="Kaat Debo, Lotte Vandermeersch — comma-separated for multiple">
+                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">Separate multiple curators with a comma.</span>
                 </div>
             </div>
 
@@ -1054,6 +1124,8 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
                     <th>Curator</th>
                     <th>Media</th>
                     <th>Pubs</th>
+                    <th>Poster</th>
+                    <th>Views</th>
                 </tr>
             </thead>
             <tbody>
@@ -1072,7 +1144,7 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
             ? `<span class="tag tag-pub">${pubs.length}</span>`
             : '<span class="check-no">—</span>'
         return `
-                    <tr>
+                    <tr data-pid="${r.exh_PID || ''}">
                         <td><span class="mono">${r.exh_PID || r.id}</span></td>
                         <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
                         <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
@@ -1083,11 +1155,14 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
                         <td>${r.curator || '—'}</td>
                         <td>${mediaCell}</td>
                         <td>${pubsCell}</td>
+                        <td class="asset-poster" data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
+                        <td class="asset-views"  data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
                     </tr>`
     }).join('')}
             </tbody>
         </table>`}
     </div>
 
+    ${assetCheckerScript()}
     ${acScript(['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
 `, '/translations', user)

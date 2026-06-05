@@ -26,6 +26,7 @@ export function requestExhibitions(app, BASE_URI) {
 
 
             const applyFilters = (query) => {
+                query = query.not('exh_PID', 'is', null)  // ← add this
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
                 if (languageFilter && col) {
                     query = query.not(col, 'is', null)
@@ -58,6 +59,10 @@ export function requestExhibitions(app, BASE_URI) {
             if (error) {
                 console.error('Fetch error:', JSON.stringify(error, null, 2))
                 return res.status(500).json({ error: 'Error fetching exhibitions' })
+            }
+
+            if (!data) {
+                return res.status(404).json({ error: 'No exhibitions found' })
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)

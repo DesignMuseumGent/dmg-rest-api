@@ -65,14 +65,16 @@ export function setupAdmin(app) {
             { count: mediaCount },
             { count: projectsCount },
             { count: exhibitionsMediaCount },
+            { count: publicationsCount },
             { count: translationsCount }
         ] = await Promise.all([
             supabase.from('dmg_objects_media').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_objects_projects').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_exhibitions_media').select('*', { count: 'exact', head: true }),
+            supabase.from('dmg_exhibitions_publications').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_tentoonstelling_LDES').select('*', { count: 'exact', head: true }).not('title_FR', 'is', null)
         ])
-        res.send(dashboardPage(req.session.user, { mediaCount, projectsCount, exhibitionsMediaCount, translationsCount }))
+        res.send(dashboardPage(req.session.user, { mediaCount, projectsCount, exhibitionsMediaCount, publicationsCount, translationsCount }))
     })
 
     // ---------------------------------------------------------------------------
@@ -102,9 +104,7 @@ export function setupAdmin(app) {
             .maybeSingle()
         if (!obj) return res.redirect('/admin/media?error=object+not+found')
 
-        const { error } = await supabase
-            .from('dmg_objects_media')
-            .insert({ objectNumber, title, url, type, date })
+        const { error } = await supabase.from('dmg_objects_media').insert({ objectNumber, title, url, type, date })
         if (error) return res.redirect('/admin/media?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/media?success=1')
     })
@@ -142,9 +142,7 @@ export function setupAdmin(app) {
             .maybeSingle()
         if (!obj) return res.redirect('/admin/projects?error=object+not+found')
 
-        const { error } = await supabase
-            .from('dmg_objects_projects')
-            .insert({ objectNumber, title, url, date })
+        const { error } = await supabase.from('dmg_objects_projects').insert({ objectNumber, title, url, date })
         if (error) return res.redirect('/admin/projects?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/projects?success=1')
     })
@@ -231,6 +229,46 @@ export function setupAdmin(app) {
     })
 
     // ---------------------------------------------------------------------------
+    // EXHIBITION PUBLICATIONS
+    // ---------------------------------------------------------------------------
+
+    adminRouter.get('/publications', requireAuth, async (req, res) => {
+        const search = req.query.q?.trim() || null
+        let query = supabase
+            .from('dmg_exhibitions_publications')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(200)
+        if (search) query = query.ilike('exh_PID', `%${search}%`)
+        const { data, error } = await query
+        res.send(publicationsPage(data || [], error?.message, req.query.success, search, req.session.user))
+    })
+
+    adminRouter.post('/publications/add', requireAuth, async (req, res) => {
+        const { exh_PID, title, url, year } = req.body
+        if (!exh_PID || !title) return res.redirect('/admin/publications?error=missing+required+fields')
+
+        const { data: exh } = await supabase
+            .from('dmg_tentoonstelling_LDES')
+            .select('exh_PID')
+            .eq('exh_PID', exh_PID)
+            .maybeSingle()
+        if (!exh) return res.redirect('/admin/publications?error=exhibition+not+found')
+
+        const { error } = await supabase
+            .from('dmg_exhibitions_publications')
+            .insert({ exh_PID, title, url: url || null, year: year || null })
+        if (error) return res.redirect('/admin/publications?error=' + encodeURIComponent(error.message))
+        return res.redirect('/admin/publications?success=1')
+    })
+
+    adminRouter.post('/publications/delete/:id', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+        await supabase.from('dmg_exhibitions_publications').delete().eq('id', req.params.id)
+        return res.redirect('/admin/publications')
+    })
+
+    // ---------------------------------------------------------------------------
     // EXHIBITION TRANSLATIONS
     // ---------------------------------------------------------------------------
 
@@ -239,7 +277,7 @@ export function setupAdmin(app) {
 
         let query = supabase
             .from('dmg_tentoonstelling_LDES')
-            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(type)')
+            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(type), dmg_exhibitions_publications(id)')
             .order('id', { ascending: false })
             .limit(200)
 
@@ -259,7 +297,6 @@ export function setupAdmin(app) {
             .select('id')
             .eq('exh_PID', exh_PID)
             .maybeSingle()
-
         if (!exh) return res.redirect('/admin/translations?error=exhibition+not+found')
 
         const payload = {}
@@ -295,10 +332,10 @@ const F    = `'Museum', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI'
 const MONO = `'Courier New', Courier, monospace`
 
 const fontFace = `<style>
-@font-face { font-family:'Museum'; src:url('/fonts/Museum-Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
-@font-face { font-family:'Museum'; src:url('/fonts/Museum-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
-@font-face { font-family:'Museum'; src:url('/fonts/Museum-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
-@font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Regular.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
+    @font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
 </style>`
 
 const css = `
@@ -365,6 +402,7 @@ tr:last-child td { border-bottom:none; }
 .tag { display:inline-block; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700; }
 .tag-video { background:#ebf4ff; color:#2b6cb0; }
 .tag-audio { background:#f0fff4; color:#276749; }
+.tag-pub { background:#faf5ff; color:#6b46c1; }
 .alert { padding:0.75rem 1rem; border-radius:6px; margin-bottom:1rem; font-size:0.9375rem; }
 .alert-success { background:#f0fff4; color:#276749; border:1px solid #c6f6d5; }
 .alert-error { background:#fff5f5; color:#c53030; border:1px solid #fed7d7; }
@@ -404,33 +442,34 @@ tr:last-child td { border-bottom:none; }
 
 const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
 <html lang="en">
-    <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} — DMG Admin</title>
-${fontFace}
-<style>${css}</style>
+    ${fontFace}
+    <style>${css}</style>
 </head>
 <body>
-<header>
-    <a href="/admin" style="display:flex;align-items:center;text-decoration:none;">
-        <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height:28px;filter:invert(1);">
-    </a>
-    <div class="header-right">
-        ${user ? `<span class="header-user">${user.name || user.email}<span class="badge ${user.canDelete ? 'badge-admin' : 'badge-viewer'}">${user.canDelete ? 'admin' : 'viewer'}</span></span>` : ''}
-        <a href="/admin/logout">Sign out</a>
-    </div>
-</header>
-<nav>
-    <a href="/admin" ${path === '/' ? 'class="active"' : ''}>Dashboard</a>
-    <span class="nav-sep">·</span>
-    <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
-    <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
-    <span class="nav-sep">·</span>
-    <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
-    <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
-</nav>
-<main>${content}</main>
+    <header>
+        <a href="/admin" style="display:flex;align-items:center;text-decoration:none;">
+            <img src="/images/dmg-logo.svg" alt="Design Museum Gent" style="height:28px;filter:invert(1);">
+        </a>
+        <div class="header-right">
+            ${user ? `<span class="header-user">${user.name || user.email}<span class="badge ${user.canDelete ? 'badge-admin' : 'badge-viewer'}">${user.canDelete ? 'admin' : 'viewer'}</span></span>` : ''}
+            <a href="/admin/logout">Sign out</a>
+        </div>
+    </header>
+    <nav>
+        <a href="/admin" ${path === '/' ? 'class="active"' : ''}>Dashboard</a>
+        <span class="nav-sep">·</span>
+        <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
+        <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
+        <span class="nav-sep">·</span>
+        <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
+        <a href="/admin/publications" ${path === '/publications' ? 'class="active"' : ''}>Publications</a>
+        <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
+    </nav>
+    <main>${content}</main>
 </body>
 </html>`
 
@@ -440,40 +479,40 @@ ${fontFace}
 
 const loginPage = (error) => `<!DOCTYPE html>
 <html lang="en">
-    <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMG Admin — Login</title>
-${fontFace}
-<style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:${F}; background:#f5f5f5; display:flex; align-items:center; justify-content:center; min-height:100vh; }
-    .card { background:white; padding:2.5rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); width:360px; }
-    .logo { margin-bottom:1.5rem; }
-    .logo img { height:32px; }
-    p { color:#888; font-size:0.9375rem; margin-bottom:1.5rem; }
-    label { display:block; font-size:0.75rem; font-weight:500; color:#555; margin-bottom:0.375rem; text-transform:uppercase; letter-spacing:0.06em; }
-    input { width:100%; padding:0.625rem 0.875rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; margin-bottom:1rem; font-family:${F}; }
-    input:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
-    button { width:100%; padding:0.75rem; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:1rem; font-weight:500; cursor:pointer; font-family:${F}; }
-    button:hover { background:#333; }
-    .error { background:#fff5f5; color:#c53030; padding:0.75rem; border-radius:6px; font-size:0.9375rem; margin-bottom:1rem; }
-</style>
+    ${fontFace}
+    <style>
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:${F}; background:#f5f5f5; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        .card { background:white; padding:2.5rem; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); width:360px; }
+        .logo { margin-bottom:1.5rem; }
+        .logo img { height:32px; }
+        p { color:#888; font-size:0.9375rem; margin-bottom:1.5rem; }
+        label { display:block; font-size:0.75rem; font-weight:500; color:#555; margin-bottom:0.375rem; text-transform:uppercase; letter-spacing:0.06em; }
+        input { width:100%; padding:0.625rem 0.875rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; margin-bottom:1rem; font-family:${F}; }
+        input:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
+        button { width:100%; padding:0.75rem; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:1rem; font-weight:500; cursor:pointer; font-family:${F}; }
+        button:hover { background:#333; }
+        .error { background:#fff5f5; color:#c53030; padding:0.75rem; border-radius:6px; font-size:0.9375rem; margin-bottom:1rem; }
+    </style>
 </head>
 <body>
-<div class="card">
-    <div class="logo"><img src="/images/dmg-logo.svg" alt="Design Museum Gent"></div>
-    <p>Collection API — Admin</p>
-    ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
-    ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
-    <form method="POST" action="/admin/login" autocomplete="off">
-        <label>Email</label>
-        <input type="email" name="email" autofocus required autocomplete="off">
+    <div class="card">
+        <div class="logo"><img src="/images/dmg-logo.svg" alt="Design Museum Gent"></div>
+        <p>Collection API — Admin</p>
+        ${error === 'invalid' ? '<div class="error">Invalid email or password.</div>' : ''}
+        ${error === 'missing' ? '<div class="error">Please enter your email and password.</div>' : ''}
+        <form method="POST" action="/admin/login" autocomplete="off">
+            <label>Email</label>
+            <input type="email" name="email" autofocus required autocomplete="off">
             <label>Password</label>
             <input type="password" name="password" required autocomplete="new-password">
-                <button type="submit">Sign in</button>
-    </form>
-</div>
+            <button type="submit">Sign in</button>
+        </form>
+    </div>
 </body>
 </html>`
 
@@ -481,53 +520,51 @@ ${fontFace}
 // HELPERS
 // ---------------------------------------------------------------------------
 
-const mkAlert = (type, msg) =>
-`<div class="alert alert-${type}">${msg}</div>`
+const mkAlert = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`
 
 const alerts = (success, error) => [
-success ? mkAlert('success', 'Saved successfully.') : '',
-error   ? mkAlert('error', error) : ''
+    success ? mkAlert('success', 'Saved successfully.') : '',
+    error   ? mkAlert('error', error) : ''
 ].join('')
 
 const searchBar = (action, value, label, placeholder) => `
-<form method="GET" action="${action}" class="search-bar">
-    <div class="form-group">
-        <label>${label}</label>
-        <input type="text" name="q" value="${value || ''}" placeholder="${placeholder}">
-    </div>
-    <button type="submit" class="btn btn-primary">Search</button>
-    ${value ? `<a href="${action}" class="search-clear">Clear</a>` : ''}
-</form>`
+    <form method="GET" action="${action}" class="search-bar">
+        <div class="form-group">
+            <label>${label}</label>
+            <input type="text" name="q" value="${value || ''}" placeholder="${placeholder}">
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        ${value ? `<a href="${action}" class="search-clear">Clear</a>` : ''}
+    </form>`
 
 const deleteBtn = (action, canDelete) => canDelete
-? `<form method="POST" action="${action}" style="display:inline">
-    <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button>
-</form>`
-: '<span class="no-perm">—</span>'
+    ? `<form method="POST" action="${action}" style="display:inline">
+           <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button>
+       </form>`
+    : '<span class="no-perm">—</span>'
 
 const permNote = (canDelete) => canDelete ? '' :
-'<p class="perm-note">You do not have permission to delete entries.</p>'
+    '<p class="perm-note">You do not have permission to delete entries.</p>'
 
 const resultCount = (n, search) =>
-`<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
+    `<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
 
 const sectionDivider = (title) =>
-`<div class="section-divider"><h3>${title}</h3></div>`
+    `<div class="section-divider"><h3>${title}</h3></div>`
 
 const acWidget = () => `
-<div class="ac-wrap">
-    <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
+    <div class="ac-wrap">
+        <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
         <div class="ac-dropdown" id="ac-dropdown"></div>
-</div>
-<input type="hidden" name="exh_PID" id="ac-value" required>
+    </div>
+    <input type="hidden" name="exh_PID" id="ac-value" required>
     <div class="ac-selected" id="ac-selected">
         <span class="ac-selected-label" id="ac-label"></span>
         <span class="ac-selected-pid" id="ac-pid"></span>
         <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
     </div>`
 
-    // prefillFields: array of field names to prefill from /api/exhibition-translations
-    const acScript = (prefillFields = []) => {
+const acScript = (prefillFields = []) => {
     const prefillJs = prefillFields.length > 0 ? `
         fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
             .then(r => r.json())
@@ -535,7 +572,7 @@ const acWidget = () => `
                 const ref = document.getElementById('harvested-title-box')
                 const val = document.getElementById('harvested-title')
                 if (ref && val) {
-                    val.textContent  = d.harvestedTitle || '—'
+                    val.textContent   = d.harvestedTitle || '—'
                     ref.style.display = 'block'
                 }
                 ${prefillFields.map(f => `
@@ -607,11 +644,11 @@ const acWidget = () => `
 </script>`
 }
 
-    // ---------------------------------------------------------------------------
-    // DASHBOARD
-    // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// DASHBOARD
+// ---------------------------------------------------------------------------
 
-    const dashboardPage = (user, stats) => layout('Dashboard', `
+const dashboardPage = (user, stats) => layout('Dashboard', `
     <h1>Dashboard</h1>
 
     <div class="dashboard-section">
@@ -644,6 +681,13 @@ const acWidget = () => `
                     <p>Video resources linked to exhibitions.</p>
                 </div>
             </a>
+            <a href="/admin/publications" class="card-link">
+                <div class="card">
+                    <h2>Publications</h2>
+                    <div class="card-stat">${stats.publicationsCount ?? '—'}</div>
+                    <p>Library records and catalogues linked to exhibitions.</p>
+                </div>
+            </a>
             <a href="/admin/translations" class="card-link">
                 <div class="card">
                     <h2>Exhibition information</h2>
@@ -671,13 +715,13 @@ const acWidget = () => `
             </a>
         </div>
     </div>
-    `, '/', user)
+`, '/', user)
 
-    // ---------------------------------------------------------------------------
-    // OBJECT MEDIA PAGE
-    // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// OBJECT MEDIA PAGE
+// ---------------------------------------------------------------------------
 
-    const mediaPage = (rows, error, success, search, user) => layout('Object media', `
+const mediaPage = (rows, error, success, search, user) => layout('Object media', `
     <h1>Object media</h1>
     ${alerts(success, error)}
 
@@ -720,8 +764,8 @@ const acWidget = () => `
         <h2>Entries</h2>
         ${searchBar('/admin/media', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
-        ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
-        : `
+    ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
+    : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Type</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -739,13 +783,13 @@ const acWidget = () => `
         </table>
         ${permNote(user.canDelete)}`}
     </div>
-    `, '/media', user)
+`, '/media', user)
 
-    // ---------------------------------------------------------------------------
-    // PROJECTS PAGE
-    // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// PROJECTS PAGE
+// ---------------------------------------------------------------------------
 
-    const projectsPage = (rows, error, success, search, user) => layout('Projects', `
+const projectsPage = (rows, error, success, search, user) => layout('Projects', `
     <h1>Projects</h1>
     ${alerts(success, error)}
 
@@ -780,8 +824,8 @@ const acWidget = () => `
         <h2>Entries</h2>
         ${searchBar('/admin/projects', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
-        ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
-        : `
+    ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
+    : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -798,13 +842,13 @@ const acWidget = () => `
         </table>
         ${permNote(user.canDelete)}`}
     </div>
-    `, '/projects', user)
+`, '/projects', user)
 
-    // ---------------------------------------------------------------------------
-    // EXHIBITIONS MEDIA PAGE
-    // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// EXHIBITIONS MEDIA PAGE
+// ---------------------------------------------------------------------------
 
-    const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibition media', `
+const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibition media', `
     <h1>Exhibition media</h1>
     ${alerts(success, error)}
 
@@ -839,8 +883,8 @@ const acWidget = () => `
         <h2>Entries</h2>
         ${searchBar('/admin/exhibitions', search, 'Filter by exhibition PID', 'TE_2020, ...')}
         ${rows.length === 0
-        ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition media entries yet.'}</p>`
-        : `
+    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition media entries yet.'}</p>`
+    : `
         ${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Exhibition</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
@@ -859,20 +903,80 @@ const acWidget = () => `
     </div>
 
     ${acScript()}
-    `, '/exhibitions', user)
+`, '/exhibitions', user)
 
-    // ---------------------------------------------------------------------------
-    // EXHIBITION TRANSLATIONS PAGE
-    // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// PUBLICATIONS PAGE
+// ---------------------------------------------------------------------------
 
-    const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
+const publicationsPage = (rows, error, success, search, user) => layout('Publications', `
+    <h1>Publications</h1>
+    ${alerts(success, error)}
+
+    <div class="card">
+        <h2>Add publication</h2>
+        <form method="POST" action="/admin/publications/add">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Exhibition *</label>
+                    ${acWidget()}
+                </div>
+                <div class="form-group full">
+                    <label>Title *</label>
+                    <input type="text" name="title" placeholder="Publication title" required>
+                </div>
+                <div class="form-group full">
+                    <label>Library URL</label>
+                    <input type="url" name="url" placeholder="https://catalog.designmuseumgent.be/...">
+                </div>
+                <div class="form-group">
+                    <label>Year</label>
+                    <input type="text" name="year" placeholder="2024" pattern="[0-9]{4}">
+                </div>
+            </div>
+            <div style="margin-top:1rem;">
+                <button type="submit" class="btn btn-primary">Add publication</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Entries</h2>
+        ${searchBar('/admin/publications', search, 'Filter by exhibition PID', 'TE_2020, ...')}
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No publications found for "${search}".` : 'No publications yet.'}</p>`
+    : `
+        ${resultCount(rows.length, search)}
+        <table>
+            <thead><tr><th>Exhibition</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
+            <tbody>
+                ${rows.map(r => `
+                <tr>
+                    <td><span class="mono">${r.exh_PID}</span></td>
+                    <td>${r.title || '—'}</td>
+                    <td>${r.year || '—'}</td>
+                    <td>${r.url ? `<a href="${r.url}" target="_blank" class="link">↗ link</a>` : '—'}</td>
+                    <td>${deleteBtn(`/admin/publications/delete/${r.id}`, user.canDelete)}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+        ${permNote(user.canDelete)}`}
+    </div>
+
+    ${acScript()}
+`, '/publications', user)
+
+// ---------------------------------------------------------------------------
+// EXHIBITION TRANSLATIONS PAGE
+// ---------------------------------------------------------------------------
+
+const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
     <h1>Exhibition information</h1>
     ${alerts(success, errorMsg)}
 
     <div class="card">
         <h2>Add or update</h2>
         <form method="POST" action="/admin/translations/save">
-
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Exhibition *</label>
@@ -934,8 +1038,8 @@ const acWidget = () => `
         <h2>Overview</h2>
         ${searchBar('/admin/translations', search, 'Filter by exhibition PID', 'TE_2020, ...')}
         ${rows.length === 0
-        ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
-        : `
+    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
+    : `
         ${resultCount(rows.length, search)}
         <table>
             <thead>
@@ -949,20 +1053,25 @@ const acWidget = () => `
                     <th>Desc EN</th>
                     <th>Curator</th>
                     <th>Media</th>
+                    <th>Pubs</th>
                 </tr>
             </thead>
             <tbody>
                 ${rows.map(r => {
-            const media   = r.dmg_exhibitions_media || []
-            const videos  = media.filter(m => m.type === 'VIDEO').length
-            const audio   = media.filter(m => m.type === 'AUDIO').length
-            const mediaCell = media.length === 0
-                ? '<span class="check-no">—</span>'
-                : [
-                    videos > 0 ? `<span class="tag tag-video">${videos} video</span>` : '',
-                    audio  > 0 ? `<span class="tag tag-audio">${audio} audio</span>`  : ''
-                ].filter(Boolean).join(' ')
-            return `
+        const media  = r.dmg_exhibitions_media || []
+        const pubs   = r.dmg_exhibitions_publications || []
+        const videos = media.filter(m => m.type === 'VIDEO').length
+        const audio  = media.filter(m => m.type === 'AUDIO').length
+        const mediaCell = media.length === 0
+            ? '<span class="check-no">—</span>'
+            : [
+                videos > 0 ? `<span class="tag tag-video">${videos} video</span>` : '',
+                audio  > 0 ? `<span class="tag tag-audio">${audio} audio</span>`  : ''
+            ].filter(Boolean).join(' ')
+        const pubsCell = pubs.length > 0
+            ? `<span class="tag tag-pub">${pubs.length}</span>`
+            : '<span class="check-no">—</span>'
+        return `
                     <tr>
                         <td><span class="mono">${r.exh_PID || r.id}</span></td>
                         <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
@@ -973,11 +1082,12 @@ const acWidget = () => `
                         <td class="${r.text_EN ? 'check-yes' : 'check-no'}">${r.text_EN ? '✓' : '—'}</td>
                         <td>${r.curator || '—'}</td>
                         <td>${mediaCell}</td>
+                        <td>${pubsCell}</td>
                     </tr>`
-        }).join('')}
+    }).join('')}
             </tbody>
         </table>`}
     </div>
 
     ${acScript(['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
-    `, '/translations', user)
+`, '/translations', user)

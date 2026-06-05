@@ -7,6 +7,50 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+
+## [v2.5.3] — 2026-06-05
+
+### Added
+
+- Publications on exhibition records — `crm:P129i_is_subject_of`
+  - Library records and catalogues linked to exhibitions are now exposed via the API
+  - Typed using Getty AAT `300048715` (publication) as `crm:E73_Information_Object`
+  - Includes title (`crm:P102_has_title`), year (`crm:P4_has_time-span`) and library URL (`@id`)
+  - Sourced from new `dmg_exhibitions_publications` table, managed via admin UI
+  - Multiple publications per exhibition are supported
+
+- Curator on exhibition records — `crm:P14_carried_out_by`
+  - When a curator is known, the curator's name is exposed as a `crm:E39_Actor` node
+  - Stored in the `curator` column on `dmg_tentoonstelling_LDES`, editable via admin UI
+
+
+- `?concept=` filter on `/v2/id/objects` — filter by thesaurus concept PID or URI
+  - Matches objects tagged with the concept as type (`crm:P2_has_type`), material (`crm:P45_consists_of`), technique (`crm:P32_used_general_technique`) or sub-collection (`crm:P106i_forms_part_of`)
+  - Automatically expands to include all narrower concepts from the thesaurus hierarchy via recursive CTE
+  - Accepts PID (`530000049`) or full URI
+  - Backed by indexed `concept_uris text[]` column with trigger-based sync on harvest
+
+- `?conceptSearch=` filter on `/v2/id/objects` — search the thesaurus by label and filter objects by matching concepts
+  - Searches the thesaurus full text index and returns objects tagged with any matching concept
+  - Also expands to include narrower concepts recursively — searching `"stoel"` also returns objects tagged with `"armstoel"`, `"kinderstoel"` etc.
+  - Complements exact `?concept=` URI matching
+
+### Fixed
+
+- Exhibition records missing `@id` are now excluded from the `/v2/id/exhibitions` collection response
+  - Records without an `exh_PID` were returned without an `@id` field, breaking imports that use `@id` as a unique identifier
+  - Fixed by requiring `exh_PID IS NOT NULL` in the collection query
+
+- Date filter (`?dateFrom=`, `?dateTo=`, `?date=`) now correctly excludes objects with no production date
+  - Previously, objects with `NULL` production dates were included in date-filtered results because `NULL >= value` evaluates to NULL in PostgreSQL, not false
+  - Fixed by explicitly excluding NULL date rows when any date filter is active
+
+### Changed
+
+- Swagger version bumped to `2.8.0`
+
+---
+
 ## [v2.5.2] — 2026-06-03
 
 - `?date=YYYY/YYYY`, `?dateFrom=` and `?dateTo=` filters on `/v2/id/objects` — filter by production date range using EDTF interval notation; stored as indexed integer columns `production_year_begin` and `production_year_end`

@@ -1,29 +1,36 @@
-import { fetchExhibitionById } from "../../../utils/parsers.js";
-import { supabase } from '../../../../supabaseClient.js';
+import { fetchExhibitionById } from "../../../utils/parsers.js"
+import { supabase } from '../../../../supabaseClient.js'
 
 export function requestExhibition(app, BASE_URI) {
     const exhibitionHandler = async (req, res) => {
-        res.setHeader('Content-Type', 'application/ld+json');
-        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('Content-Type', 'application/ld+json')
+        res.setHeader('Content-Disposition', 'inline')
 
         try {
-            const [recordResult, mediaResult] = await Promise.all([
-                fetchExhibitionById(req.params.exhibitionPID),
+            const exhibitionPID = req.params.exhibitionPID
+
+            const [recordResult, mediaResult, publicationsResult] = await Promise.all([
+                fetchExhibitionById(exhibitionPID),
                 supabase
                     .from('dmg_exhibitions_media')
                     .select('url, title, date, type')
-                    .eq('exh_PID', req.params.exhibitionPID)
+                    .eq('exh_PID', exhibitionPID),
+                supabase
+                    .from('dmg_exhibitions_publications')
+                    .select('title, url, year')
+                    .eq('exh_PID', exhibitionPID)
             ])
 
             if (!recordResult || recordResult.length === 0) {
                 return res.status(404).json({ error: 'Exhibition not found' })
             }
 
-            const row = recordResult[0]
-            const exh = row["json_ld_v2"]
-            const media = mediaResult.data || []
+            const row          = recordResult[0]
+            const exh          = row["json_ld_v2"]
+            const media        = mediaResult.data || []
+            const publications = publicationsResult.data || []
 
-            // add internal PID
+            // internal PID
             if (row["exh_PID"]) {
                 const pid = row["exh_PID"]
                 exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
@@ -98,15 +105,35 @@ export function requestExhibition(app, BASE_URI) {
                 ]
             }
 
-            // media
-            if (media.length > 0) {
-                const mediaNodes = media.map(m => ({
+            // curator
+            if (row["curator"]) {
+                exh["crm:P14_carried_out_by"] = {
+                    "@type": "crm:E39_Actor",
+                    "rdfs:label": row["curator"]
+                }
+            }
+
+            // build crm:P129i_is_subject_of — media + publications
+            const subjectOfNodes = []
+
+            // existing nodes from json_ld_v2 (e.g. IIIF manifest)
+            if (exh["crm:P129i_is_subject_of"]) {
+                const existing = exh["crm:P129i_is_subject_of"]
+                const existingArray = Array.isArray(existing) ? existing : [existing]
+                subjectOfNodes.push(...existingArray)
+            }
+
+            // media nodes
+            for (const m of media) {
+                subjectOfNodes.push({
                     "@id": m.url,
                     "@type": "crm:E73_Information_Object",
                     "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300263419",
+                        "@id": m.type === 'AUDIO'
+                            ? "http://vocab.getty.edu/aat/300312042"
+                            : "http://vocab.getty.edu/aat/300263419",
                         "@type": "crm:E55_Type",
-                        "rdfs:label": "video"
+                        "rdfs:label": m.type === 'AUDIO' ? "audio" : "video"
                     },
                     ...(m.title && {
                         "crm:P102_has_title": {
@@ -119,25 +146,49 @@ export function requestExhibition(app, BASE_URI) {
                             "@type": "crm:E52_Time-Span",
                             "rdfs:label": m.date,
                             "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
-                            "crm:P82b_end_of_the_end": { "@type": "xsd:gYear", "@value": m.date }
+                            "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
                         }
                     })
-                }))
+                })
+            }
 
-                const existing = exh["crm:P129i_is_subject_of"]
-                if (existing) {
-                    const existingArray = Array.isArray(existing) ? existing : [existing]
-                    exh["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
-                } else {
-                    exh["crm:P129i_is_subject_of"] = mediaNodes.length === 1 ? mediaNodes[0] : mediaNodes
-                }
+            // publication nodes
+            for (const p of publications) {
+                subjectOfNodes.push({
+                    ...(p.url && { "@id": p.url }),
+                    "@type": "crm:E73_Information_Object",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300048715",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "publication"
+                    },
+                    ...(p.title && {
+                        "crm:P102_has_title": {
+                            "@type": "crm:E35_Title",
+                            "rdfs:label": p.title
+                        }
+                    }),
+                    ...(p.year && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": p.year,
+                            "crm:P82a_begin_of_the_begin": { "@value": p.year, "@type": "xsd:gYear" }
+                        }
+                    })
+                })
+            }
+
+            if (subjectOfNodes.length > 0) {
+                exh["crm:P129i_is_subject_of"] = subjectOfNodes.length === 1
+                    ? subjectOfNodes[0]
+                    : subjectOfNodes
             }
 
             // cache headers
             if (row["generated_at_time"]) {
                 const lastModified = new Date(row["generated_at_time"]).toUTCString()
                 res.setHeader('Last-Modified', lastModified)
-                res.setHeader('ETag', `"${req.params.exhibitionPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('ETag', `"${exhibitionPID}-${new Date(row["generated_at_time"]).getTime()}"`)
                 res.setHeader('Cache-Control', 'public, max-age=3600')
             }
 
@@ -159,7 +210,7 @@ export function requestExhibition(app, BASE_URI) {
                 .maybeSingle()
 
             if (error) return res.status(500).end()
-            if (!data) return res.status(404).end()
+            if (!data)  return res.status(404).end()
 
             if (data['generated_at_time']) {
                 const lastModified = new Date(data['generated_at_time']).toUTCString()

@@ -192,25 +192,24 @@ export function setupAdmin(app) {
         const pids = req.query.pids?.split(',').filter(Boolean) || []
         if (!pids.length) return res.json({})
 
-        const SUPABASE_URL = process.env.SUPABASE_URL
-
         const results = {}
 
+        // list all files in the posters bucket once, then check against pids
+        const { data: posterFiles } = await supabase.storage
+            .from('posters')
+            .list('', { limit: 1000 })
+
+        const posterSet = new Set(
+            (posterFiles || []).map(f => f.name.replace(/\.[^.]+$/, ''))
+        )
+
         await Promise.all(pids.map(async (pid) => {
-            const [posterResult, viewsResult] = await Promise.all([
-                // check all common extensions — png first since that's what you're using
-                Promise.any([
-                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.png`,  { method: 'HEAD' }),
-                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpeg`, { method: 'HEAD' }),
-                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpg`,  { method: 'HEAD' })
-                ]).catch(() => null),
-                supabase.storage
-                    .from('exhibition_views')
-                    .list(pid, { limit: 100 })
-            ])
+            const viewsResult = await supabase.storage
+                .from('exhibition_views')
+                .list(pid, { limit: 100 })
 
             results[pid] = {
-                hasPoster: posterResult?.ok ?? false,
+                hasPoster: posterSet.has(pid),
                 viewCount: (viewsResult.data || []).filter(f => f.name && !f.name.startsWith('.')).length
             }
         }))

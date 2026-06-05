@@ -33,10 +33,10 @@ export function requestExhibition(app, BASE_URI) {
             // internal PID
             if (row["exh_PID"]) {
                 const pid = row["exh_PID"]
-                exh["@id"] = `${BASE_URI}/id/exhibition/${pid}`
+                exh["@id"] = `${BASE_URI}id/exhibition/${pid}`
 
                 const identifier = {
-                    "@id": `${BASE_URI}/id/exhibition/${pid}/identifier/intern`,
+                    "@id": `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
                     "@type": "crm:E42_Identifier",
                     "rdfs:label": pid,
                     "crm:P2_has_type": {

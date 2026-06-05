@@ -47,7 +47,7 @@ export function requestDCAT(app, BASE_URI) {
             "foaf:homepage": { "@id": "https://data.designmuseumgent.be" },
             "dcat:dataset": [
                 {
-                    "@id": `${BASE_URI}/id/objects`,
+                    "@id": `${BASE_URI}id/objects`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Objecten", "@language": "nl" },
@@ -64,16 +64,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/objects` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/objects` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Paginated JSON-LD collection"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/objects` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/objects` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/agents`,
+                    "@id": `${BASE_URI}id/agents`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Agenten", "@language": "nl" },
@@ -90,16 +90,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/agents` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/agents` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Paginated JSON-LD collection"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/agents` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/agents` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/exhibitions`,
+                    "@id": `${BASE_URI}id/exhibitions`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Tentoonstellingen", "@language": "nl" },
@@ -116,16 +116,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/exhibitions` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/exhibitions` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Paginated JSON-LD collection"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/exhibitions` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/exhibitions` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/concepts`,
+                    "@id": `${BASE_URI}id/concepts`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Thesaurus", "@language": "nl" },
@@ -142,16 +142,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/concepts` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/concepts` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Paginated JSON-LD collection"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/concepts` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/concepts` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/colors`,
+                    "@id": `${BASE_URI}id/colors`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Kleurenindex", "@language": "nl" },
@@ -168,16 +168,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/colors` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/colors` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Color index JSON-LD"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/colors` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/colors` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/types`,
+                    "@id": `${BASE_URI}id/types`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Objecttypes", "@language": "nl" },
@@ -194,16 +194,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/types` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/types` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Type index JSON-LD"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/types` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/types` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/materials`,
+                    "@id": `${BASE_URI}id/materials`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Materialen", "@language": "nl" },
@@ -220,16 +220,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/materials` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/materials` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Material index JSON-LD"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/materials` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/materials` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/nationalities`,
+                    "@id": `${BASE_URI}id/nationalities`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Nationaliteiten", "@language": "nl" },
@@ -246,16 +246,16 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/nationalities` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/nationalities` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Nationality index JSON-LD"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/nationalities` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/nationalities` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 },
                 {
-                    "@id": `${BASE_URI}/id/roles`,
+                    "@id": `${BASE_URI}id/roles`,
                     "@type": "dcat:Dataset",
                     "dct:title": [
                         { "@value": "Rollen", "@language": "nl" },
@@ -272,12 +272,12 @@ export function requestDCAT(app, BASE_URI) {
                         {
                             "@type": "dcat:Distribution",
                             "dct:format": "application/ld+json",
-                            "dcat:accessURL": { "@id": `${BASE_URI}/id/roles` },
+                            "dcat:accessURL": { "@id": `${BASE_URI}id/roles` },
                             "dcat:mediaType": "application/ld+json",
                             "rdfs:label": "Role index JSON-LD"
                         }
                     ],
-                    "dcat:endpointURL": { "@id": `${BASE_URI}/id/roles` },
+                    "dcat:endpointURL": { "@id": `${BASE_URI}id/roles` },
                     "dcat:endpointDescription": { "@id": "https://data.designmuseumgent.be/api-docs" }
                 }
             ]

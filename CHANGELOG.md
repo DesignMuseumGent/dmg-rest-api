@@ -45,6 +45,8 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
   - Previously, objects with `NULL` production dates were included in date-filtered results because `NULL >= value` evaluates to NULL in PostgreSQL, not false
   - Fixed by explicitly excluding NULL date rows when any date filter is active
 
+- Fix exhibitions API: remove extraneous slashes in exhibition `@id` and identifier URIs.
+
 ### Changed
 
 - Swagger version bumped to `2.8.0`

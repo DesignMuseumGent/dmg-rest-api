@@ -12,6 +12,8 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
+- Exhibition poster images from Supabase storage bucket (`posters`) are now exposed on exhibition records as `crm:P65_shows_visual_item`, typed as Getty AAT `300027221` (poster) — filename pattern `TE_YYYY-NNN.jpeg` matches the exhibition PID
+
 - Publications on exhibition records — `crm:P129i_is_subject_of`
   - Library records and catalogues linked to exhibitions are now exposed via the API
   - Typed using Getty AAT `300048715` (publication) as `crm:E73_Information_Object`

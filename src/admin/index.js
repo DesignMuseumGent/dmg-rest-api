@@ -193,14 +193,16 @@ export function setupAdmin(app) {
         if (!pids.length) return res.json({})
 
         const SUPABASE_URL = process.env.SUPABASE_URL
+
         const results = {}
 
         await Promise.all(pids.map(async (pid) => {
             const [posterResult, viewsResult] = await Promise.all([
+                // check all common extensions — png first since that's what you're using
                 Promise.any([
+                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.png`,  { method: 'HEAD' }),
                     fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpeg`, { method: 'HEAD' }),
-                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpg`,  { method: 'HEAD' }),
-                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.png`,  { method: 'HEAD' })
+                    fetch(`${SUPABASE_URL}/storage/v1/object/public/posters/${pid}.jpg`,  { method: 'HEAD' })
                 ]).catch(() => null),
                 supabase.storage
                     .from('exhibition_views')
@@ -306,8 +308,9 @@ export function setupAdmin(app) {
         let query = supabase
             .from('dmg_tentoonstelling_LDES')
             .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(type), dmg_exhibitions_publications(id)')
-            .order('id', { ascending: false })
-            .limit(200)
+            .not('exh_PID', 'is', null)
+            .order('exh_PID', { ascending: true })
+            .limit(1000)
 
         if (search) query = query.ilike('exh_PID', `%${search}%`)
 

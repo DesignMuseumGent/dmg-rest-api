@@ -30,6 +30,24 @@ export function requestExhibition(app, BASE_URI) {
             const media        = mediaResult.data || []
             const publications = publicationsResult.data || []
 
+            // resolve poster from storage bucket — try common extensions
+            const SUPABASE_URL = process.env.SUPABASE_URL
+            const bucketBase = `${SUPABASE_URL}/storage/v1/object/public/posters`
+
+            let posterUrl = null
+            for (const ext of ['jpeg', 'jpg', 'png', 'webp']) {
+                const candidate = `${bucketBase}/${exhibitionPID}.${ext}`
+                try {
+                    const check = await fetch(candidate, { method: 'HEAD' })
+                    if (check.ok) {
+                        posterUrl = candidate
+                        break
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
             // internal PID
             if (row["exh_PID"]) {
                 const pid = row["exh_PID"]
@@ -115,6 +133,18 @@ export function requestExhibition(app, BASE_URI) {
 
             // build crm:P129i_is_subject_of — media + publications
             const subjectOfNodes = []
+
+            if (posterUrl) {
+                exh["crm:P65_shows_visual_item"] = {
+                    "@id": posterUrl,
+                    "@type": "crm:E36_Visual_Item",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300027221",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "poster"
+                    }
+                }
+            }
 
             // existing nodes from json_ld_v2 (e.g. IIIF manifest)
             if (exh["crm:P129i_is_subject_of"]) {

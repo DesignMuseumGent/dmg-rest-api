@@ -70,7 +70,7 @@ export function requestAgents(app, BASE_URI) {
             }
 
             const totalPages = Math.ceil(count / itemsPerPage)
-            const collectionId = `${BASE_URI}/id/agents`
+            const collectionId = `${BASE_URI}id/agents`
 
             const buildParams = (p) => {
                 const params = new URLSearchParams({
@@ -102,7 +102,7 @@ export function requestAgents(app, BASE_URI) {
 
                 if (!fullRecord) {
                     return {
-                        "@id": obj["@id"] ?? `${BASE_URI}/id/agent/${row.agent_ID}`,
+                        "@id": obj["@id"] ?? `${BASE_URI}id/agent/${row.agent_ID}`,
                         "@type": "crm:E39_Actor",
                         "rdfs:label": obj["rdfs:label"] ?? row.agent_ID
                     }

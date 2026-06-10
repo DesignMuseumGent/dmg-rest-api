@@ -36,7 +36,7 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - `crm:P106_is_composed_of` is the new property for **set composition** on koepelrecords — lists the member objects (e.g. individual pieces in a cutlery service or series) as resolvable DMG URIs
 - `crm:P46i_forms_part_of` continues to express set membership on member objects, pointing to their parent koepelrecord
 - Both `requestObject.js` and `requestObjects.js` (`buildMember`) apply the same property mapping consistently — `?fullRecord=true` responses now match single object endpoint responses exactly for all component and set fields
-- `objectClient.js` updated to write `crm:P106_is_composed_of` for `bestaatUit` (set members) instead of merging into `crm:P46_has_component`
+- `objectClient.js` updated to write `crm:P106_is_composed_of` for `bestaatUit` (set members) instead of merging into `crm:P46_has_component`
 
 ## [v2.5.3] — 2026-06-05
 

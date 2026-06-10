@@ -1,6 +1,36 @@
 import { Router } from 'express'
 import { supabase } from '../../supabaseClient.js'
 
+// ---------------------------------------------------------------------------
+// AGENT RELATION TYPES
+// ---------------------------------------------------------------------------
+
+const AGENT_RELATIONS = [
+    // family
+    { value: 'parent_of',    label: 'is parent of',     inverse: 'child_of',     inverseLabel: 'is child of' },
+    { value: 'child_of',     label: 'is child of',      inverse: 'parent_of',    inverseLabel: 'is parent of' },
+    { value: 'spouse_of',    label: 'is spouse of',     inverse: 'spouse_of',    inverseLabel: 'is spouse of' },
+    { value: 'sibling_of',   label: 'is sibling of',    inverse: 'sibling_of',   inverseLabel: 'is sibling of' },
+    // professional
+    { value: 'employer_of',  label: 'is employer of',   inverse: 'employee_of',  inverseLabel: 'is employee of' },
+    { value: 'employee_of',  label: 'is employee of',   inverse: 'employer_of',  inverseLabel: 'is employer of' },
+    { value: 'mentor_of',    label: 'is mentor of',     inverse: 'student_of',   inverseLabel: 'is student of' },
+    { value: 'student_of',   label: 'is student of',    inverse: 'mentor_of',    inverseLabel: 'is mentor of' },
+    { value: 'collaborator', label: 'collaborates with', inverse: 'collaborator', inverseLabel: 'collaborates with' },
+    // organisational
+    { value: 'member_of',    label: 'is member of',     inverse: 'has_member',   inverseLabel: 'has member' },
+    { value: 'has_member',   label: 'has member',       inverse: 'member_of',    inverseLabel: 'is member of' },
+    { value: 'founded',      label: 'founded',          inverse: 'founded_by',   inverseLabel: 'was founded by' },
+    { value: 'founded_by',   label: 'was founded by',   inverse: 'founded',      inverseLabel: 'founded' },
+]
+
+const RELATION_MAP = {}
+AGENT_RELATIONS.forEach(r => { RELATION_MAP[r.value] = r.label })
+
+// ---------------------------------------------------------------------------
+// SETUP
+// ---------------------------------------------------------------------------
+
 export function setupAdmin(app) {
 
     const adminRouter = Router()
@@ -66,15 +96,17 @@ export function setupAdmin(app) {
             { count: projectsCount },
             { count: exhibitionsMediaCount },
             { count: publicationsCount },
-            { count: translationsCount }
+            { count: translationsCount },
+            { count: relationsCount }
         ] = await Promise.all([
             supabase.from('dmg_objects_media').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_objects_projects').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_exhibitions_media').select('*', { count: 'exact', head: true }),
             supabase.from('dmg_exhibitions_publications').select('*', { count: 'exact', head: true }),
-            supabase.from('dmg_tentoonstelling_LDES').select('*', { count: 'exact', head: true }).not('title_FR', 'is', null)
+            supabase.from('dmg_tentoonstelling_LDES').select('*', { count: 'exact', head: true }).not('title_FR', 'is', null),
+            supabase.from('dmg_agent_relations').select('*', { count: 'exact', head: true })
         ])
-        res.send(dashboardPage(req.session.user, { mediaCount, projectsCount, exhibitionsMediaCount, publicationsCount, translationsCount }))
+        res.send(dashboardPage(req.session.user, { mediaCount, projectsCount, exhibitionsMediaCount, publicationsCount, translationsCount, relationsCount }))
     })
 
     // ---------------------------------------------------------------------------
@@ -194,7 +226,6 @@ export function setupAdmin(app) {
 
         const results = {}
 
-        // list all files in the posters bucket once, then check against pids
         const { data: posterFiles } = await supabase.storage
             .from('posters')
             .list('', { limit: 1000 })
@@ -215,6 +246,24 @@ export function setupAdmin(app) {
         }))
 
         res.json(results)
+    })
+
+    // ---------------------------------------------------------------------------
+    // AGENT AUTOCOMPLETE API
+    // ---------------------------------------------------------------------------
+
+    adminRouter.get('/api/agents', requireAuth, async (req, res) => {
+        const q = req.query.q?.trim()
+        if (!q || q.length < 2) return res.json([])
+        const { data } = await supabase
+            .from('dmg_personen_LDES')
+            .select('agent_ID, json_ld_v2')
+            .textSearch('search_vector', q, { type: 'websearch', config: 'simple' })
+            .limit(10)
+        res.json((data || []).map(r => ({
+            id:    r.agent_ID,
+            label: r.json_ld_v2?.['rdfs:label'] ?? r.agent_ID
+        })))
     })
 
     // ---------------------------------------------------------------------------
@@ -351,6 +400,82 @@ export function setupAdmin(app) {
         return res.redirect('/admin/translations?success=1')
     })
 
+    // ---------------------------------------------------------------------------
+    // AGENT RELATIONS
+    // ---------------------------------------------------------------------------
+
+    adminRouter.get('/relations', requireAuth, async (req, res) => {
+        const search = req.query.q?.trim() || null
+
+        let query = supabase
+            .from('dmg_agent_relations')
+            .select('id, agent_id_a, relation, agent_id_b, created_at')
+            .order('created_at', { ascending: false })
+            .limit(200)
+
+        if (search) query = query.or(`agent_id_a.ilike.%${search}%,agent_id_b.ilike.%${search}%`)
+
+        const { data, error } = await query
+        res.send(relationsPage(data || [], error?.message, req.query.success, req.query.error, search, req.session.user))
+    })
+
+    adminRouter.post('/relations/add', requireAuth, async (req, res) => {
+        const { agent_id_a, relation, agent_id_b } = req.body
+
+        if (!agent_id_a || !relation || !agent_id_b) {
+            return res.redirect('/admin/relations?error=missing+required+fields')
+        }
+        if (agent_id_a === agent_id_b) {
+            return res.redirect('/admin/relations?error=agent+cannot+relate+to+itself')
+        }
+
+        const [{ data: agentA }, { data: agentB }] = await Promise.all([
+            supabase.from('dmg_personen_LDES').select('agent_ID').eq('agent_ID', agent_id_a).maybeSingle(),
+            supabase.from('dmg_personen_LDES').select('agent_ID').eq('agent_ID', agent_id_b).maybeSingle()
+        ])
+        if (!agentA) return res.redirect('/admin/relations?error=agent+A+not+found')
+        if (!agentB) return res.redirect('/admin/relations?error=agent+B+not+found')
+
+        const relDef = AGENT_RELATIONS.find(r => r.value === relation)
+        if (!relDef) return res.redirect('/admin/relations?error=invalid+relation+type')
+
+        const rows = [{ agent_id_a, relation, agent_id_b }]
+        if (relDef.inverse !== relation || agent_id_a !== agent_id_b) {
+            rows.push({ agent_id_a: agent_id_b, relation: relDef.inverse, agent_id_b: agent_id_a })
+        }
+
+        const { error } = await supabase
+            .from('dmg_agent_relations')
+            .upsert(rows, { onConflict: 'agent_id_a,relation,agent_id_b', ignoreDuplicates: true })
+
+        if (error) return res.redirect('/admin/relations?error=' + encodeURIComponent(error.message))
+        return res.redirect('/admin/relations?success=1')
+    })
+
+    adminRouter.post('/relations/delete/:id', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+
+        const { data: rel } = await supabase
+            .from('dmg_agent_relations')
+            .select('agent_id_a, relation, agent_id_b')
+            .eq('id', req.params.id)
+            .maybeSingle()
+
+        if (rel) {
+            const relDef = AGENT_RELATIONS.find(r => r.value === rel.relation)
+            await supabase.from('dmg_agent_relations').delete().eq('id', req.params.id)
+            if (relDef) {
+                await supabase.from('dmg_agent_relations')
+                    .delete()
+                    .eq('agent_id_a', rel.agent_id_b)
+                    .eq('relation',   relDef.inverse)
+                    .eq('agent_id_b', rel.agent_id_a)
+            }
+        }
+
+        return res.redirect('/admin/relations')
+    })
+
     app.use('/admin', adminRouter)
 }
 
@@ -430,10 +555,11 @@ td { padding:0.75rem; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
 tr:last-child td { border-bottom:none; }
 
 .tag { display:inline-block; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700; }
-.tag-video { background:#ebf4ff; color:#2b6cb0; }
-.tag-audio { background:#f0fff4; color:#276749; }
-.tag-pub   { background:#faf5ff; color:#6b46c1; }
-.tag-views { background:#fef3c7; color:#92400e; }
+.tag-video    { background:#ebf4ff; color:#2b6cb0; }
+.tag-audio    { background:#f0fff4; color:#276749; }
+.tag-pub      { background:#faf5ff; color:#6b46c1; }
+.tag-views    { background:#fef3c7; color:#92400e; }
+.tag-relation { background:#e6f3ff; color:#1a5276; }
 .alert { padding:0.75rem 1rem; border-radius:6px; margin-bottom:1rem; font-size:0.9375rem; }
 .alert-success { background:#f0fff4; color:#276749; border:1px solid #c6f6d5; }
 .alert-error   { background:#fff5f5; color:#c53030; border:1px solid #fed7d7; }
@@ -499,6 +625,8 @@ const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
         <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
         <a href="/admin/publications" ${path === '/publications' ? 'class="active"' : ''}>Publications</a>
         <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
+        <span class="nav-sep">·</span>
+        <a href="/admin/relations" ${path === '/relations' ? 'class="active"' : ''}>Agent relations</a>
     </nav>
     <main>${content}</main>
 </body>
@@ -583,6 +711,7 @@ const resultCount = (n, search) =>
 const sectionDivider = (title) =>
     `<div class="section-divider"><h3>${title}</h3></div>`
 
+// exhibition autocomplete widget
 const acWidget = () => `
     <div class="ac-wrap">
         <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
@@ -592,7 +721,7 @@ const acWidget = () => `
     <div class="ac-selected" id="ac-selected">
         <span class="ac-selected-label" id="ac-label"></span>
         <span class="ac-selected-pid" id="ac-pid"></span>
-        <a href="#" class="ac-clear" id="ac-clear">✕ clear</a>
+        <a href="#" class="ac-clear" id="ac-clear">&#10005; clear</a>
     </div>`
 
 const acScript = (prefillFields = []) => {
@@ -675,7 +804,7 @@ const acScript = (prefillFields = []) => {
 </script>`
 }
 
-// asset checker script — separate from acScript to avoid nesting conflicts
+// asset checker — separate to avoid nested template literal issues
 const assetCheckerScript = () => `<script>
 (function () {
     const rows = document.querySelectorAll('tr[data-pid]')
@@ -694,10 +823,8 @@ const assetCheckerScript = () => `<script>
                 batch.forEach(pid => {
                     const asset = data[pid]
                     if (!asset) return
-
                     const posterCell = document.querySelector('.asset-poster[data-pid="' + pid + '"]')
                     const viewsCell  = document.querySelector('.asset-views[data-pid="'  + pid + '"]')
-
                     if (posterCell) {
                         posterCell.innerHTML = asset.hasPoster
                             ? '<span class="check-yes">&#10003;</span>'
@@ -711,6 +838,81 @@ const assetCheckerScript = () => `<script>
                 })
             })
             .catch(() => {})
+    })
+})()
+</script>`
+
+// agent autocomplete widget — separate from exhibition widget to avoid ID conflicts
+const agentAcWidget = (suffix) => `
+    <div class="ac-wrap">
+        <input type="text" id="ac-agent-input-${suffix}" placeholder="Search agent by name or ID..." autocomplete="off">
+        <div class="ac-dropdown" id="ac-agent-dropdown-${suffix}"></div>
+    </div>
+    <input type="hidden" name="agent_id_${suffix}" id="ac-agent-value-${suffix}" required>
+    <div class="ac-selected" id="ac-agent-selected-${suffix}">
+        <span class="ac-selected-label" id="ac-agent-label-${suffix}"></span>
+        <span class="ac-selected-pid" id="ac-agent-pid-${suffix}"></span>
+        <a href="#" class="ac-clear" id="ac-agent-clear-${suffix}">&#10005; clear</a>
+    </div>`
+
+const agentAcScript = () => `<script>
+(function () {
+    ['a', 'b'].forEach(function (suffix) {
+        var input    = document.getElementById('ac-agent-input-'    + suffix)
+        var dropdown = document.getElementById('ac-agent-dropdown-' + suffix)
+        var hidden   = document.getElementById('ac-agent-value-'    + suffix)
+        var selected = document.getElementById('ac-agent-selected-' + suffix)
+        var lbl      = document.getElementById('ac-agent-label-'    + suffix)
+        var pid      = document.getElementById('ac-agent-pid-'      + suffix)
+        var clear    = document.getElementById('ac-agent-clear-'    + suffix)
+        var timer
+
+        dropdown.addEventListener('click', function (e) {
+            var item = e.target.closest('[data-id]')
+            if (!item) return
+            hidden.value           = item.dataset.id
+            lbl.textContent        = item.dataset.label
+            pid.textContent        = item.dataset.id
+            selected.style.display = 'flex'
+            input.style.display    = 'none'
+            dropdown.style.display = 'none'
+        })
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer)
+            var q = input.value.trim()
+            if (q.length < 2) { dropdown.style.display = 'none'; return }
+            timer = setTimeout(function () {
+                fetch('/admin/api/agents?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json() })
+                    .then(function (data) {
+                        if (!data.length) { dropdown.style.display = 'none'; return }
+                        dropdown.innerHTML = data.map(function (d) {
+                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
+                                d.label.replace(/"/g, '&quot;') + '">' +
+                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                        }).join('')
+                        dropdown.style.display = 'block'
+                    })
+            }, 250)
+        })
+
+        clear.addEventListener('click', function (e) {
+            e.preventDefault()
+            hidden.value           = ''
+            input.value            = ''
+            input.style.display    = 'block'
+            selected.style.display = 'none'
+            dropdown.style.display = 'none'
+            input.focus()
+        })
+
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#ac-agent-input-' + suffix) &&
+                !e.target.closest('#ac-agent-dropdown-' + suffix)) {
+                dropdown.style.display = 'none'
+            }
+        })
     })
 })()
 </script>`
@@ -764,6 +966,19 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
                     <h2>Exhibition information</h2>
                     <div class="card-stat">${stats.translationsCount ?? '—'}</div>
                     <p>Exhibitions with FR translation. Add multilingual titles, descriptions and curators.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <div class="dashboard-section-title">Agents</div>
+        <div class="dashboard-grid">
+            <a href="/admin/relations" class="card-link">
+                <div class="card">
+                    <h2>Agent relations</h2>
+                    <div class="card-stat">${stats.relationsCount ?? '—'}</div>
+                    <p>Family, professional and organisational relationships between agents.</p>
                 </div>
             </a>
         </div>
@@ -1036,6 +1251,92 @@ const publicationsPage = (rows, error, success, search, user) => layout('Publica
 
     ${acScript()}
 `, '/publications', user)
+
+// ---------------------------------------------------------------------------
+// AGENT RELATIONS PAGE
+// ---------------------------------------------------------------------------
+
+const relationsPage = (rows, error, success, errorMsg, search, user) => layout('Agent relations', `
+    <h1>Agent relations</h1>
+    ${alerts(success, errorMsg)}
+
+    <div class="card">
+        <h2>Add relation</h2>
+        <form method="POST" action="/admin/relations/add">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Agent A *</label>
+                    ${agentAcWidget('a')}
+                </div>
+                <div class="form-group full">
+                    <label>Relation *</label>
+                    <select name="relation" required>
+                        <option value="">— select —</option>
+                        <optgroup label="Family">
+                            <option value="parent_of">is parent of</option>
+                            <option value="child_of">is child of</option>
+                            <option value="spouse_of">is spouse of</option>
+                            <option value="sibling_of">is sibling of</option>
+                        </optgroup>
+                        <optgroup label="Professional">
+                            <option value="employer_of">is employer of</option>
+                            <option value="employee_of">is employee of</option>
+                            <option value="mentor_of">is mentor of</option>
+                            <option value="student_of">is student of</option>
+                            <option value="collaborator">collaborates with</option>
+                        </optgroup>
+                        <optgroup label="Organisational">
+                            <option value="member_of">is member of</option>
+                            <option value="has_member">has member</option>
+                            <option value="founded">founded</option>
+                            <option value="founded_by">was founded by</option>
+                        </optgroup>
+                    </select>
+                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">The inverse relation is stored automatically.</span>
+                </div>
+                <div class="form-group full">
+                    <label>Agent B *</label>
+                    ${agentAcWidget('b')}
+                </div>
+            </div>
+            <div style="margin-top:1rem;">
+                <button type="submit" class="btn btn-primary">Add relation</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Entries</h2>
+        ${searchBar('/admin/relations', search, 'Filter by agent ID', 'DMG-A-00162')}
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No relations found for "${search}".` : 'No agent relations added yet.'}</p>`
+    : `
+        ${resultCount(rows.length, search)}
+        <table>
+            <thead>
+                <tr>
+                    <th>Agent A</th>
+                    <th>Relation</th>
+                    <th>Agent B</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(r => `
+                <tr>
+                    <td><span class="mono">${r.agent_id_a}</span></td>
+                    <td><span class="tag tag-relation">${RELATION_MAP[r.relation] ?? r.relation}</span></td>
+                    <td><span class="mono">${r.agent_id_b}</span></td>
+                    <td>${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+        <p style="font-size:0.8125rem;color:#aaa;margin-top:0.75rem;">Deleting a relation also removes its inverse.</p>
+        ${permNote(user.canDelete)}`}
+    </div>
+
+    ${agentAcScript()}
+`, '/relations', user)
 
 // ---------------------------------------------------------------------------
 // EXHIBITION TRANSLATIONS PAGE

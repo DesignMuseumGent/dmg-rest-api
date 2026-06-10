@@ -1,5 +1,6 @@
 import { fetchObjectByID } from "../../../utils/parsers.js";
-import { applyImagesToObject } from "../../../utils/iiif_images.js"; // adjust path if your layout differs
+import { applyImagesToObject } from "../../../utils/iiif_images.js";
+import { supabase } from '../../../../supabaseClient.js'
 
 export function requestObject(app, BASE_URI) {
     const objectHandler = async (req, res) => {
@@ -9,7 +10,6 @@ export function requestObject(app, BASE_URI) {
 
         const { ObjectPID } = req.params;
 
-        // handle permanently removed objects
         if (ObjectPID === "REMOVED") {
             return res.status(410).json({ error: "This object has been permanently removed from our collection." });
         }
@@ -42,7 +42,7 @@ export function requestObject(app, BASE_URI) {
 
             const obj = row["json_ld_v2"] ?? {}
 
-            // multilingual titles
+            // ── multilingual titles ──────────────────────────────────────
             const appellations = []
             if (row["object_title_nl"]) appellations.push({ lang: "NLD", value: row["object_title_nl"] })
             if (row["object_title_fr"]) appellations.push({ lang: "FRA", value: row["object_title_fr"] })
@@ -68,7 +68,7 @@ export function requestObject(app, BASE_URI) {
                 ]
             }
 
-            // multilingual descriptions
+            // ── multilingual descriptions ────────────────────────────────
             const descriptions = []
             if (row["object_description_nl"]) descriptions.push({ lang: "NLD", value: row["object_description_nl"] })
             if (row["object_description_fr"]) descriptions.push({ lang: "FRA", value: row["object_description_fr"] })
@@ -89,14 +89,10 @@ export function requestObject(app, BASE_URI) {
                 }))
             }
 
-            // hasParts / isPartOf — always overwrite json_ld_v2 with computed relations columns
-            const isPartOf = row["isPartOf"] ?? null
-            const hasParts = row["hasParts"] ?? null
-
-
-            // always delete existing values from json_ld_v2 first
-            delete obj["crm:P46_has_component"]
+            // ── isPartOf — this object is a member of a koepelrecord set ─
+            // Overwrite from computed column — single value, no rich data lost
             delete obj["crm:P46i_forms_part_of"]
+            const isPartOf = row["isPartOf"] ?? null
 
             if (isPartOf) {
                 obj["crm:P46i_forms_part_of"] = {
@@ -105,32 +101,32 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
+            // ── hasParts — koepelrecord: this set is composed of these objects
+            // Uses crm:P106_is_composed_of — distinct from crm:P46_has_component
+            // crm:P46_has_component (fysiekeOnderdelen with names, materials, dimensions)
+            // is left untouched from json_ld_v2
+            delete obj["crm:P106_is_composed_of"]
+            const hasParts = row["hasParts"] ?? null
+
             if (hasParts) {
                 const parts = typeof hasParts === 'string'
                     ? hasParts.split(',').map(p => p.trim()).filter(Boolean)
                     : Array.isArray(hasParts) ? hasParts : []
 
                 if (parts.length > 0) {
-                    obj["crm:P46_has_component"] = parts.map(p => ({
+                    obj["crm:P106_is_composed_of"] = parts.map(p => ({
                         "@id": `${BASE_URI}id/object/${p}`,
                         "@type": "crm:E22_Human-Made_Object"
                     }))
                 }
             }
 
-            // ---------------------------------------------------------------
-            // IIIF images — direct, validated links with rights and attribution
-            // ---------------------------------------------------------------
-            // Adds:
-            //   - crm:P138i_has_representation : array of crm:E38_Image blocks
-            //                                    (the canonical CIDOC property)
-            //   - image : the first image, repeated as a convenience key
-            // No-op when the row has no validated images.
+            // ── IIIF images ──────────────────────────────────────────────
             applyImagesToObject(obj, row)
 
-            // color data — only when ?colors=true
+            // ── color data — only when ?colors=true ─────────────────────
             if (showColors) {
-                const colorsData = row["colors"] ?? null
+                const colorsData   = row["colors"] ?? null
                 const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
 
                 if (colorsData && iiifImageUri) {
@@ -227,63 +223,39 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
-            // media — video and audio
+            // ── media — video and audio ──────────────────────────────────
             const media = row["_media"] ?? []
 
             if (media.length > 0) {
-                const mediaNodes = media.map(m => {
-                    const isVideo = m.type === 'video'
+                const mediaNodes = media.map(m => ({
+                    "@id": m.url,
+                    "@type": "crm:E73_Information_Object",
+                    "crm:P2_has_type": m.type === 'video'
+                        ? { "@id": "http://vocab.getty.edu/aat/300263419", "@type": "crm:E55_Type", "rdfs:label": "video" }
+                        : { "@id": "http://vocab.getty.edu/aat/300263472", "@type": "crm:E55_Type", "rdfs:label": "audio" },
+                    ...(m.title && {
+                        "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": m.title }
+                    }),
+                    ...(m.date && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": m.date,
+                            "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
+                            "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
+                        }
+                    })
+                }))
 
-                    return {
-                        "@id": m.url,
-                        "@type": "crm:E73_Information_Object",
-                        "crm:P2_has_type": isVideo
-                            ? {
-                                "@id": "http://vocab.getty.edu/aat/300263419",
-                                "@type": "crm:E55_Type",
-                                "rdfs:label": "video"
-                            }
-                            : {
-                                "@id": "http://vocab.getty.edu/aat/300263472",
-                                "@type": "crm:E55_Type",
-                                "rdfs:label": "audio"
-                            },
-                        ...(m.title && {
-                            "crm:P102_has_title": {
-                                "@type": "crm:E35_Title",
-                                "rdfs:label": m.title
-                            }
-                        }),
-                        ...(m.date && {
-                            "crm:P4_has_time-span": {
-                                "@type": "crm:E52_Time-Span",
-                                "rdfs:label": m.date,
-                                "crm:P82a_begin_of_the_begin": {
-                                    "@type": "xsd:gYear",
-                                    "@value": m.date
-                                },
-                                "crm:P82b_end_of_the_end": {
-                                    "@type": "xsd:gYear",
-                                    "@value": m.date
-                                }
-                            }
-                        })
-                    }
-                })
-
-                // merge with existing P129i_is_subject_of (IIIF manifest)
                 const existing = obj["crm:P129i_is_subject_of"]
                 if (existing) {
                     const existingArray = Array.isArray(existing) ? existing : [existing]
                     obj["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
                 } else {
-                    obj["crm:P129i_is_subject_of"] = mediaNodes.length === 1
-                        ? mediaNodes[0]
-                        : mediaNodes
+                    obj["crm:P129i_is_subject_of"] = mediaNodes.length === 1 ? mediaNodes[0] : mediaNodes
                 }
             }
 
-            // projects — creative projects inspired by or using this object
+            // ── projects ─────────────────────────────────────────────────
             const projects = row["_projects"] ?? []
 
             if (projects.length > 0) {
@@ -294,35 +266,20 @@ export function requestObject(app, BASE_URI) {
                         "@type": "crm:E55_Type",
                         "rdfs:label": "creative project"
                     },
-                    ...(p.title && {
-                        "crm:P102_has_title": {
-                            "@type": "crm:E35_Title",
-                            "rdfs:label": p.title
-                        }
-                    }),
-                    ...(p.url && {
-                        "crm:P129i_is_subject_of": {
-                            "@id": p.url,
-                            "@type": "crm:E73_Information_Object"
-                        }
-                    }),
-                    ...(p.date && {
+                    ...(p.title && { "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": p.title } }),
+                    ...(p.url   && { "crm:P129i_is_subject_of": { "@id": p.url, "@type": "crm:E73_Information_Object" } }),
+                    ...(p.date  && {
                         "crm:P4_has_time-span": {
                             "@type": "crm:E52_Time-Span",
                             "rdfs:label": p.date,
-                            "crm:P82a_begin_of_the_begin": {
-                                "@type": "xsd:gYear",
-                                "@value": p.date
-                            },
-                            "crm:P82b_end_of_the_end": {
-                                "@type": "xsd:gYear",
-                                "@value": p.date
-                            }
+                            "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": p.date },
+                            "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": p.date }
                         }
                     })
                 }))
             }
 
+            // ── cache headers ────────────────────────────────────────────
             if (row["generated_at_time"]) {
                 const lastModified = new Date(row["generated_at_time"]).toUTCString()
                 res.setHeader('Last-Modified', lastModified)
@@ -353,7 +310,7 @@ export function requestObject(app, BASE_URI) {
                 .maybeSingle()
 
             if (error) return res.status(500).end()
-            if (!data) return res.status(404).end()
+            if (!data)  return res.status(404).end()
 
             if (data['RESOLVES_TO']) {
                 const resolvedNumber = data['RESOLVES_TO'].replace('id/object/', '')
@@ -383,7 +340,6 @@ export function requestObject(app, BASE_URI) {
 
     app.get(`/id/object/:ObjectPID`, objectHandler);
     app.get(`/id/ark:/29417/object/:ObjectPID`, objectHandler);
-
     app.head('/id/object/:ObjectPID', headHandler)
     app.head('/id/ark:/29417/object/:ObjectPID', headHandler)
 }

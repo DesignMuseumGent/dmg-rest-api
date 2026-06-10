@@ -44,7 +44,6 @@ export function requestObjects(app, BASE_URI) {
                     : `${BASE_URI}id/agent/${agentFilter}`
                 : null
 
-            // date range — accept EDTF interval ?date=1950/1969 or separate ?dateFrom= ?dateTo=
             const dateParam = req.query.date ?? null
             let dateFrom = req.query.dateFrom ? parseInt(req.query.dateFrom) : null
             let dateTo   = req.query.dateTo   ? parseInt(req.query.dateTo)   : null
@@ -386,14 +385,10 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
         }))
     }
 
-    // ── hasParts / isPartOf — overwrite raw json_ld_v2 ───────
-    // Always use computed columns so these match /object/{PID} exactly.
-    // Clears any stale array form (with owl:sameAs / rdfs:label) from harvest.
-    const rowIsPartOf = row["isPartOf"] ?? null
-    const rowHasParts = row["hasParts"] ?? null
-
-    delete obj["crm:P46_has_component"]
+    // ── isPartOf — this object is a member of a koepelrecord set
+    // Overwrite from computed column — single value, no rich data lost
     delete obj["crm:P46i_forms_part_of"]
+    const rowIsPartOf = row["isPartOf"] ?? null
 
     if (rowIsPartOf) {
         obj["crm:P46i_forms_part_of"] = {
@@ -402,13 +397,20 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
         }
     }
 
+    // ── hasParts — koepelrecord: this set is composed of these objects
+    // Uses crm:P106_is_composed_of — distinct from crm:P46_has_component
+    // crm:P46_has_component (fysiekeOnderdelen with names, materials, dimensions)
+    // is left untouched from json_ld_v2
+    delete obj["crm:P106_is_composed_of"]
+    const rowHasParts = row["hasParts"] ?? null
+
     if (rowHasParts) {
         const parts = typeof rowHasParts === 'string'
             ? rowHasParts.split(',').map(p => p.trim()).filter(Boolean)
             : Array.isArray(rowHasParts) ? rowHasParts : []
 
         if (parts.length > 0) {
-            obj["crm:P46_has_component"] = parts.map(p => ({
+            obj["crm:P106_is_composed_of"] = parts.map(p => ({
                 "@id": `${BASE_URI}id/object/${p}`,
                 "@type": "crm:E22_Human-Made_Object"
             }))

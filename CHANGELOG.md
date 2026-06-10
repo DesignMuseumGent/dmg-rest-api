@@ -25,8 +25,18 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
   - Example: `GET /v2/id/agents?type=unknown` — useful for finding agents that still need manual review
   - Filter is preserved in all Hydra pagination links
 
+### Fixed
+
+- Physical parts (`fysiekeOnderdelen`) with named components, materials and per-part dimensions are now correctly preserved on object records — `crm:P46_has_component` with `/part/N` URIs is no longer overwritten at serve time
+- Koepelrecord set members are now exposed as `crm:P106_is_composed_of` instead of `crm:P46_has_component`, correctly separating two semantically distinct relationships that were previously conflated
+
 ### Changed
 - Agent type `@type` is now reflected in lightweight stubs on `GET /v2/id/agents` — clients can determine whether an agent is a person or organisation without fetching the full record
+- `crm:P46_has_component` now exclusively expresses **physical parts** of the object itself (fysiekeOnderdelen) — named components with their own materials and dimensions, sourced directly from `json_ld_v2`
+- `crm:P106_is_composed_of` is the new property for **set composition** on koepelrecords — lists the member objects (e.g. individual pieces in a cutlery service or series) as resolvable DMG URIs
+- `crm:P46i_forms_part_of` continues to express set membership on member objects, pointing to their parent koepelrecord
+- Both `requestObject.js` and `requestObjects.js` (`buildMember`) apply the same property mapping consistently — `?fullRecord=true` responses now match single object endpoint responses exactly for all component and set fields
+- `objectClient.js` updated to write `crm:P106_is_composed_of` for `bestaatUit` (set members) instead of merging into `crm:P46_has_component`
 
 ## [v2.5.3] — 2026-06-05
 

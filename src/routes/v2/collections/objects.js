@@ -63,7 +63,7 @@ export function requestObjects(app, BASE_URI) {
             }
 
             // ─────────────────────────────────────────────────────────────
-            // BUILD PARAMS — defined early so it can be used in early returns
+            // BUILD PARAMS
             // ─────────────────────────────────────────────────────────────
             const collectionId = `${BASE_URI}id/objects`
 
@@ -115,7 +115,7 @@ export function requestObjects(app, BASE_URI) {
             })
 
             // ─────────────────────────────────────────────────────────────
-            // CONCEPT RESOLUTION — expand to include narrower concepts
+            // CONCEPT RESOLUTION
             // ─────────────────────────────────────────────────────────────
             let conceptURIs = null
             let conceptSearchURIs = null
@@ -129,13 +129,10 @@ export function requestObjects(app, BASE_URI) {
                 const { data: expandedURIs } = await supabase
                     .rpc('get_concept_uris_with_narrower', { root_ids: [conceptId] })
 
-                conceptURIs = expandedURIs?.length
-                    ? expandedURIs
-                    : [conceptURI]
+                conceptURIs = expandedURIs?.length ? expandedURIs : [conceptURI]
             }
 
             if (conceptSearch) {
-                // step 1 — find matching concept IDs by label
                 const { data: conceptMatches } = await supabase
                     .from('dmg_thesaurus_LDES')
                     .select('id')
@@ -144,7 +141,6 @@ export function requestObjects(app, BASE_URI) {
 
                 if (!conceptMatches?.length) return emptyCollection()
 
-                // step 2 — expand to include all narrower concepts recursively
                 const rootIds = conceptMatches.map(c => String(c.id))
                 const { data: expandedURIs } = await supabase
                     .rpc('get_concept_uris_with_narrower', { root_ids: rootIds })
@@ -161,9 +157,9 @@ export function requestObjects(app, BASE_URI) {
             if (!fullRecord) {
                 selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, hasParts, isPartOf, object_types, object_materials'
             } else if (showColors) {
-                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION'
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             } else {
-                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO, COLLECTION_PRESENTATION'
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             }
 
             // ─────────────────────────────────────────────────────────────
@@ -201,7 +197,7 @@ export function requestObjects(app, BASE_URI) {
             }
 
             // ─────────────────────────────────────────────────────────────
-            // AGENT FILTER — via RPC (JSONB path query)
+            // AGENT FILTER — via RPC
             // ─────────────────────────────────────────────────────────────
             if (agentURI) {
                 const { data: rpcData, error: rpcError } = await supabase
@@ -324,7 +320,7 @@ export function requestObjects(app, BASE_URI) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MEMBER BUILDER — shared between normal and agent query paths
+// MEMBER BUILDER
 // ─────────────────────────────────────────────────────────────
 function buildMember(row, fullRecord, showColors, BASE_URI) {
     if (!fullRecord) {
@@ -343,7 +339,7 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
 
     const obj = row["json_ld_v2"] ?? {}
 
-    // multilingual titles
+    // ── multilingual titles ──────────────────────────────────
     const appellations = []
     if (row["object_title_nl"]) appellations.push({ lang: "NLD", value: row["object_title_nl"] })
     if (row["object_title_fr"]) appellations.push({ lang: "FRA", value: row["object_title_fr"] })
@@ -369,7 +365,7 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
         ]
     }
 
-    // multilingual descriptions
+    // ── multilingual descriptions ────────────────────────────
     const descriptions = []
     if (row["object_description_nl"]) descriptions.push({ lang: "NLD", value: row["object_description_nl"] })
     if (row["object_description_fr"]) descriptions.push({ lang: "FRA", value: row["object_description_fr"] })
@@ -390,7 +386,36 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
         }))
     }
 
-    // color data — only when ?colors=true
+    // ── hasParts / isPartOf — overwrite raw json_ld_v2 ───────
+    // Always use computed columns so these match /object/{PID} exactly.
+    // Clears any stale array form (with owl:sameAs / rdfs:label) from harvest.
+    const rowIsPartOf = row["isPartOf"] ?? null
+    const rowHasParts = row["hasParts"] ?? null
+
+    delete obj["crm:P46_has_component"]
+    delete obj["crm:P46i_forms_part_of"]
+
+    if (rowIsPartOf) {
+        obj["crm:P46i_forms_part_of"] = {
+            "@id": `${BASE_URI}id/object/${rowIsPartOf}`,
+            "@type": "crm:E22_Human-Made_Object"
+        }
+    }
+
+    if (rowHasParts) {
+        const parts = typeof rowHasParts === 'string'
+            ? rowHasParts.split(',').map(p => p.trim()).filter(Boolean)
+            : Array.isArray(rowHasParts) ? rowHasParts : []
+
+        if (parts.length > 0) {
+            obj["crm:P46_has_component"] = parts.map(p => ({
+                "@id": `${BASE_URI}id/object/${p}`,
+                "@type": "crm:E22_Human-Made_Object"
+            }))
+        }
+    }
+
+    // ── color data — only when ?colors=true ─────────────────
     if (showColors) {
         const colorsData   = row["colors"] ?? null
         const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null

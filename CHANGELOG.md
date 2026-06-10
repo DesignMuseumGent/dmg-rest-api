@@ -7,6 +7,26 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.5.4] — 2026-06-05
+
+### Added 
+
+- Agent type classification — agents are now classified as `individual` (person) or `organisation` and this is reflected in the CIDOC-CRM `@type` field on all agent records and collection stubs
+  - `crm:E21_Person` — individual persons
+  - `crm:E74_Group` — organisations, studios, collectives and companies
+  - `crm:E39_Actor` — agents not yet classified (fallback, unchanged from previous behaviour)
+  - Classification sourced from two methods: registrar system export (`naam.soort` field: `persoon` / `instelling`) as primary source, Wikidata `instance of` (`P31`) as fallback for agents with a Wikidata `owl:sameAs` link
+  - Stored in new `agent_type` column on `dmg_personen_LDES` with CHECK constraint (`individual`, `organisation`, `unknown`)
+
+- `?type=` filter on `GET /v2/id/agents` — filter agents by classification
+  - Accepted values: `individual`, `organisation`, `unknown`
+  - Example: `GET /v2/id/agents?type=individual`
+  - Example: `GET /v2/id/agents?type=organisation&nationality=België&role=designer`
+  - Example: `GET /v2/id/agents?type=unknown` — useful for finding agents that still need manual review
+  - Filter is preserved in all Hydra pagination links
+
+### Changed
+- Agent type `@type` is now reflected in lightweight stubs on `GET /v2/id/agents` — clients can determine whether an agent is a person or organisation without fetching the full record
 
 ## [v2.5.3] — 2026-06-05
 

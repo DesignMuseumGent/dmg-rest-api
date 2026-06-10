@@ -248,15 +248,15 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
 
 export async function fetchByAgentID(AgentPID) {
   console.log('Fetching agent with ID:', AgentPID);
-  const { data } = await supabase
+  const { data, error } = await supabase
       .from('dmg_personen_LDES')
       .select('agent_ID, json_ld_v2, wikipedia_bios, has_bio_nl, has_bio_fr, has_bio_en, generated_at_time, agent_type')
       .eq('agent_ID', AgentPID)
 
   if (error) {
-    console.error('Error fetching agent:', error);
+    console.error('Error fetching agent:', error)
   } else {
-    console.log('Received agent rows:', Array.isArray(data) ? data.length : 0);
+    console.log('Received agent rows:', Array.isArray(data) ? data.length : 0)
   }
 
   return data;

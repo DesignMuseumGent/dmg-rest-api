@@ -416,7 +416,28 @@ export function setupAdmin(app) {
         if (search) query = query.or(`agent_id_a.ilike.%${search}%,agent_id_b.ilike.%${search}%`)
 
         const { data, error } = await query
-        res.send(relationsPage(data || [], error?.message, req.query.success, req.query.error, search, req.session.user))
+
+        // enrich with agent labels
+        const rows = data || []
+        if (rows.length > 0) {
+            const ids = [...new Set(rows.flatMap(r => [r.agent_id_a, r.agent_id_b]))]
+            const { data: agents } = await supabase
+                .from('dmg_personen_LDES')
+                .select('agent_ID, json_ld_v2')
+                .in('agent_ID', ids)
+
+            const labelMap = {}
+            for (const a of (agents || [])) {
+                labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
+            }
+
+            for (const r of rows) {
+                r.label_a = labelMap[r.agent_id_a] ?? r.agent_id_a
+                r.label_b = labelMap[r.agent_id_b] ?? r.agent_id_b
+            }
+        }
+
+        res.send(relationsPage(rows, error?.message, req.query.success, req.query.error, search, req.session.user))
     })
 
     adminRouter.post('/relations/add', requireAuth, async (req, res) => {
@@ -1324,9 +1345,15 @@ const relationsPage = (rows, error, success, errorMsg, search, user) => layout('
             <tbody>
                 ${rows.map(r => `
                 <tr>
-                    <td><span class="mono">${r.agent_id_a}</span></td>
+                    <td>
+                        <span style="font-weight:500">${r.label_a ?? r.agent_id_a}</span>
+                        <br><span class="mono" style="font-size:0.8125rem;color:#aaa">${r.agent_id_a}</span>
+                    </td>
                     <td><span class="tag tag-relation">${RELATION_MAP[r.relation] ?? r.relation}</span></td>
-                    <td><span class="mono">${r.agent_id_b}</span></td>
+                    <td>
+                        <span style="font-weight:500">${r.label_b ?? r.agent_id_b}</span>
+                        <br><span class="mono" style="font-size:0.8125rem;color:#aaa">${r.agent_id_b}</span>
+                    </td>
                     <td>${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}</td>
                 </tr>`).join('')}
             </tbody>

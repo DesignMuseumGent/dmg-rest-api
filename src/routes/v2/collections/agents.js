@@ -1,7 +1,6 @@
 import { supabase } from '../../../../supabaseClient.js'
 import { buildLinkHeader } from '../../../utils/linkHeader.js'
-import { applyBiosToObj, cidocType } from '../entities/agent.js'
-
+import { applyBiosToObj, cidocType } from '../../../utils/agentHelpers.js'
 
 
 export function requestAgents(app, BASE_URI) {
@@ -91,6 +90,21 @@ export function requestAgents(app, BASE_URI) {
             if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
             if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
+            // after fetching data, before building members — full record only
+            let relationsMap = {}
+            if (fullRecord && data?.length > 0) {
+                const agentIds = data.map(r => r.agent_ID)
+                const { data: allRelations } = await supabase
+                    .from('dmg_agent_relations')
+                    .select('agent_id_a, relation, agent_id_b')
+                    .in('agent_id_a', agentIds)
+
+                for (const rel of (allRelations || [])) {
+                    if (!relationsMap[rel.agent_id_a]) relationsMap[rel.agent_id_a] = []
+                    relationsMap[rel.agent_id_a].push({ relation: rel.relation, agent_id_b: rel.agent_id_b })
+                }
+            }
+
             const members = (data || []).map(row => {
                 const obj = row["json_ld_v2"] ?? {}
                 const type = cidocType(row["agent_type"])
@@ -103,6 +117,7 @@ export function requestAgents(app, BASE_URI) {
                     }
                 }
 
+                row._relations = relationsMap[row.agent_ID] || []
                 return applyBiosToObj(obj, row)
             })
 

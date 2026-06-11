@@ -247,19 +247,29 @@ export async function fetchLDESRecordByAgentID(AgentPID) {
 }
 
 export async function fetchByAgentID(AgentPID) {
-  console.log('Fetching agent with ID:', AgentPID);
-  const { data, error } = await supabase
-      .from('dmg_personen_LDES')
-      .select('agent_ID, json_ld_v2, wikipedia_bios, has_bio_nl, has_bio_fr, has_bio_en, generated_at_time, agent_type')
-      .eq('agent_ID', AgentPID)
+  console.log('Fetching agent with ID:', AgentPID)
+
+  const [{ data, error }, { data: relations }] = await Promise.all([
+    supabase
+        .from('dmg_personen_LDES')
+        .select('agent_ID, json_ld_v2, wikipedia_bios, has_bio_nl, has_bio_fr, has_bio_en, generated_at_time, agent_type')
+        .eq('agent_ID', AgentPID),
+    supabase
+        .from('dmg_agent_relations')
+        .select('relation, agent_id_b')
+        .eq('agent_id_a', AgentPID)
+  ])
 
   if (error) {
     console.error('Error fetching agent:', error)
-  } else {
-    console.log('Received agent rows:', Array.isArray(data) ? data.length : 0)
   }
 
-  return data;
+  // attach relations to row
+  if (data?.[0]) {
+    data[0]._relations = relations || []
+  }
+
+  return data
 }
 
 export async function fetchByConceptID(ConceptPID) {

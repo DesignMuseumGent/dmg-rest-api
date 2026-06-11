@@ -407,18 +407,31 @@ export function setupAdmin(app) {
     adminRouter.get('/relations', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
 
-        let query = supabase
-            .from('dmg_agent_relations')
-            .select('id, agent_id_a, relation, agent_id_b, created_at')
-            .order('created_at', { ascending: false })
-            .limit(200)
+        const [{ data, error }, { data: statsData }] = await Promise.all([
+            (() => {
+                let query = supabase
+                    .from('dmg_agent_relations')
+                    .select('id, agent_id_a, relation, agent_id_b, created_at')
+                    .order('agent_id_a', { ascending: true })
+                    .order('relation',   { ascending: true })
+                    .limit(500)
+                if (search) query = query.or(`agent_id_a.ilike.%${search}%,agent_id_b.ilike.%${search}%`)
+                return query
+            })(),
+            supabase
+                .from('dmg_agent_relations')
+                .select('relation')
+        ])
 
-        if (search) query = query.or(`agent_id_a.ilike.%${search}%,agent_id_b.ilike.%${search}%`)
+        const rows = data || []
 
-        const { data, error } = await query
+        // build relation type stats from full unfiltered set
+        const stats = {}
+        for (const r of (statsData || [])) {
+            stats[r.relation] = (stats[r.relation] ?? 0) + 1
+        }
 
         // enrich with agent labels
-        const rows = data || []
         if (rows.length > 0) {
             const ids = [...new Set(rows.flatMap(r => [r.agent_id_a, r.agent_id_b]))]
             const { data: agents } = await supabase
@@ -430,14 +443,29 @@ export function setupAdmin(app) {
             for (const a of (agents || [])) {
                 labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
             }
-
             for (const r of rows) {
                 r.label_a = labelMap[r.agent_id_a] ?? r.agent_id_a
                 r.label_b = labelMap[r.agent_id_b] ?? r.agent_id_b
             }
         }
 
-        res.send(relationsPage(rows, error?.message, req.query.success, req.query.error, search, req.session.user))
+        // group by agent_id_a
+        const grouped = []
+        const seen = {}
+        for (const r of rows) {
+            if (!seen[r.agent_id_a]) {
+                seen[r.agent_id_a] = { agent_id: r.agent_id_a, label: r.label_a, relations: [] }
+                grouped.push(seen[r.agent_id_a])
+            }
+            seen[r.agent_id_a].relations.push({
+                id:         r.id,
+                relation:   r.relation,
+                agent_id_b: r.agent_id_b,
+                label_b:    r.label_b
+            })
+        }
+
+        res.send(relationsPage(grouped, rows.length, stats, error?.message, req.query.success, req.query.error, search, req.session.user))
     })
 
     adminRouter.post('/relations/add', requireAuth, async (req, res) => {
@@ -612,6 +640,23 @@ tr:last-child td { border-bottom:none; }
 .ac-selected-pid { font-size:0.8125rem; color:#aaa; font-family:${MONO}; }
 .ac-clear { font-size:0.8125rem; color:#999; text-decoration:none; margin-left:0.25rem; }
 .ac-clear:hover { color:#c53030; }
+
+.relations-grouped { display:flex; flex-direction:column; gap:0; }
+.relation-group { border:1px solid #eee; border-radius:6px; margin-bottom:0.75rem; overflow:hidden; }
+.relation-group-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:#fafafa; border-bottom:1px solid #eee; }
+.relation-group-name { font-weight:500; font-size:0.9375rem; margin-right:0.625rem; }
+.relation-group-pid { font-size:0.8125rem; color:#aaa; }
+.relation-group-count { font-size:0.8125rem; color:#aaa; white-space:nowrap; }
+.relation-group-table { width:100%; border-collapse:collapse; }
+.relation-group-table td { padding:0.625rem 1rem; border-bottom:1px solid #f5f5f5; vertical-align:middle; }
+.relation-group-table tr:last-child td { border-bottom:none; }
+.relation-group-table tr:hover td { background:#fafafa; }
+.relation-stats { display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.25rem; padding:1rem; background:#fafafa; border:1px solid #eee; border-radius:6px; }
+.relation-stat-group { display:flex; flex-direction:column; gap:0.25rem; min-width:120px; }
+.relation-stat-group-title { font-size:0.6875rem; font-weight:600; color:#bbb; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.25rem; }
+.relation-stat-item { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+.relation-stat-label { font-size:0.8125rem; color:#555; }
+.relation-stat-count { font-size:0.8125rem; font-weight:600; color:#1a1a1a; font-family:${MONO}; }
 `
 
 // ---------------------------------------------------------------------------
@@ -1277,7 +1322,44 @@ const publicationsPage = (rows, error, success, search, user) => layout('Publica
 // AGENT RELATIONS PAGE
 // ---------------------------------------------------------------------------
 
-const relationsPage = (rows, error, success, errorMsg, search, user) => layout('Agent relations', `
+const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, search, user) => {
+    // group stats by category for display
+    const statGroups = [
+        {
+            label: 'Family',
+            keys: ['parent_of', 'child_of', 'spouse_of', 'sibling_of']
+        },
+        {
+            label: 'Professional',
+            keys: ['employer_of', 'employee_of', 'mentor_of', 'student_of', 'collaborator']
+        },
+        {
+            label: 'Organisational',
+            keys: ['member_of', 'has_member', 'founded', 'founded_by']
+        }
+    ]
+
+    const statsStrip = Object.keys(stats).length === 0 ? '' : `
+        <div class="relation-stats">
+            ${statGroups.map(group => {
+        const entries = group.keys
+            .filter(k => stats[k])
+            .map(k => `
+                        <div class="relation-stat-item">
+                            <span class="relation-stat-label">${RELATION_MAP[k] ?? k}</span>
+                            <span class="relation-stat-count">${stats[k]}</span>
+                        </div>`)
+            .join('')
+        if (!entries) return ''
+        return `
+                    <div class="relation-stat-group">
+                        <div class="relation-stat-group-title">${group.label}</div>
+                        ${entries}
+                    </div>`
+    }).join('')}
+        </div>`
+
+    return layout('Agent relations', `
     <h1>Agent relations</h1>
     ${alerts(success, errorMsg)}
 
@@ -1327,44 +1409,45 @@ const relationsPage = (rows, error, success, errorMsg, search, user) => layout('
     </div>
 
     <div class="card">
-        <h2>Entries</h2>
-        ${searchBar('/admin/relations', search, 'Filter by agent ID', 'DMG-A-00162')}
-        ${rows.length === 0
-    ? `<p class="empty">${search ? `No relations found for "${search}".` : 'No agent relations added yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
-        <table>
-            <thead>
-                <tr>
-                    <th>Agent A</th>
-                    <th>Relation</th>
-                    <th>Agent B</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows.map(r => `
-                <tr>
-                    <td>
-                        <span style="font-weight:500">${r.label_a ?? r.agent_id_a}</span>
-                        <br><span class="mono" style="font-size:0.8125rem;color:#aaa">${r.agent_id_a}</span>
-                    </td>
-                    <td><span class="tag tag-relation">${RELATION_MAP[r.relation] ?? r.relation}</span></td>
-                    <td>
-                        <span style="font-weight:500">${r.label_b ?? r.agent_id_b}</span>
-                        <br><span class="mono" style="font-size:0.8125rem;color:#aaa">${r.agent_id_b}</span>
-                    </td>
-                    <td>${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
+        <h2>Overview</h2>
+        ${statsStrip}
+        ${searchBar('/admin/relations', search, 'Filter by agent ID or name', 'DMG-A-00162')}
+        ${grouped.length === 0
+        ? `<p class="empty">${search ? `No relations found for "${search}".` : 'No agent relations added yet.'}</p>`
+        : `
+        <p class="count">${grouped.length} ${grouped.length === 1 ? 'agent' : 'agents'} · ${totalRows} ${totalRows === 1 ? 'relation' : 'relations'}${search ? ` matching "${search}"` : ''}</p>
+        <div class="relations-grouped">
+            ${grouped.map(group => `
+            <div class="relation-group">
+                <div class="relation-group-header">
+                    <div>
+                        <span class="relation-group-name">${group.label}</span>
+                        <span class="mono relation-group-pid">${group.agent_id}</span>
+                    </div>
+                    <span class="relation-group-count">${group.relations.length} ${group.relations.length === 1 ? 'relation' : 'relations'}</span>
+                </div>
+                <table class="relation-group-table">
+                    <tbody>
+                        ${group.relations.map(r => `
+                        <tr>
+                            <td style="width:10rem"><span class="tag tag-relation">${RELATION_MAP[r.relation] ?? r.relation}</span></td>
+                            <td>
+                                <span style="font-weight:500">${r.label_b}</span>
+                                <span class="mono" style="font-size:0.8125rem;color:#aaa;margin-left:0.5rem">${r.agent_id_b}</span>
+                            </td>
+                            <td style="width:5rem;text-align:right">${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`).join('')}
+        </div>
         <p style="font-size:0.8125rem;color:#aaa;margin-top:0.75rem;">Deleting a relation also removes its inverse.</p>
         ${permNote(user.canDelete)}`}
     </div>
 
     ${agentAcScript()}
 `, '/relations', user)
-
+}
 // ---------------------------------------------------------------------------
 // EXHIBITION TRANSLATIONS PAGE
 // ---------------------------------------------------------------------------

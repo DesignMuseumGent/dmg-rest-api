@@ -525,6 +525,69 @@ export function setupAdmin(app) {
         return res.redirect('/admin/relations')
     })
 
+    adminRouter.get('/relations/agent/:agentId', requireAuth, async (req, res) => {
+        const agentId = req.params.agentId
+
+        const [
+            { data: agentData },
+            { data: outgoing },
+            { data: incoming }
+        ] = await Promise.all([
+            supabase
+                .from('dmg_personen_LDES')
+                .select('agent_ID, json_ld_v2, agent_type')
+                .eq('agent_ID', agentId)
+                .maybeSingle(),
+            supabase
+                .from('dmg_agent_relations')
+                .select('id, relation, agent_id_b')
+                .eq('agent_id_a', agentId)
+                .order('relation', { ascending: true }),
+            supabase
+                .from('dmg_agent_relations')
+                .select('id, relation, agent_id_a')
+                .eq('agent_id_b', agentId)
+                .order('relation', { ascending: true })
+        ])
+
+        if (!agentData) return res.status(404).send('Agent not found')
+
+        // collect all related agent IDs for label enrichment
+        const relatedIds = [
+            ...(outgoing || []).map(r => r.agent_id_b),
+            ...(incoming || []).map(r => r.agent_id_a)
+        ]
+        const uniqueIds = [...new Set(relatedIds)]
+
+        const labelMap = {}
+        if (uniqueIds.length > 0) {
+            const { data: agents } = await supabase
+                .from('dmg_personen_LDES')
+                .select('agent_ID, json_ld_v2')
+                .in('agent_ID', uniqueIds)
+
+            for (const a of (agents || [])) {
+                labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
+            }
+        }
+
+        const enriched = {
+            agent_id:   agentData.agent_ID,
+            label:      agentData.json_ld_v2?.['rdfs:label'] ?? agentData.agent_ID,
+            agent_type: agentData.agent_type ?? 'unknown',
+            outgoing: (outgoing || []).map(r => ({
+                ...r,
+                label_b: labelMap[r.agent_id_b] ?? r.agent_id_b
+            })),
+            incoming: (incoming || []).map(r => ({
+                ...r,
+                label_a: labelMap[r.agent_id_a] ?? r.agent_id_a
+            }))
+        }
+
+        res.send(agentRelationsPage(enriched, req.session.user))
+    })
+
     app.use('/admin', adminRouter)
 }
 
@@ -1339,6 +1402,71 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
         }
     ]
 
+    const relationsSearchBar = (search) => `
+    <div class="search-bar" style="margin-bottom:1.25rem;">
+        <div class="form-group" style="flex:1;position:relative;">
+            <label>Filter by agent name or ID</label>
+            <input type="text" id="relations-search-input" value="${search || ''}" placeholder="Search agent..." autocomplete="off">
+            <div class="ac-dropdown" id="relations-search-dropdown"></div>
+        </div>
+        <button type="button" class="btn btn-primary" id="relations-search-btn" style="height:38px;" onclick="document.getElementById('relations-search-form').submit()">Search</button>
+        ${search ? `<a href="/admin/relations" class="search-clear">Clear</a>` : ''}
+    </div>
+    <form method="GET" action="/admin/relations" id="relations-search-form">
+        <input type="hidden" name="q" id="relations-search-value" value="${search || ''}">
+    </form>
+    <script>
+    (function () {
+        var input    = document.getElementById('relations-search-input')
+        var dropdown = document.getElementById('relations-search-dropdown')
+        var hidden   = document.getElementById('relations-search-value')
+        var timer
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer)
+            hidden.value = input.value
+            var q = input.value.trim()
+            if (q.length < 2) { dropdown.style.display = 'none'; return }
+            timer = setTimeout(function () {
+                fetch('/admin/api/agents?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json() })
+                    .then(function (data) {
+                        if (!data.length) { dropdown.style.display = 'none'; return }
+                        dropdown.innerHTML = data.map(function (d) {
+                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
+                                d.label.replace(/"/g, '&quot;') + '">' +
+                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                        }).join('')
+                        dropdown.style.display = 'block'
+                    })
+            }, 250)
+        })
+
+        dropdown.addEventListener('click', function (e) {
+            var item = e.target.closest('[data-id]')
+            if (!item) return
+            input.value  = item.dataset.label
+            hidden.value = item.dataset.id
+            dropdown.style.display = 'none'
+            document.getElementById('relations-search-form').submit()
+        })
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                dropdown.style.display = 'none'
+                document.getElementById('relations-search-form').submit()
+            }
+        })
+
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#relations-search-input') &&
+                !e.target.closest('#relations-search-dropdown')) {
+                dropdown.style.display = 'none'
+            }
+        })
+    })()
+    </script>`
+
     const statsStrip = Object.keys(stats).length === 0 ? '' : `
         <div class="relation-stats">
             ${statGroups.map(group => {
@@ -1411,7 +1539,7 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
     <div class="card">
         <h2>Overview</h2>
         ${statsStrip}
-        ${searchBar('/admin/relations', search, 'Filter by agent ID or name', 'DMG-A-00162')}
+        ${relationsSearchBar(search)}        
         ${grouped.length === 0
         ? `<p class="empty">${search ? `No relations found for "${search}".` : 'No agent relations added yet.'}</p>`
         : `
@@ -1421,7 +1549,7 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
             <div class="relation-group">
                 <div class="relation-group-header">
                     <div>
-                        <span class="relation-group-name">${group.label}</span>
+                        <a href="/admin/relations/agent/${group.agent_id}" style="font-weight:500;font-size:0.9375rem;color:#1a1a1a;text-decoration:none;">${group.label}</a>
                         <span class="mono relation-group-pid">${group.agent_id}</span>
                     </div>
                     <span class="relation-group-count">${group.relations.length} ${group.relations.length === 1 ? 'relation' : 'relations'}</span>
@@ -1579,3 +1707,131 @@ const translationsPage = (rows, error, success, errorMsg, search, user) => layou
     ${assetCheckerScript()}
     ${acScript(['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
 `, '/translations', user)
+
+const agentRelationsPage = (agent, user) => {
+    const typeLabel = {
+        individual:   'Person',
+        organisation: 'Organisation',
+        unknown:      'Unknown'
+    }[agent.agent_type] ?? 'Unknown'
+
+    const typeBadge = `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${agent.agent_type === 'individual' ? '#f0fff4;color:#276749' : agent.agent_type === 'organisation' ? '#ebf4ff;color:#2b6cb0' : '#f5f5f5;color:#999'}">${typeLabel}</span>`
+
+    const outgoingByType = {}
+    for (const r of agent.outgoing) {
+        if (!outgoingByType[r.relation]) outgoingByType[r.relation] = []
+        outgoingByType[r.relation].push(r)
+    }
+
+    const incomingByType = {}
+    for (const r of agent.incoming) {
+        if (!incomingByType[r.relation]) incomingByType[r.relation] = []
+        incomingByType[r.relation].push(r)
+    }
+
+    const renderRelationBlock = (grouped, direction) => {
+        if (Object.keys(grouped).length === 0) {
+            return `<p class="empty" style="padding:1rem 0;text-align:left;">No ${direction} relations.</p>`
+        }
+        return Object.entries(grouped).map(([relation, rels]) => `
+            <div style="margin-bottom:1rem;">
+                <div style="font-size:0.75rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">
+                    ${RELATION_MAP[relation] ?? relation}
+                    <span style="font-weight:400;color:#bbb;margin-left:0.375rem;">(${rels.length})</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.375rem;">
+                    ${rels.map(r => {
+            const otherId    = direction === 'outgoing' ? r.agent_id_b : r.agent_id_a
+            const otherLabel = direction === 'outgoing' ? r.label_b    : r.label_a
+            return `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                        <a href="/admin/relations/agent/${otherId}" style="font-weight:500;color:#1a1a1a;text-decoration:none;">${otherLabel}</a>
+                        <span class="mono" style="font-size:0.8125rem;color:#aaa;">${otherId}</span>
+                    </div>
+                    ${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}
+                </div>`
+        }).join('')}
+                </div>
+            </div>`).join('')
+    }
+
+    return layout(`${agent.label} — Agent relations`, `
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.25rem;">
+        <a href="/admin/relations" style="font-size:0.875rem;color:#aaa;text-decoration:none;">← Agent relations</a>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:0.75rem;margin-bottom:1.5rem;">
+        <h1 style="margin-bottom:0;">${agent.label}</h1>
+        ${typeBadge}
+    </div>
+
+    <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1.5rem;">
+        <span class="mono" style="font-size:0.9375rem;color:#666;">${agent.agent_id}</span>
+        <a href="https://data.designmuseumgent.be/v2/id/agent/${agent.agent_id}" target="_blank" style="font-size:0.8125rem;color:#4a90d9;">↗ API</a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="card">
+            <h2>Outgoing relations
+                <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.outgoing.length}</span>
+            </h2>
+            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Relations where this agent is the subject — <em>this agent is parent of / member of / etc.</em></p>
+            ${renderRelationBlock(outgoingByType, 'outgoing')}
+        </div>
+
+        <div class="card">
+            <h2>Incoming relations
+                <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.incoming.length}</span>
+            </h2>
+            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Relations where this agent is the object — <em>other agents are parent of / member of this agent.</em></p>
+            ${renderRelationBlock(incomingByType, 'incoming')}
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:0;">
+        <h2>Add </h2>
+        <form method="POST" action="/admin/relations/add">
+            <input type="hidden" name="agent_id_a" id="ac-agent-value-a" value="${agent.agent_id}">
+            <div style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
+                <span style="font-weight:500;">${agent.label}</span>
+                <span class="mono" style="font-size:0.8125rem;color:#aaa;">${agent.agent_id}</span>
+            </div>
+            <div class="form-grid" style="margin-bottom:1rem;">
+                <div class="form-group">
+                    <label>Relation *</label>
+                    <select name="relation" required>
+                        <option value="">— select —</option>
+                        <optgroup label="Family">
+                            <option value="parent_of">is parent of</option>
+                            <option value="child_of">is child of</option>
+                            <option value="spouse_of">is spouse of</option>
+                            <option value="sibling_of">is sibling of</option>
+                        </optgroup>
+                        <optgroup label="Professional">
+                            <option value="employer_of">is employer of</option>
+                            <option value="employee_of">is employee of</option>
+                            <option value="mentor_of">is mentor of</option>
+                            <option value="student_of">is student of</option>
+                            <option value="collaborator">collaborates with</option>
+                        </optgroup>
+                        <optgroup label="Organisational">
+                            <option value="member_of">is member of</option>
+                            <option value="has_member">has member</option>
+                            <option value="founded">founded</option>
+                            <option value="founded_by">was founded by</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Agent B *</label>
+                    ${agentAcWidget('b')}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add relation</button>
+        </form>
+    </div>
+
+    ${agentAcScript()}
+`, '/relations', user)
+}

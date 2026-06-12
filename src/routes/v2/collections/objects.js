@@ -62,6 +62,23 @@ export function requestObjects(app, BASE_URI) {
                 return res.status(400).json({ error: 'Invalid modifiedSince date format. Use YYYY-MM-DD.' })
             }
 
+            // sortBy: which column to sort on; sortOrder: asc or desc
+            const SORT_FIELDS = {
+                'objectNumber':        'objectNumber',
+                'modified':            'generated_at_time',
+                'titleNL':             'object_title_nl',
+                'titleFR':             'object_title_fr',
+                'titleEN':             'object_title_en',
+                'dateBegin':           'production_year_begin',
+                'dateEnd':             'production_year_end',
+            }
+
+            const sortByParam    = req.query.sortBy    ?? 'objectNumber'
+            const sortOrderParam = req.query.sortOrder ?? 'asc'
+
+            const sortColumn    = SORT_FIELDS[sortByParam] ?? 'objectNumber'
+            const sortAscending = sortOrderParam !== 'desc'
+
             // ─────────────────────────────────────────────────────────────
             // BUILD PARAMS
             // ─────────────────────────────────────────────────────────────
@@ -92,6 +109,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(conceptFilter     && { concept: conceptFilter }),
                     ...(conceptSearch     && { conceptSearch }),
                     ...(excludeKoepels    && { koepels: 'exclude' }),
+                    ...(sortByParam !== 'objectNumber' && { sortBy: sortByParam }),
+                    ...(sortOrderParam !== 'asc'       && { sortOrder: sortOrderParam })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -261,7 +280,7 @@ export function requestObjects(app, BASE_URI) {
                 applyFilters(
                     supabase.from('dmg_objects_LDES')
                         .select(selectFields)
-                        .order('objectNumber', { ascending: true })
+                        .order(sortColumn, { ascending: sortAscending, nullsFirst: false })
                         .range(offset, offset + itemsPerPage - 1)
                 )
             ])

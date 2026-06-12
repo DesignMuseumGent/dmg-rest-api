@@ -22,6 +22,7 @@ export function requestObjects(app, BASE_URI) {
             const onDisplay     = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery   = req.query.q ?? null
+            const excludeKoepels = req.query.koepels === 'exclude'
 
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
@@ -89,7 +90,8 @@ export function requestObjects(app, BASE_URI) {
                     ...(dateFrom && !dateParam && { dateFrom }),
                     ...(dateTo   && !dateParam && { dateTo }),
                     ...(conceptFilter     && { concept: conceptFilter }),
-                    ...(conceptSearch     && { conceptSearch })
+                    ...(conceptSearch     && { conceptSearch }),
+                    ...(excludeKoepels    && { koepels: 'exclude' }),
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -176,6 +178,7 @@ export function requestObjects(app, BASE_URI) {
                 if (cssColorFilter?.length > 0)    q = q.contains('dominant_css_colors', cssColorFilter)
                 if (typeFilter?.length > 0)        q = q.contains('object_types', typeFilter)
                 if (materialFilter?.length > 0)    q = q.contains('object_materials', materialFilter)
+                if (excludeKoepels)                q = q.not('objectNumber', 'like', '%\\_0-%')
                 if (searchQuery)                   q = q.textSearch('search_vector', searchQuery, { type: 'websearch', config: 'dutch' })
                 if (languageFilter) {
                     const col = { NLD: 'object_title_nl', FRA: 'object_title_fr', ENG: 'object_title_en' }[languageFilter]

@@ -1067,13 +1067,64 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
 const exhibitionsPage = (rows, error, success, errorMsg, search, posterSet, user) => layout('Exhibitions', `
     <h1>Exhibitions</h1>
     ${alerts(success, errorMsg)}
+    
+    ${(() => {
+    if (rows.length === 0) return ''
+    const total       = rows.length
+    const withPoster  = rows.filter(r => posterSet.has(r.exh_PID)).length
+    const withNL      = rows.filter(r => r.title_NL).length
+    const withFR      = rows.filter(r => r.title_FR).length
+    const withEN      = rows.filter(r => r.title_EN).length
+    const withDesc    = rows.filter(r => r.text_NL || r.text_FR || r.text_EN).length
+    const withMedia   = rows.filter(r => (r.dmg_exhibitions_media || []).length > 0).length
+    const withPubs    = rows.filter(r => (r.dmg_exhibitions_publications || []).length > 0).length
+    const withCurator = rows.filter(r => r.curator).length
+
+    const pct = (n) => Math.round((n / total) * 100)
+
+    const metric = (label, n) => `
+        <div style="display:flex;flex-direction:column;gap:0.25rem;min-width:90px;">
+            <div style="font-size:0.6875rem;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:0.08em;">${label}</div>
+            <div style="display:flex;align-items:baseline;gap:0.375rem;">
+                <span style="font-size:1.25rem;font-weight:700;color:#1a1a1a;font-family:${MONO};">${n}</span>
+                <span style="font-size:0.75rem;color:#bbb;">/ ${total}</span>
+            </div>
+            <div style="height:3px;background:#eee;border-radius:2px;overflow:hidden;">
+                <div style="height:100%;width:${pct(n)}%;background:${pct(n) === 100 ? '#276749' : pct(n) > 50 ? '#4a90d9' : '#e0e0e0'};border-radius:2px;transition:width 0.3s;"></div>
+            </div>
+            <div style="font-size:0.75rem;color:#aaa;">${pct(n)}%</div>
+        </div>`
+
+    return `
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;padding:1rem 1.5rem;background:white;border-radius:8px;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display:flex;flex-direction:column;justify-content:center;padding-right:1.5rem;border-right:1px solid #eee;min-width:80px;">
+            <div style="font-size:0.6875rem;font-weight:600;color:#bbb;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Total</div>
+            <div style="font-size:2rem;font-weight:700;color:#1a1a1a;line-height:1;font-family:${MONO};">${total}</div>
+        </div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start;">
+            ${metric('Poster', withPoster)}
+            ${metric('Title NL', withNL)}
+            ${metric('Title FR', withFR)}
+            ${metric('Title EN', withEN)}
+            ${metric('Description', withDesc)}
+            ${metric('Curator', withCurator)}
+            ${metric('Media', withMedia)}
+            ${metric('Publications', withPubs)}
+        </div>
+    </div>`
+})()}
+    
     <div class="card">
         <h2>All exhibitions</h2>
         <p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;margin-top:-0.25rem;">Click any row to manage an exhibition.</p>
         ${searchBar('/admin/exhibitions', search, 'Filter by PID or title', 'TE_2020, Kleureyck, ...')}
         ${rows.length === 0
     ? `<p class="empty">${search ? `No exhibitions found for "${search}".` : 'No exhibitions found.'}</p>`
-    : `${resultCount(rows.length, search)}
+    : `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+            <p class="count" style="margin-bottom:0;">${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>
+            <button type="button" class="btn btn-ghost btn-sm" id="sort-toggle" onclick="toggleSort()" style="font-size:0.8125rem;">↑ A → Z</button>
+        </div>
         <div style="overflow-x:auto;">
         <table>
             <thead><tr><th>Exhibition</th><th>NL</th><th>FR</th><th>EN</th><th>Desc</th><th>Curator</th><th>Media</th><th>Pubs</th><th>Poster</th><th>Views</th></tr></thead>
@@ -1109,6 +1160,22 @@ const exhibitionsPage = (rows, error, success, errorMsg, search, posterSet, user
         </div>`}
     </div>
     ${viewCountCheckerScript()}
+    <script>
+    var sortAsc = true;
+    function toggleSort() {
+        sortAsc = !sortAsc;
+        var tbody = document.querySelector('table tbody')
+        var rows  = Array.from(tbody.querySelectorAll('tr'))
+        var btn   = document.getElementById('sort-toggle')
+        rows.sort(function(a, b) {
+            var pidA = a.dataset.pid || ''
+            var pidB = b.dataset.pid || ''
+            return sortAsc ? pidA.localeCompare(pidB) : pidB.localeCompare(pidA)
+        })
+        rows.forEach(function(row) { tbody.appendChild(row) })
+        btn.textContent = sortAsc ? '↑ A → Z' : '↓ Z → A'
+    }
+    </script>
 `, '/exhibitions', user)
 
 // ---------------------------------------------------------------------------

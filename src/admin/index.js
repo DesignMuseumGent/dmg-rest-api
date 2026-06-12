@@ -324,13 +324,24 @@ export function setupAdmin(app) {
         const { exh_PID } = req.body
         if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition')
         if (!req.files?.view) return res.redirect(`/admin/exhibitions/${exh_PID}?error=no+file+selected`)
-        const file = req.files.view
-        const ext  = file.name.split('.').pop().toLowerCase()
-        if (!['jpg','jpeg','png','webp'].includes(ext)) return res.redirect(`/admin/exhibitions/${exh_PID}?error=invalid+file+type`)
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path     = `${exh_PID}/${Date.now()}-${safeName}`
-        const { error } = await supabase.storage.from('exhibition_views').upload(path, file.data, { contentType: file.mimetype, upsert: false })
-        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+
+        // normalise to array — single file comes as object, multiple as array
+        const files  = Array.isArray(req.files.view) ? req.files.view : [req.files.view]
+        const allowed = ['jpg', 'jpeg', 'png', 'webp']
+        const errors  = []
+
+        await Promise.all(files.map(async (file) => {
+            const ext = file.name.split('.').pop().toLowerCase()
+            if (!allowed.includes(ext)) { errors.push(`${file.name}: invalid type`); return }
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+            const path     = `${exh_PID}/${Date.now()}-${safeName}`
+            const { error } = await supabase.storage
+                .from('exhibition_views')
+                .upload(path, file.data, { contentType: file.mimetype, upsert: false })
+            if (error) errors.push(`${file.name}: ${error.message}`)
+        }))
+
+        if (errors.length) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(errors.join('; ')))
         return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
     })
 
@@ -1261,10 +1272,10 @@ const exhibitionDetailPage = (exh, media, pubs, poster, views, success, errorMsg
         <form method="POST" action="/admin/exhibitions/upload-view" enctype="multipart/form-data">
             <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
             <div class="form-grid">
-                <div class="form-group full">
-                    <label>Upload installation view</label>
-                    <input type="file" name="view" accept="image/jpeg,image/png,image/webp" required>
-                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">JPG, PNG or WebP.</span>
+               <div class="form-group full">
+                    <label>Upload installation views</label>
+                    <input type="file" name="view" accept="image/jpeg,image/png,image/webp" multiple required>
+                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">JPG, PNG or WebP. Select multiple files to upload in bulk.</span>
                 </div>
             </div>
             <div style="margin-top:0.75rem;"><button type="submit" class="btn btn-primary">Upload view</button></div>

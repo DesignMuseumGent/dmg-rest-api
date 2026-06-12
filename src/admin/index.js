@@ -267,116 +267,94 @@ export function setupAdmin(app) {
     })
 
     // ---------------------------------------------------------------------------
-    // EXHIBITION MEDIA
+    // EXHIBITIONS — consolidated (redirects from old URLs)
     // ---------------------------------------------------------------------------
 
+    adminRouter.get('/exhibitions/media',  requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+    adminRouter.get('/publications',       requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+    adminRouter.get('/translations',       requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+
     adminRouter.get('/exhibitions', requireAuth, async (req, res) => {
-        const search = req.query.q?.trim() || null
+        const search  = req.query.q?.trim() || null
+        const section = req.query.section || null
+
         let query = supabase
-            .from('dmg_exhibitions_media')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(200)
-        if (search) query = query.ilike('exh_PID', `%${search}%`)
+            .from('dmg_tentoonstelling_LDES')
+            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(*), dmg_exhibitions_publications(*)')
+            .not('exh_PID', 'is', null)
+            .order('exh_PID', { ascending: true })
+            .limit(1000)
+
+        if (search) query = query.or(`exh_PID.ilike.%${search}%,title_NL.ilike.%${search}%,title_EN.ilike.%${search}%`)
+
         const { data, error } = await query
-        res.send(exhibitionsPage(data || [], error?.message, req.query.success, search, req.session.user))
+
+        res.send(exhibitionsPage(
+            data || [], error?.message,
+            req.query.success, req.query.error,
+            search, section, req.session.user
+        ))
     })
 
     adminRouter.post('/exhibitions/add', requireAuth, async (req, res) => {
         const { exh_PID, title, url, date } = req.body
-        if (!exh_PID || !url) return res.redirect('/admin/exhibitions?error=missing+required+fields')
+        if (!exh_PID || !url) return res.redirect('/admin/exhibitions?error=missing+required+fields&section=media')
 
         const { data: exh } = await supabase
             .from('dmg_tentoonstelling_LDES')
             .select('exh_PID')
             .eq('exh_PID', exh_PID)
             .maybeSingle()
-        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found')
+        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=media')
 
         const { error } = await supabase
             .from('dmg_exhibitions_media')
             .insert({ exh_PID, title, url, date, type: 'VIDEO' })
-        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message))
-        return res.redirect('/admin/exhibitions?success=1')
+        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=media')
+        return res.redirect('/admin/exhibitions?success=1&section=media')
     })
 
     adminRouter.post('/exhibitions/delete/:id', requireAuth, async (req, res) => {
         if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
         await supabase.from('dmg_exhibitions_media').delete().eq('id', req.params.id)
-        return res.redirect('/admin/exhibitions')
-    })
-
-    // ---------------------------------------------------------------------------
-    // EXHIBITION PUBLICATIONS
-    // ---------------------------------------------------------------------------
-
-    adminRouter.get('/publications', requireAuth, async (req, res) => {
-        const search = req.query.q?.trim() || null
-        let query = supabase
-            .from('dmg_exhibitions_publications')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(200)
-        if (search) query = query.ilike('exh_PID', `%${search}%`)
-        const { data, error } = await query
-        res.send(publicationsPage(data || [], error?.message, req.query.success, search, req.session.user))
+        return res.redirect('/admin/exhibitions?section=overview')
     })
 
     adminRouter.post('/publications/add', requireAuth, async (req, res) => {
         const { exh_PID, title, url, year } = req.body
-        if (!exh_PID || !title) return res.redirect('/admin/publications?error=missing+required+fields')
+        if (!exh_PID || !title) return res.redirect('/admin/exhibitions?error=missing+required+fields&section=publications')
 
         const { data: exh } = await supabase
             .from('dmg_tentoonstelling_LDES')
             .select('exh_PID')
             .eq('exh_PID', exh_PID)
             .maybeSingle()
-        if (!exh) return res.redirect('/admin/publications?error=exhibition+not+found')
+        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=publications')
 
         const { error } = await supabase
             .from('dmg_exhibitions_publications')
             .insert({ exh_PID, title, url: url || null, year: year || null })
-        if (error) return res.redirect('/admin/publications?error=' + encodeURIComponent(error.message))
-        return res.redirect('/admin/publications?success=1')
+        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=publications')
+        return res.redirect('/admin/exhibitions?success=1&section=publications')
     })
 
     adminRouter.post('/publications/delete/:id', requireAuth, async (req, res) => {
         if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
         await supabase.from('dmg_exhibitions_publications').delete().eq('id', req.params.id)
-        return res.redirect('/admin/publications')
-    })
-
-    // ---------------------------------------------------------------------------
-    // EXHIBITION TRANSLATIONS
-    // ---------------------------------------------------------------------------
-
-    adminRouter.get('/translations', requireAuth, async (req, res) => {
-        const search = req.query.q?.trim() || null
-
-        let query = supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('id, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, dmg_exhibitions_media(type), dmg_exhibitions_publications(id)')
-            .not('exh_PID', 'is', null)
-            .order('exh_PID', { ascending: true })
-            .limit(1000)
-
-        if (search) query = query.ilike('exh_PID', `%${search}%`)
-
-        const { data, error } = await query
-        res.send(translationsPage(data || [], error?.message, req.query.success, req.query.error, search, req.session.user))
+        return res.redirect('/admin/exhibitions?section=overview')
     })
 
     adminRouter.post('/translations/save', requireAuth, async (req, res) => {
         const { exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator } = req.body
 
-        if (!exh_PID) return res.redirect('/admin/translations?error=missing+exhibition')
+        if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition&section=translations')
 
         const { data: exh } = await supabase
             .from('dmg_tentoonstelling_LDES')
             .select('id')
             .eq('exh_PID', exh_PID)
             .maybeSingle()
-        if (!exh) return res.redirect('/admin/translations?error=exhibition+not+found')
+        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=translations')
 
         const payload = {}
         if (title_NL?.trim()) payload.title_NL = title_NL.trim()
@@ -388,7 +366,7 @@ export function setupAdmin(app) {
         if (curator?.trim())  payload.curator  = curator.trim()
 
         if (Object.keys(payload).length === 0) {
-            return res.redirect('/admin/translations?error=no+content+provided')
+            return res.redirect('/admin/exhibitions?error=no+content+provided&section=translations')
         }
 
         const { error } = await supabase
@@ -396,8 +374,8 @@ export function setupAdmin(app) {
             .update(payload)
             .eq('exh_PID', exh_PID)
 
-        if (error) return res.redirect('/admin/translations?error=' + encodeURIComponent(error.message))
-        return res.redirect('/admin/translations?success=1')
+        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=translations')
+        return res.redirect('/admin/exhibitions?success=1&section=translations')
     })
 
     // ---------------------------------------------------------------------------
@@ -418,20 +396,16 @@ export function setupAdmin(app) {
                 if (search) query = query.or(`agent_id_a.ilike.%${search}%,agent_id_b.ilike.%${search}%`)
                 return query
             })(),
-            supabase
-                .from('dmg_agent_relations')
-                .select('relation')
+            supabase.from('dmg_agent_relations').select('relation')
         ])
 
         const rows = data || []
 
-        // build relation type stats from full unfiltered set
         const stats = {}
         for (const r of (statsData || [])) {
             stats[r.relation] = (stats[r.relation] ?? 0) + 1
         }
 
-        // enrich with agent labels
         if (rows.length > 0) {
             const ids = [...new Set(rows.flatMap(r => [r.agent_id_a, r.agent_id_b]))]
             const { data: agents } = await supabase
@@ -449,7 +423,6 @@ export function setupAdmin(app) {
             }
         }
 
-        // group by agent_id_a
         const grouped = []
         const seen = {}
         for (const r of rows) {
@@ -484,6 +457,19 @@ export function setupAdmin(app) {
         ])
         if (!agentA) return res.redirect('/admin/relations?error=agent+A+not+found')
         if (!agentB) return res.redirect('/admin/relations?error=agent+B+not+found')
+
+        // check for duplicate
+        const { data: existing } = await supabase
+            .from('dmg_agent_relations')
+            .select('id')
+            .eq('agent_id_a', agent_id_a)
+            .eq('relation', relation)
+            .eq('agent_id_b', agent_id_b)
+            .maybeSingle()
+
+        if (existing) {
+            return res.redirect('/admin/relations?error=' + encodeURIComponent(`Relation already exists: ${agent_id_a} ${RELATION_MAP[relation] ?? relation} ${agent_id_b}`))
+        }
 
         const relDef = AGENT_RELATIONS.find(r => r.value === relation)
         if (!relDef) return res.redirect('/admin/relations?error=invalid+relation+type')
@@ -533,26 +519,13 @@ export function setupAdmin(app) {
             { data: outgoing },
             { data: incoming }
         ] = await Promise.all([
-            supabase
-                .from('dmg_personen_LDES')
-                .select('agent_ID, json_ld_v2, agent_type')
-                .eq('agent_ID', agentId)
-                .maybeSingle(),
-            supabase
-                .from('dmg_agent_relations')
-                .select('id, relation, agent_id_b')
-                .eq('agent_id_a', agentId)
-                .order('relation', { ascending: true }),
-            supabase
-                .from('dmg_agent_relations')
-                .select('id, relation, agent_id_a')
-                .eq('agent_id_b', agentId)
-                .order('relation', { ascending: true })
+            supabase.from('dmg_personen_LDES').select('agent_ID, json_ld_v2, agent_type').eq('agent_ID', agentId).maybeSingle(),
+            supabase.from('dmg_agent_relations').select('id, relation, agent_id_b').eq('agent_id_a', agentId).order('relation', { ascending: true }),
+            supabase.from('dmg_agent_relations').select('id, relation, agent_id_a').eq('agent_id_b', agentId).order('relation', { ascending: true })
         ])
 
         if (!agentData) return res.status(404).send('Agent not found')
 
-        // collect all related agent IDs for label enrichment
         const relatedIds = [
             ...(outgoing || []).map(r => r.agent_id_b),
             ...(incoming || []).map(r => r.agent_id_a)
@@ -575,14 +548,8 @@ export function setupAdmin(app) {
             agent_id:   agentData.agent_ID,
             label:      agentData.json_ld_v2?.['rdfs:label'] ?? agentData.agent_ID,
             agent_type: agentData.agent_type ?? 'unknown',
-            outgoing: (outgoing || []).map(r => ({
-                ...r,
-                label_b: labelMap[r.agent_id_b] ?? r.agent_id_b
-            })),
-            incoming: (incoming || []).map(r => ({
-                ...r,
-                label_a: labelMap[r.agent_id_a] ?? r.agent_id_a
-            }))
+            outgoing: (outgoing || []).map(r => ({ ...r, label_b: labelMap[r.agent_id_b] ?? r.agent_id_b })),
+            incoming: (incoming || []).map(r => ({ ...r, label_a: labelMap[r.agent_id_a] ?? r.agent_id_a }))
         }
 
         res.send(agentRelationsPage(enriched, req.session.user))
@@ -751,9 +718,7 @@ const layout = (title, content, path = '', user = null) => `<!DOCTYPE html>
         <a href="/admin/media" ${path === '/media' ? 'class="active"' : ''}>Object media</a>
         <a href="/admin/projects" ${path === '/projects' ? 'class="active"' : ''}>Projects</a>
         <span class="nav-sep">·</span>
-        <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibition media</a>
-        <a href="/admin/publications" ${path === '/publications' ? 'class="active"' : ''}>Publications</a>
-        <a href="/admin/translations" ${path === '/translations' ? 'class="active"' : ''}>Exhibition information</a>
+        <a href="/admin/exhibitions" ${path === '/exhibitions' ? 'class="active"' : ''}>Exhibitions</a>
         <span class="nav-sep">·</span>
         <a href="/admin/relations" ${path === '/relations' ? 'class="active"' : ''}>Agent relations</a>
     </nav>
@@ -840,20 +805,28 @@ const resultCount = (n, search) =>
 const sectionDivider = (title) =>
     `<div class="section-divider"><h3>${title}</h3></div>`
 
-// exhibition autocomplete widget
-const acWidget = () => `
-    <div class="ac-wrap">
-        <input type="text" id="ac-input" placeholder="Search by title or PID..." autocomplete="off">
-        <div class="ac-dropdown" id="ac-dropdown"></div>
-    </div>
-    <input type="hidden" name="exh_PID" id="ac-value" required>
-    <div class="ac-selected" id="ac-selected">
-        <span class="ac-selected-label" id="ac-label"></span>
-        <span class="ac-selected-pid" id="ac-pid"></span>
-        <a href="#" class="ac-clear" id="ac-clear">&#10005; clear</a>
-    </div>`
+// ---------------------------------------------------------------------------
+// EXHIBITION AUTOCOMPLETE WIDGET + SCRIPT (suffix to avoid ID collisions)
+// ---------------------------------------------------------------------------
 
-const acScript = (prefillFields = []) => {
+const acWidget = (suffix = '') => {
+    const id = suffix ? `-${suffix}` : ''
+    return `
+    <div class="ac-wrap">
+        <input type="text" id="ac-input${id}" placeholder="Search by title or PID..." autocomplete="off">
+        <div class="ac-dropdown" id="ac-dropdown${id}"></div>
+    </div>
+    <input type="hidden" name="exh_PID" id="ac-value${id}" required>
+    <div class="ac-selected" id="ac-selected${id}">
+        <span class="ac-selected-label" id="ac-label${id}"></span>
+        <span class="ac-selected-pid" id="ac-pid${id}"></span>
+        <a href="#" class="ac-clear" id="ac-clear${id}">&#10005; clear</a>
+    </div>`
+}
+
+const acScript = (suffix = '', prefillFields = []) => {
+    const id = suffix ? `-${suffix}` : ''
+
     const prefillJs = prefillFields.length > 0 ? `
         fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
             .then(r => r.json())
@@ -875,22 +848,22 @@ const acScript = (prefillFields = []) => {
 
     return `<script>
 (function () {
-    const input    = document.getElementById('ac-input')
-    const dropdown = document.getElementById('ac-dropdown')
-    const hidden   = document.getElementById('ac-value')
-    const selected = document.getElementById('ac-selected')
-    const lbl      = document.getElementById('ac-label')
-    const pid      = document.getElementById('ac-pid')
-    const clear    = document.getElementById('ac-clear')
+    const input    = document.getElementById('ac-input${id}')
+    const dropdown = document.getElementById('ac-dropdown${id}')
+    const hidden   = document.getElementById('ac-value${id}')
+    const selected = document.getElementById('ac-selected${id}')
+    const lbl      = document.getElementById('ac-label${id}')
+    const pid      = document.getElementById('ac-pid${id}')
+    const clear    = document.getElementById('ac-clear${id}')
     let timer
 
     dropdown.addEventListener('click', (e) => {
         const item = e.target.closest('[data-pid]')
         if (!item) return
-        const selectedPid   = item.dataset.pid
-        hidden.value        = selectedPid
-        lbl.textContent     = item.dataset.label
-        pid.textContent     = selectedPid
+        const selectedPid      = item.dataset.pid
+        hidden.value           = selectedPid
+        lbl.textContent        = item.dataset.label
+        pid.textContent        = selectedPid
         selected.style.display = 'flex'
         input.style.display    = 'none'
         dropdown.style.display = 'none'
@@ -927,13 +900,19 @@ const acScript = (prefillFields = []) => {
     })
 
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.ac-wrap')) dropdown.style.display = 'none'
+        if (!e.target.closest('#ac-input${id}') &&
+            !e.target.closest('#ac-dropdown${id}')) {
+            dropdown.style.display = 'none'
+        }
     })
 })()
 </script>`
 }
 
-// asset checker — separate to avoid nested template literal issues
+// ---------------------------------------------------------------------------
+// ASSET CHECKER
+// ---------------------------------------------------------------------------
+
 const assetCheckerScript = () => `<script>
 (function () {
     const rows = document.querySelectorAll('tr[data-pid]')
@@ -971,7 +950,10 @@ const assetCheckerScript = () => `<script>
 })()
 </script>`
 
-// agent autocomplete widget — separate from exhibition widget to avoid ID conflicts
+// ---------------------------------------------------------------------------
+// AGENT AUTOCOMPLETE WIDGET + SCRIPT
+// ---------------------------------------------------------------------------
+
 const agentAcWidget = (suffix) => `
     <div class="ac-wrap">
         <input type="text" id="ac-agent-input-${suffix}" placeholder="Search agent by name or ID..." autocomplete="off">
@@ -995,6 +977,8 @@ const agentAcScript = () => `<script>
         var pid      = document.getElementById('ac-agent-pid-'      + suffix)
         var clear    = document.getElementById('ac-agent-clear-'    + suffix)
         var timer
+
+        if (!input) return
 
         dropdown.addEventListener('click', function (e) {
             var item = e.target.closest('[data-id]')
@@ -1046,6 +1030,148 @@ const agentAcScript = () => `<script>
 })()
 </script>`
 
+// relations search with autocomplete
+const relationsSearchBar = (search, activeType) => `
+    <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1.25rem;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:200px;position:relative;">
+            <label>Filter by agent name or ID</label>
+            <input type="text" id="relations-search-input" value="${search || ''}" placeholder="Search agent..." autocomplete="off">
+            <div class="ac-dropdown" id="relations-search-dropdown"></div>
+        </div>
+        <div class="form-group" style="min-width:180px;">
+            <label>Filter by relation type</label>
+            <select id="relations-type-filter" onchange="applyRelationsFilter()">
+                <option value="">— all types —</option>
+                <optgroup label="Family">
+                    <option value="parent_of"   ${activeType === 'parent_of'   ? 'selected' : ''}>is parent of</option>
+                    <option value="child_of"    ${activeType === 'child_of'    ? 'selected' : ''}>is child of</option>
+                    <option value="spouse_of"   ${activeType === 'spouse_of'   ? 'selected' : ''}>is spouse of</option>
+                    <option value="sibling_of"  ${activeType === 'sibling_of'  ? 'selected' : ''}>is sibling of</option>
+                </optgroup>
+                <optgroup label="Professional">
+                    <option value="employer_of" ${activeType === 'employer_of' ? 'selected' : ''}>is employer of</option>
+                    <option value="employee_of" ${activeType === 'employee_of' ? 'selected' : ''}>is employee of</option>
+                    <option value="mentor_of"   ${activeType === 'mentor_of'   ? 'selected' : ''}>is mentor of</option>
+                    <option value="student_of"  ${activeType === 'student_of'  ? 'selected' : ''}>is student of</option>
+                    <option value="collaborator"${activeType === 'collaborator'? 'selected' : ''}>collaborates with</option>
+                </optgroup>
+                <optgroup label="Organisational">
+                    <option value="member_of"   ${activeType === 'member_of'   ? 'selected' : ''}>is member of</option>
+                    <option value="has_member"  ${activeType === 'has_member'  ? 'selected' : ''}>has member</option>
+                    <option value="founded"     ${activeType === 'founded'     ? 'selected' : ''}>founded</option>
+                    <option value="founded_by"  ${activeType === 'founded_by'  ? 'selected' : ''}>was founded by</option>
+                </optgroup>
+            </select>
+        </div>
+        <button type="button" class="btn btn-primary" style="height:38px;flex-shrink:0;" onclick="document.getElementById('relations-search-form').submit()">Search</button>
+        ${search ? `<a href="/admin/relations" class="search-clear" style="align-self:center;">Clear</a>` : ''}
+    </div>
+    <form method="GET" action="/admin/relations" id="relations-search-form">
+        <input type="hidden" name="q" id="relations-search-value" value="${search || ''}">
+    </form>
+    <script>
+    (function () {
+        var input    = document.getElementById('relations-search-input')
+        var dropdown = document.getElementById('relations-search-dropdown')
+        var hidden   = document.getElementById('relations-search-value')
+        var timer
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer)
+            hidden.value = input.value
+            var q = input.value.trim()
+            if (q.length < 2) { dropdown.style.display = 'none'; return }
+            timer = setTimeout(function () {
+                fetch('/admin/api/agents?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json() })
+                    .then(function (data) {
+                        if (!data.length) { dropdown.style.display = 'none'; return }
+                        dropdown.innerHTML = data.map(function (d) {
+                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
+                                d.label.replace(/"/g, '&quot;') + '">' +
+                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                        }).join('')
+                        dropdown.style.display = 'block'
+                    })
+            }, 250)
+        })
+
+        dropdown.addEventListener('click', function (e) {
+            var item = e.target.closest('[data-id]')
+            if (!item) return
+            input.value  = item.dataset.label
+            hidden.value = item.dataset.id
+            dropdown.style.display = 'none'
+            document.getElementById('relations-search-form').submit()
+        })
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                dropdown.style.display = 'none'
+                document.getElementById('relations-search-form').submit()
+            }
+        })
+
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#relations-search-input') &&
+                !e.target.closest('#relations-search-dropdown')) {
+                dropdown.style.display = 'none'
+            }
+        })
+    })()
+
+    function applyRelationsFilter() {
+        var type = document.getElementById('relations-type-filter').value
+        var groups = document.querySelectorAll('.relation-group')
+
+        groups.forEach(function(group) {
+            if (!type) {
+                // show all, but restore hidden rows within groups
+                group.style.display = ''
+                group.querySelectorAll('tr[data-relation]').forEach(function(row) {
+                    row.style.display = ''
+                })
+                return
+            }
+
+            // filter rows within the group
+            var rows = group.querySelectorAll('tr[data-relation]')
+            var visibleCount = 0
+            rows.forEach(function(row) {
+                if (row.dataset.relation === type) {
+                    row.style.display = ''
+                    visibleCount++
+                } else {
+                    row.style.display = 'none'
+                }
+            })
+
+            // hide the whole group if no rows match
+            group.style.display = visibleCount === 0 ? 'none' : ''
+
+            // update the count in the group header
+            var countEl = group.querySelector('.relation-group-count')
+            if (countEl) {
+                countEl.textContent = visibleCount + (visibleCount === 1 ? ' relation' : ' relations')
+            }
+        })
+
+        // update the summary count
+        var visibleGroups = document.querySelectorAll('.relation-group:not([style*="display: none"])')
+        var countEl = document.querySelector('.relations-total-count')
+        if (countEl) {
+            var totalVisible = 0
+            visibleGroups.forEach(function(g) {
+                totalVisible += g.querySelectorAll('tr[data-relation]:not([style*="display: none"])').length
+            })
+            countEl.dataset.filtered = type
+                ? visibleGroups.length + ' agents · ' + totalVisible + ' relations'
+                : countEl.dataset.original
+            countEl.textContent = countEl.dataset.filtered
+        }
+    }
+    </script>`
+
 // ---------------------------------------------------------------------------
 // DASHBOARD
 // ---------------------------------------------------------------------------
@@ -1078,23 +1204,16 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
         <div class="dashboard-grid">
             <a href="/admin/exhibitions" class="card-link">
                 <div class="card">
-                    <h2>Exhibition media</h2>
-                    <div class="card-stat">${stats.exhibitionsMediaCount ?? '—'}</div>
-                    <p>Video resources linked to exhibitions.</p>
+                    <h2>Exhibitions</h2>
+                    <div class="card-stat">${(stats.exhibitionsMediaCount ?? 0) + (stats.publicationsCount ?? 0)}</div>
+                    <p>Media, publications and multilingual information for all exhibitions.</p>
                 </div>
             </a>
-            <a href="/admin/publications" class="card-link">
+            <a href="/admin/exhibitions#section-translations" class="card-link">
                 <div class="card">
-                    <h2>Publications</h2>
-                    <div class="card-stat">${stats.publicationsCount ?? '—'}</div>
-                    <p>Library records and catalogues linked to exhibitions.</p>
-                </div>
-            </a>
-            <a href="/admin/translations" class="card-link">
-                <div class="card">
-                    <h2>Exhibition information</h2>
+                    <h2>Translations</h2>
                     <div class="card-stat">${stats.translationsCount ?? '—'}</div>
-                    <p>Exhibitions with FR translation. Add multilingual titles, descriptions and curators.</p>
+                    <p>Exhibitions with FR translation.</p>
                 </div>
             </a>
         </div>
@@ -1260,212 +1379,358 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
 `, '/projects', user)
 
 // ---------------------------------------------------------------------------
-// EXHIBITIONS MEDIA PAGE
+// EXHIBITIONS CONSOLIDATED PAGE
 // ---------------------------------------------------------------------------
 
-const exhibitionsPage = (rows, error, success, search, user) => layout('Exhibition media', `
-    <h1>Exhibition media</h1>
-    ${alerts(success, error)}
+const exhibitionsPage = (rows, error, success, errorMsg, search, section, user) => layout('Exhibitions', `
+    <h1>Exhibitions</h1>
+    ${alerts(success, errorMsg)}
 
     <div class="card">
-        <h2>Add video</h2>
-        <form method="POST" action="/admin/exhibitions/add">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>Exhibition *</label>
-                    ${acWidget()}
-                </div>
-                <div class="form-group full">
-                    <label>URL *</label>
-                    <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" name="title" placeholder="Video title">
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="date" placeholder="2024" pattern="[0-9]{4}">
-                </div>
+        <h2>Select exhibition to edit</h2>
+        <div class="form-group" style="max-width:500px;">
+            <label>Exhibition</label>
+            <div class="ac-wrap">
+                <input type="text" id="exh-picker-input" placeholder="Search by title or PID..." autocomplete="off">
+                <div class="ac-dropdown" id="exh-picker-dropdown"></div>
             </div>
-            <div style="margin-top:1rem;">
-                <button type="submit" class="btn btn-primary">Add video</button>
+            <div class="ac-selected" id="exh-picker-selected" style="margin-top:0.5rem;">
+                <span class="ac-selected-label" id="exh-picker-label"></span>
+                <span class="ac-selected-pid" id="exh-picker-pid"></span>
+                <a href="#" class="ac-clear" id="exh-picker-clear">&#10005; clear</a>
             </div>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>Entries</h2>
-        ${searchBar('/admin/exhibitions', search, 'Filter by exhibition PID', 'TE_2020, ...')}
-        ${rows.length === 0
-    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition media entries yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
-        <table>
-            <thead><tr><th>Exhibition</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
-            <tbody>
-                ${rows.map(r => `
-                <tr>
-                    <td><span class="mono">${r.exh_PID}</span></td>
-                    <td>${r.title || '—'}</td>
-                    <td>${r.date || '—'}</td>
-                    <td><a href="${r.url}" target="_blank" class="link">↗ link</a></td>
-                    <td>${deleteBtn(`/admin/exhibitions/delete/${r.id}`, user.canDelete)}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-        ${permNote(user.canDelete)}`}
-    </div>
-
-    ${acScript()}
-`, '/exhibitions', user)
-
-// ---------------------------------------------------------------------------
-// PUBLICATIONS PAGE
-// ---------------------------------------------------------------------------
-
-const publicationsPage = (rows, error, success, search, user) => layout('Publications', `
-    <h1>Publications</h1>
-    ${alerts(success, error)}
-
-    <div class="card">
-        <h2>Add publication</h2>
-        <form method="POST" action="/admin/publications/add">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>Exhibition *</label>
-                    ${acWidget()}
-                </div>
-                <div class="form-group full">
-                    <label>Title *</label>
-                    <input type="text" name="title" placeholder="Publication title" required>
-                </div>
-                <div class="form-group full">
-                    <label>Library URL</label>
-                    <input type="url" name="url" placeholder="https://catalog.designmuseumgent.be/...">
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="year" placeholder="2024" pattern="[0-9]{4}">
-                </div>
-            </div>
-            <div style="margin-top:1rem;">
-                <button type="submit" class="btn btn-primary">Add publication</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>Entries</h2>
-        ${searchBar('/admin/publications', search, 'Filter by exhibition PID', 'TE_2020, ...')}
-        ${rows.length === 0
-    ? `<p class="empty">${search ? `No publications found for "${search}".` : 'No publications yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
-        <table>
-            <thead><tr><th>Exhibition</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
-            <tbody>
-                ${rows.map(r => `
-                <tr>
-                    <td><span class="mono">${r.exh_PID}</span></td>
-                    <td>${r.title || '—'}</td>
-                    <td>${r.year || '—'}</td>
-                    <td>${r.url ? `<a href="${r.url}" target="_blank" class="link">↗ link</a>` : '—'}</td>
-                    <td>${deleteBtn(`/admin/publications/delete/${r.id}`, user.canDelete)}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-        ${permNote(user.canDelete)}`}
-    </div>
-
-    ${acScript()}
-`, '/publications', user)
-
-// ---------------------------------------------------------------------------
-// AGENT RELATIONS PAGE
-// ---------------------------------------------------------------------------
-
-const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, search, user) => {
-    // group stats by category for display
-    const statGroups = [
-        {
-            label: 'Family',
-            keys: ['parent_of', 'child_of', 'spouse_of', 'sibling_of']
-        },
-        {
-            label: 'Professional',
-            keys: ['employer_of', 'employee_of', 'mentor_of', 'student_of', 'collaborator']
-        },
-        {
-            label: 'Organisational',
-            keys: ['member_of', 'has_member', 'founded', 'founded_by']
-        }
-    ]
-
-    const relationsSearchBar = (search) => `
-    <div class="search-bar" style="margin-bottom:1.25rem;">
-        <div class="form-group" style="flex:1;position:relative;">
-            <label>Filter by agent name or ID</label>
-            <input type="text" id="relations-search-input" value="${search || ''}" placeholder="Search agent..." autocomplete="off">
-            <div class="ac-dropdown" id="relations-search-dropdown"></div>
         </div>
-        <button type="button" class="btn btn-primary" id="relations-search-btn" style="height:38px;" onclick="document.getElementById('relations-search-form').submit()">Search</button>
-        ${search ? `<a href="/admin/relations" class="search-clear">Clear</a>` : ''}
     </div>
-    <form method="GET" action="/admin/relations" id="relations-search-form">
-        <input type="hidden" name="q" id="relations-search-value" value="${search || ''}">
-    </form>
+
+    <div id="exh-edit-forms" style="display:none;">
+
+        ${sectionDivider('Add video')}
+        <div class="card" id="section-media">
+            <h2>Add video</h2>
+            <form method="POST" action="/admin/exhibitions/add">
+                <input type="hidden" name="exh_PID" id="form-media-pid">
+                <div class="exh-locked-display" id="media-locked-display"
+                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
+                    <span style="font-weight:500;" id="media-locked-label"></span>
+                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="media-locked-pid"></span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>URL *</label>
+                        <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Video title">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="text" name="date" placeholder="2024" pattern="[0-9]{4}">
+                    </div>
+                </div>
+                <div style="margin-top:1rem;">
+                    <button type="submit" class="btn btn-primary">Add video</button>
+                </div>
+            </form>
+        </div>
+
+        ${sectionDivider('Add publication')}
+        <div class="card" id="section-publications">
+            <h2>Add publication</h2>
+            <form method="POST" action="/admin/publications/add">
+                <input type="hidden" name="exh_PID" id="form-pub-pid">
+                <div class="exh-locked-display"
+                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
+                    <span style="font-weight:500;" id="pub-locked-label"></span>
+                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="pub-locked-pid"></span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Title *</label>
+                        <input type="text" name="title" placeholder="Publication title" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Library URL</label>
+                        <input type="url" name="url" placeholder="https://catalog.designmuseumgent.be/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="text" name="year" placeholder="2024" pattern="[0-9]{4}">
+                    </div>
+                </div>
+                <div style="margin-top:1rem;">
+                    <button type="submit" class="btn btn-primary">Add publication</button>
+                </div>
+            </form>
+        </div>
+
+        ${sectionDivider('Exhibition information')}
+        <div class="card" id="section-translations">
+            <h2>Add or update</h2>
+            <form method="POST" action="/admin/translations/save">
+                <input type="hidden" name="exh_PID" id="form-trans-pid">
+                <div class="exh-locked-display"
+                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
+                    <span style="font-weight:500;" id="trans-locked-label"></span>
+                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="trans-locked-pid"></span>
+                </div>
+                <div class="reference-box" id="harvested-title-box" style="margin-bottom:1rem;">
+                    <span class="reference-label">Harvested title (NL — from source system)</span>
+                    <span class="reference-value" id="harvested-title"></span>
+                </div>
+
+                ${sectionDivider('Titles')}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Title NL</label>
+                        <input type="text" name="title_NL" id="field-title_NL" placeholder="Nederlandstalige titel">
+                    </div>
+                    <div class="form-group">
+                        <label>Title FR</label>
+                        <input type="text" name="title_FR" id="field-title_FR" placeholder="Titre en français">
+                    </div>
+                    <div class="form-group full">
+                        <label>Title EN</label>
+                        <input type="text" name="title_EN" id="field-title_EN" placeholder="English title">
+                    </div>
+                </div>
+
+                ${sectionDivider('Descriptions')}
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Description NL</label>
+                        <textarea name="text_NL" id="field-text_NL" rows="3" placeholder="Nederlandstalige beschrijving"></textarea>
+                    </div>
+                    <div class="form-group full">
+                        <label>Description FR</label>
+                        <textarea name="text_FR" id="field-text_FR" rows="3" placeholder="Description en français"></textarea>
+                    </div>
+                    <div class="form-group full">
+                        <label>Description EN</label>
+                        <textarea name="text_EN" id="field-text_EN" rows="3" placeholder="English description"></textarea>
+                    </div>
+                </div>
+
+                ${sectionDivider('Curator')}
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Curator(s)</label>
+                        <input type="text" name="curator" id="field-curator" placeholder="Kaat Debo, Lotte Vandermeersch">
+                        <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">Separate multiple curators with a comma.</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:1.5rem;">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+    ${sectionDivider('Overview')}
+    <div class="card" id="section-overview">
+        <h2>All exhibitions</h2>
+        ${searchBar('/admin/exhibitions', search, 'Filter by PID or title', 'TE_2020, Kleureyck, ...')}
+        ${rows.length === 0
+    ? `<p class="empty">${search ? `No exhibitions found for "${search}".` : 'No exhibitions found.'}</p>`
+    : `
+        ${resultCount(rows.length, search)}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Exhibition</th>
+                    <th>NL</th>
+                    <th>FR</th>
+                    <th>EN</th>
+                    <th>Desc</th>
+                    <th>Curator</th>
+                    <th>Media</th>
+                    <th>Pubs</th>
+                    <th>Poster</th>
+                    <th>Views</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows.map(r => {
+        const media   = r.dmg_exhibitions_media || []
+        const pubs    = r.dmg_exhibitions_publications || []
+        const videos  = media.filter(m => m.type === 'VIDEO').length
+        const audio   = media.filter(m => m.type === 'AUDIO').length
+        const hasDesc = r.text_NL || r.text_FR || r.text_EN
+        const titleDisplay = r.title_NL || r.title_FR || r.title_EN || '—'
+
+        const mediaCell = media.length === 0
+            ? '<span class="check-no">—</span>'
+            : [
+                videos > 0 ? `<span class="tag tag-video">${videos}v</span>` : '',
+                audio  > 0 ? `<span class="tag tag-audio">${audio}a</span>`  : ''
+            ].filter(Boolean).join(' ')
+
+        const pubsCell = pubs.length > 0
+            ? `<span class="tag tag-pub">${pubs.length}</span>`
+            : '<span class="check-no">—</span>'
+
+        return `
+                    <tr data-pid="${r.exh_PID || ''}" style="cursor:pointer;" onclick="selectExhibitionFromTable('${r.exh_PID || ''}', '${(r.title_NL || r.title_EN || r.exh_PID || '').replace(/'/g, "\\'")}')">
+                        <td>
+                            <span class="mono" style="font-size:0.8125rem;">${r.exh_PID || r.id}</span>
+                            <div style="font-size:0.8125rem;color:#555;margin-top:0.125rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${titleDisplay}">${titleDisplay}</div>
+                        </td>
+                        <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
+                        <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
+                        <td class="${r.title_EN ? 'check-yes' : 'check-no'}" title="${r.title_EN || ''}">${r.title_EN ? '✓' : '—'}</td>
+                        <td class="${hasDesc ? 'check-yes' : 'check-no'}">${hasDesc ? '✓' : '—'}</td>
+                        <td style="font-size:0.8125rem;color:#555;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.curator || ''}">${r.curator || '—'}</td>
+                        <td>${mediaCell}</td>
+                        <td>${pubsCell}</td>
+                        <td class="asset-poster" data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
+                        <td class="asset-views"  data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
+                    </tr>`
+    }).join('')}
+            </tbody>
+        </table>
+        </div>
+        ${permNote(user.canDelete)}`}
+    </div>
+
+    ${assetCheckerScript()}
+
     <script>
-    (function () {
-        var input    = document.getElementById('relations-search-input')
-        var dropdown = document.getElementById('relations-search-dropdown')
-        var hidden   = document.getElementById('relations-search-value')
+    // activate all locked display labels and form hidden fields
+    function activateExhibition(pid, label) {
+        // show the edit block
+        document.getElementById('exh-edit-forms').style.display = 'block'
+
+        // fill all hidden PID fields
+        document.getElementById('form-media-pid').value = pid
+        document.getElementById('form-pub-pid').value   = pid
+        document.getElementById('form-trans-pid').value = pid
+
+        // fill all locked display labels
+        ;['media', 'pub', 'trans'].forEach(function(prefix) {
+            var lbl = document.getElementById(prefix + '-locked-label')
+            var p   = document.getElementById(prefix + '-locked-pid')
+            if (lbl) lbl.textContent = label
+            if (p)   p.textContent   = pid
+        })
+
+        // fetch and prefill translation fields
+        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(pid))
+            .then(function(r) { return r.json() })
+            .then(function(d) {
+                var ref = document.getElementById('harvested-title-box')
+                var val = document.getElementById('harvested-title')
+                if (ref && val && d.harvestedTitle) {
+                    val.textContent   = d.harvestedTitle
+                    ref.style.display = 'block'
+                }
+                var fields = ['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator']
+                fields.forEach(function(f) {
+                    var el = document.getElementById('field-' + f)
+                    if (el && d[f] != null) el.value = d[f]
+                })
+            })
+
+        // scroll to forms
+        setTimeout(function() {
+            document.getElementById('exh-edit-forms').scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 100)
+    }
+
+    // called when clicking a table row
+    function selectExhibitionFromTable(pid, label) {
+        // update the picker display
+        document.getElementById('exh-picker-input').style.display  = 'none'
+        document.getElementById('exh-picker-selected').style.display = 'flex'
+        document.getElementById('exh-picker-label').textContent = label
+        document.getElementById('exh-picker-pid').textContent   = pid
+        activateExhibition(pid, label)
+    }
+
+    // picker autocomplete
+    (function() {
+        var input    = document.getElementById('exh-picker-input')
+        var dropdown = document.getElementById('exh-picker-dropdown')
+        var selected = document.getElementById('exh-picker-selected')
+        var lbl      = document.getElementById('exh-picker-label')
+        var pid      = document.getElementById('exh-picker-pid')
+        var clear    = document.getElementById('exh-picker-clear')
         var timer
 
-        input.addEventListener('input', function () {
+        dropdown.addEventListener('click', function(e) {
+            var item = e.target.closest('[data-pid]')
+            if (!item) return
+            lbl.textContent          = item.dataset.label
+            pid.textContent          = item.dataset.pid
+            selected.style.display   = 'flex'
+            input.style.display      = 'none'
+            dropdown.style.display   = 'none'
+            activateExhibition(item.dataset.pid, item.dataset.label)
+        })
+
+        input.addEventListener('input', function() {
             clearTimeout(timer)
-            hidden.value = input.value
             var q = input.value.trim()
             if (q.length < 2) { dropdown.style.display = 'none'; return }
-            timer = setTimeout(function () {
-                fetch('/admin/api/agents?q=' + encodeURIComponent(q))
-                    .then(function (r) { return r.json() })
-                    .then(function (data) {
+            timer = setTimeout(function() {
+                fetch('/admin/api/exhibitions?q=' + encodeURIComponent(q))
+                    .then(function(r) { return r.json() })
+                    .then(function(data) {
                         if (!data.length) { dropdown.style.display = 'none'; return }
-                        dropdown.innerHTML = data.map(function (d) {
-                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
+                        dropdown.innerHTML = data.map(function(d) {
+                            return '<div class="ac-item" data-pid="' + d.pid + '" data-label="' +
                                 d.label.replace(/"/g, '&quot;') + '">' +
-                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                                d.label + '<span class="ac-item-pid">' + d.pid + '</span></div>'
                         }).join('')
                         dropdown.style.display = 'block'
                     })
             }, 250)
         })
 
-        dropdown.addEventListener('click', function (e) {
-            var item = e.target.closest('[data-id]')
-            if (!item) return
-            input.value  = item.dataset.label
-            hidden.value = item.dataset.id
-            dropdown.style.display = 'none'
-            document.getElementById('relations-search-form').submit()
+        clear.addEventListener('click', function(e) {
+            e.preventDefault()
+            input.value              = ''
+            input.style.display      = 'block'
+            selected.style.display   = 'none'
+            dropdown.style.display   = 'none'
+            document.getElementById('exh-edit-forms').style.display = 'none'
+            // clear all fields
+            ;['title_NL','title_FR','title_EN','text_NL','text_FR','text_EN','curator'].forEach(function(f) {
+                var el = document.getElementById('field-' + f)
+                if (el) el.value = ''
+            })
+            var ref = document.getElementById('harvested-title-box')
+            if (ref) ref.style.display = 'none'
+            input.focus()
         })
 
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                dropdown.style.display = 'none'
-                document.getElementById('relations-search-form').submit()
-            }
-        })
-
-        document.addEventListener('click', function (e) {
-            if (!e.target.closest('#relations-search-input') &&
-                !e.target.closest('#relations-search-dropdown')) {
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#exh-picker-input') &&
+                !e.target.closest('#exh-picker-dropdown')) {
                 dropdown.style.display = 'none'
             }
         })
     })()
-    </script>`
+
+    // scroll to section after redirect
+    ${section ? `
+    setTimeout(function() {
+        var el = document.getElementById('section-${section}')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)` : ''}
+    </script>
+`, '/exhibitions', user)
+
+const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, search, user) => {
+    const statGroups = [
+        { label: 'Family',         keys: ['parent_of', 'child_of', 'spouse_of', 'sibling_of'] },
+        { label: 'Professional',   keys: ['employer_of', 'employee_of', 'mentor_of', 'student_of', 'collaborator'] },
+        { label: 'Organisational', keys: ['member_of', 'has_member', 'founded', 'founded_by'] }
+    ]
+
+    const originalCount = `${grouped.length} ${grouped.length === 1 ? 'agent' : 'agents'} · ${totalRows} ${totalRows === 1 ? 'relation' : 'relations'}${search ? ` matching "${search}"` : ''}`
 
     const statsStrip = Object.keys(stats).length === 0 ? '' : `
         <div class="relation-stats">
@@ -1473,7 +1738,7 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
         const entries = group.keys
             .filter(k => stats[k])
             .map(k => `
-                        <div class="relation-stat-item">
+                        <div class="relation-stat-item" onclick="document.getElementById('relations-type-filter').value='${k}';applyRelationsFilter()" style="cursor:pointer;" title="Filter by ${RELATION_MAP[k] ?? k}">
                             <span class="relation-stat-label">${RELATION_MAP[k] ?? k}</span>
                             <span class="relation-stat-count">${stats[k]}</span>
                         </div>`)
@@ -1539,11 +1804,11 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
     <div class="card">
         <h2>Overview</h2>
         ${statsStrip}
-        ${relationsSearchBar(search)}        
+        ${relationsSearchBar(search)}
         ${grouped.length === 0
         ? `<p class="empty">${search ? `No relations found for "${search}".` : 'No agent relations added yet.'}</p>`
         : `
-        <p class="count">${grouped.length} ${grouped.length === 1 ? 'agent' : 'agents'} · ${totalRows} ${totalRows === 1 ? 'relation' : 'relations'}${search ? ` matching "${search}"` : ''}</p>
+        <p class="count relations-total-count" data-original="${originalCount}">${originalCount}</p>
         <div class="relations-grouped">
             ${grouped.map(group => `
             <div class="relation-group">
@@ -1557,10 +1822,10 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
                 <table class="relation-group-table">
                     <tbody>
                         ${group.relations.map(r => `
-                        <tr>
+                        <tr data-relation="${r.relation}">
                             <td style="width:10rem"><span class="tag tag-relation">${RELATION_MAP[r.relation] ?? r.relation}</span></td>
                             <td>
-                                <span style="font-weight:500">${r.label_b}</span>
+                                <a href="/admin/relations/agent/${r.agent_id_b}" style="font-weight:500;color:#1a1a1a;text-decoration:none;">${r.label_b}</a>
                                 <span class="mono" style="font-size:0.8125rem;color:#aaa;margin-left:0.5rem">${r.agent_id_b}</span>
                             </td>
                             <td style="width:5rem;text-align:right">${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}</td>
@@ -1576,146 +1841,15 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
     ${agentAcScript()}
 `, '/relations', user)
 }
+
 // ---------------------------------------------------------------------------
-// EXHIBITION TRANSLATIONS PAGE
+// AGENT DETAIL PAGE
 // ---------------------------------------------------------------------------
-
-const translationsPage = (rows, error, success, errorMsg, search, user) => layout('Exhibition information', `
-    <h1>Exhibition information</h1>
-    ${alerts(success, errorMsg)}
-
-    <div class="card">
-        <h2>Add or update</h2>
-        <form method="POST" action="/admin/translations/save">
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>Exhibition *</label>
-                    ${acWidget()}
-                    <div class="reference-box" id="harvested-title-box">
-                        <span class="reference-label">Harvested title (NL — from source system)</span>
-                        <span class="reference-value" id="harvested-title"></span>
-                    </div>
-                </div>
-            </div>
-
-            ${sectionDivider('Titles')}
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Title NL</label>
-                    <input type="text" name="title_NL" placeholder="Nederlandstalige titel">
-                </div>
-                <div class="form-group">
-                    <label>Title FR</label>
-                    <input type="text" name="title_FR" placeholder="Titre en français">
-                </div>
-                <div class="form-group full">
-                    <label>Title EN</label>
-                    <input type="text" name="title_EN" placeholder="English title">
-                </div>
-            </div>
-
-            ${sectionDivider('Descriptions')}
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>Description NL</label>
-                    <textarea name="text_NL" rows="4" placeholder="Nederlandstalige beschrijving"></textarea>
-                </div>
-                <div class="form-group full">
-                    <label>Description FR</label>
-                    <textarea name="text_FR" rows="4" placeholder="Description en français"></textarea>
-                </div>
-                <div class="form-group full">
-                    <label>Description EN</label>
-                    <textarea name="text_EN" rows="4" placeholder="English description"></textarea>
-                </div>
-            </div>
-
-            ${sectionDivider('Curator')}
-            <div class="form-grid">
-                <div class="form-group full">
-                    <label>Curator(s)</label>
-                    <input type="text" name="curator" placeholder="Kaat Debo, Lotte Vandermeersch — comma-separated for multiple">
-                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">Separate multiple curators with a comma.</span>
-                </div>
-            </div>
-
-            <div style="margin-top:1.5rem;">
-                <button type="submit" class="btn btn-primary">Save</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>Overview</h2>
-        ${searchBar('/admin/translations', search, 'Filter by exhibition PID', 'TE_2020, ...')}
-        ${rows.length === 0
-    ? `<p class="empty">${search ? `No entries found for "${search}".` : 'No exhibition information added yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
-        <table>
-            <thead>
-                <tr>
-                    <th>Exhibition</th>
-                    <th>Title NL</th>
-                    <th>Title FR</th>
-                    <th>Title EN</th>
-                    <th>Desc NL</th>
-                    <th>Desc FR</th>
-                    <th>Desc EN</th>
-                    <th>Curator</th>
-                    <th>Media</th>
-                    <th>Pubs</th>
-                    <th>Poster</th>
-                    <th>Views</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows.map(r => {
-        const media  = r.dmg_exhibitions_media || []
-        const pubs   = r.dmg_exhibitions_publications || []
-        const videos = media.filter(m => m.type === 'VIDEO').length
-        const audio  = media.filter(m => m.type === 'AUDIO').length
-        const mediaCell = media.length === 0
-            ? '<span class="check-no">—</span>'
-            : [
-                videos > 0 ? `<span class="tag tag-video">${videos} video</span>` : '',
-                audio  > 0 ? `<span class="tag tag-audio">${audio} audio</span>`  : ''
-            ].filter(Boolean).join(' ')
-        const pubsCell = pubs.length > 0
-            ? `<span class="tag tag-pub">${pubs.length}</span>`
-            : '<span class="check-no">—</span>'
-        return `
-                    <tr data-pid="${r.exh_PID || ''}">
-                        <td><span class="mono">${r.exh_PID || r.id}</span></td>
-                        <td class="${r.title_NL ? 'check-yes' : 'check-no'}" title="${r.title_NL || ''}">${r.title_NL ? '✓' : '—'}</td>
-                        <td class="${r.title_FR ? 'check-yes' : 'check-no'}" title="${r.title_FR || ''}">${r.title_FR ? '✓' : '—'}</td>
-                        <td class="${r.title_EN ? 'check-yes' : 'check-no'}" title="${r.title_EN || ''}">${r.title_EN ? '✓' : '—'}</td>
-                        <td class="${r.text_NL ? 'check-yes' : 'check-no'}">${r.text_NL ? '✓' : '—'}</td>
-                        <td class="${r.text_FR ? 'check-yes' : 'check-no'}">${r.text_FR ? '✓' : '—'}</td>
-                        <td class="${r.text_EN ? 'check-yes' : 'check-no'}">${r.text_EN ? '✓' : '—'}</td>
-                        <td>${r.curator || '—'}</td>
-                        <td>${mediaCell}</td>
-                        <td>${pubsCell}</td>
-                        <td class="asset-poster" data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
-                        <td class="asset-views"  data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
-                    </tr>`
-    }).join('')}
-            </tbody>
-        </table>`}
-    </div>
-
-    ${assetCheckerScript()}
-    ${acScript(['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator'])}
-`, '/translations', user)
 
 const agentRelationsPage = (agent, user) => {
-    const typeLabel = {
-        individual:   'Person',
-        organisation: 'Organisation',
-        unknown:      'Unknown'
-    }[agent.agent_type] ?? 'Unknown'
-
-    const typeBadge = `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${agent.agent_type === 'individual' ? '#f0fff4;color:#276749' : agent.agent_type === 'organisation' ? '#ebf4ff;color:#2b6cb0' : '#f5f5f5;color:#999'}">${typeLabel}</span>`
+    const typeLabel = { individual: 'Person', organisation: 'Organisation', unknown: 'Unknown' }[agent.agent_type] ?? 'Unknown'
+    const typeBg    = agent.agent_type === 'individual' ? '#f0fff4;color:#276749' : agent.agent_type === 'organisation' ? '#ebf4ff;color:#2b6cb0' : '#f5f5f5;color:#999'
+    const typeBadge = `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${typeBg}">${typeLabel}</span>`
 
     const outgoingByType = {}
     for (const r of agent.outgoing) {
@@ -1731,7 +1865,7 @@ const agentRelationsPage = (agent, user) => {
 
     const renderRelationBlock = (grouped, direction) => {
         if (Object.keys(grouped).length === 0) {
-            return `<p class="empty" style="padding:1rem 0;text-align:left;">No ${direction} relations.</p>`
+            return `<p class="empty" style="padding:1rem 0;text-align:left;font-style:italic;">No ${direction} relations.</p>`
         }
         return Object.entries(grouped).map(([relation, rels]) => `
             <div style="margin-bottom:1rem;">
@@ -1744,24 +1878,24 @@ const agentRelationsPage = (agent, user) => {
             const otherId    = direction === 'outgoing' ? r.agent_id_b : r.agent_id_a
             const otherLabel = direction === 'outgoing' ? r.label_b    : r.label_a
             return `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;">
-                    <div style="display:flex;align-items:center;gap:0.75rem;">
-                        <a href="/admin/relations/agent/${otherId}" style="font-weight:500;color:#1a1a1a;text-decoration:none;">${otherLabel}</a>
-                        <span class="mono" style="font-size:0.8125rem;color:#aaa;">${otherId}</span>
-                    </div>
-                    ${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}
-                </div>`
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+                            <div style="display:flex;align-items:center;gap:0.75rem;">
+                                <a href="/admin/relations/agent/${otherId}" style="font-weight:500;color:#1a1a1a;text-decoration:none;">${otherLabel}</a>
+                                <span class="mono" style="font-size:0.8125rem;color:#aaa;">${otherId}</span>
+                            </div>
+                            ${deleteBtn('/admin/relations/delete/' + r.id, user.canDelete)}
+                        </div>`
         }).join('')}
                 </div>
             </div>`).join('')
     }
 
     return layout(`${agent.label} — Agent relations`, `
-    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.25rem;">
+    <div style="margin-bottom:0.25rem;">
         <a href="/admin/relations" style="font-size:0.875rem;color:#aaa;text-decoration:none;">← Agent relations</a>
     </div>
 
-    <div style="display:flex;align-items:baseline;gap:0.75rem;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:baseline;gap:0.75rem;margin-bottom:0.5rem;margin-top:1rem;">
         <h1 style="margin-bottom:0;">${agent.label}</h1>
         ${typeBadge}
     </div>
@@ -1771,26 +1905,26 @@ const agentRelationsPage = (agent, user) => {
         <a href="https://data.designmuseumgent.be/v2/id/agent/${agent.agent_id}" target="_blank" style="font-size:0.8125rem;color:#4a90d9;">↗ API</a>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-        <div class="card">
-            <h2>Outgoing relations
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+        <div class="card" style="margin-bottom:0;">
+            <h2>Outgoing
                 <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.outgoing.length}</span>
             </h2>
-            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Relations where this agent is the subject — <em>this agent is parent of / member of / etc.</em></p>
+            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">This agent is the subject — <em>is parent of, member of, etc.</em></p>
             ${renderRelationBlock(outgoingByType, 'outgoing')}
         </div>
 
-        <div class="card">
-            <h2>Incoming relations
+        <div class="card" style="margin-bottom:0;">
+            <h2>Incoming
                 <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.incoming.length}</span>
             </h2>
-            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Relations where this agent is the object — <em>other agents are parent of / member of this agent.</em></p>
+            <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Other agents refer to this one — <em>has member, has parent, etc.</em></p>
             ${renderRelationBlock(incomingByType, 'incoming')}
         </div>
     </div>
 
-    <div class="card" style="margin-top:0;">
-        <h2>Add </h2>
+    <div class="card">
+        <h2>Add relation</h2>
         <form method="POST" action="/admin/relations/add">
             <input type="hidden" name="agent_id_a" id="ac-agent-value-a" value="${agent.agent_id}">
             <div style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">

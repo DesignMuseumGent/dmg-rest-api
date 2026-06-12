@@ -6,22 +6,19 @@ import { supabase } from '../../supabaseClient.js'
 // ---------------------------------------------------------------------------
 
 const AGENT_RELATIONS = [
-    // family
-    { value: 'parent_of',    label: 'is parent of',     inverse: 'child_of',     inverseLabel: 'is child of' },
-    { value: 'child_of',     label: 'is child of',      inverse: 'parent_of',    inverseLabel: 'is parent of' },
-    { value: 'spouse_of',    label: 'is spouse of',     inverse: 'spouse_of',    inverseLabel: 'is spouse of' },
-    { value: 'sibling_of',   label: 'is sibling of',    inverse: 'sibling_of',   inverseLabel: 'is sibling of' },
-    // professional
-    { value: 'employer_of',  label: 'is employer of',   inverse: 'employee_of',  inverseLabel: 'is employee of' },
-    { value: 'employee_of',  label: 'is employee of',   inverse: 'employer_of',  inverseLabel: 'is employer of' },
-    { value: 'mentor_of',    label: 'is mentor of',     inverse: 'student_of',   inverseLabel: 'is student of' },
-    { value: 'student_of',   label: 'is student of',    inverse: 'mentor_of',    inverseLabel: 'is mentor of' },
+    { value: 'parent_of',    label: 'is parent of',      inverse: 'child_of',     inverseLabel: 'is child of' },
+    { value: 'child_of',     label: 'is child of',       inverse: 'parent_of',    inverseLabel: 'is parent of' },
+    { value: 'spouse_of',    label: 'is spouse of',      inverse: 'spouse_of',    inverseLabel: 'is spouse of' },
+    { value: 'sibling_of',   label: 'is sibling of',     inverse: 'sibling_of',   inverseLabel: 'is sibling of' },
+    { value: 'employer_of',  label: 'is employer of',    inverse: 'employee_of',  inverseLabel: 'is employee of' },
+    { value: 'employee_of',  label: 'is employee of',    inverse: 'employer_of',  inverseLabel: 'is employer of' },
+    { value: 'mentor_of',    label: 'is mentor of',      inverse: 'student_of',   inverseLabel: 'is student of' },
+    { value: 'student_of',   label: 'is student of',     inverse: 'mentor_of',    inverseLabel: 'is mentor of' },
     { value: 'collaborator', label: 'collaborates with', inverse: 'collaborator', inverseLabel: 'collaborates with' },
-    // organisational
-    { value: 'member_of',    label: 'is member of',     inverse: 'has_member',   inverseLabel: 'has member' },
-    { value: 'has_member',   label: 'has member',       inverse: 'member_of',    inverseLabel: 'is member of' },
-    { value: 'founded',      label: 'founded',          inverse: 'founded_by',   inverseLabel: 'was founded by' },
-    { value: 'founded_by',   label: 'was founded by',   inverse: 'founded',      inverseLabel: 'founded' },
+    { value: 'member_of',    label: 'is member of',      inverse: 'has_member',   inverseLabel: 'has member' },
+    { value: 'has_member',   label: 'has member',        inverse: 'member_of',    inverseLabel: 'is member of' },
+    { value: 'founded',      label: 'founded',           inverse: 'founded_by',   inverseLabel: 'was founded by' },
+    { value: 'founded_by',   label: 'was founded by',    inverse: 'founded',      inverseLabel: 'founded' },
 ]
 
 const RELATION_MAP = {}
@@ -34,10 +31,6 @@ AGENT_RELATIONS.forEach(r => { RELATION_MAP[r.value] = r.label })
 export function setupAdmin(app) {
 
     const adminRouter = Router()
-
-    // ---------------------------------------------------------------------------
-    // AUTH MIDDLEWARE
-    // ---------------------------------------------------------------------------
 
     const requireAuth = (req, res, next) => {
         if (req.session?.user) return next()
@@ -115,11 +108,7 @@ export function setupAdmin(app) {
 
     adminRouter.get('/media', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
-        let query = supabase
-            .from('dmg_objects_media')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(200)
+        let query = supabase.from('dmg_objects_media').select('*').order('created_at', { ascending: false }).limit(200)
         if (search) query = query.ilike('objectNumber', `%${search}%`)
         const { data, error } = await query
         res.send(mediaPage(data || [], error?.message, req.query.success, search, req.session.user))
@@ -128,14 +117,8 @@ export function setupAdmin(app) {
     adminRouter.post('/media/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, type, date } = req.body
         if (!objectNumber || !url || !type) return res.redirect('/admin/media?error=missing+required+fields')
-
-        const { data: obj } = await supabase
-            .from('dmg_objects_LDES')
-            .select('objectNumber')
-            .eq('objectNumber', objectNumber)
-            .maybeSingle()
+        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
         if (!obj) return res.redirect('/admin/media?error=object+not+found')
-
         const { error } = await supabase.from('dmg_objects_media').insert({ objectNumber, title, url, type, date })
         if (error) return res.redirect('/admin/media?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/media?success=1')
@@ -153,11 +136,7 @@ export function setupAdmin(app) {
 
     adminRouter.get('/projects', requireAuth, async (req, res) => {
         const search = req.query.q?.trim() || null
-        let query = supabase
-            .from('dmg_objects_projects')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(200)
+        let query = supabase.from('dmg_objects_projects').select('*').order('created_at', { ascending: false }).limit(200)
         if (search) query = query.ilike('objectNumber', `%${search}%`)
         const { data, error } = await query
         res.send(projectsPage(data || [], error?.message, req.query.success, search, req.session.user))
@@ -166,14 +145,8 @@ export function setupAdmin(app) {
     adminRouter.post('/projects/add', requireAuth, async (req, res) => {
         const { objectNumber, title, url, date } = req.body
         if (!objectNumber || !title) return res.redirect('/admin/projects?error=missing+required+fields')
-
-        const { data: obj } = await supabase
-            .from('dmg_objects_LDES')
-            .select('objectNumber')
-            .eq('objectNumber', objectNumber)
-            .maybeSingle()
+        const { data: obj } = await supabase.from('dmg_objects_LDES').select('objectNumber').eq('objectNumber', objectNumber).maybeSingle()
         if (!obj) return res.redirect('/admin/projects?error=object+not+found')
-
         const { error } = await supabase.from('dmg_objects_projects').insert({ objectNumber, title, url, date })
         if (error) return res.redirect('/admin/projects?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/projects?success=1')
@@ -186,7 +159,7 @@ export function setupAdmin(app) {
     })
 
     // ---------------------------------------------------------------------------
-    // EXHIBITION AUTOCOMPLETE API
+    // EXHIBITION APIs
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/api/exhibitions', requireAuth, async (req, res) => {
@@ -197,59 +170,24 @@ export function setupAdmin(app) {
             .select('exh_PID, title_NL, title_EN')
             .or(`title_NL.ilike.%${q}%,title_EN.ilike.%${q}%,exh_PID.ilike.%${q}%`)
             .limit(10)
-        res.json((data || []).map(r => ({
-            pid: r.exh_PID,
-            label: r.title_NL || r.title_EN || r.exh_PID
-        })))
-    })
-
-    adminRouter.get('/api/exhibition-translations', requireAuth, async (req, res) => {
-        const pid = req.query.pid?.trim()
-        if (!pid) return res.json({})
-
-        const { data } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, json_ld_v2')
-            .eq('exh_PID', pid)
-            .maybeSingle()
-
-        if (!data) return res.json({})
-
-        const harvestedTitle = data.json_ld_v2?.['rdfs:label'] ?? null
-        const { json_ld_v2, ...rest } = data
-        res.json({ ...rest, harvestedTitle })
+        res.json((data || []).map(r => ({ pid: r.exh_PID, label: r.title_NL || r.title_EN || r.exh_PID })))
     })
 
     adminRouter.get('/api/exhibition-assets', requireAuth, async (req, res) => {
         const pids = req.query.pids?.split(',').filter(Boolean) || []
         if (!pids.length) return res.json({})
-
         const results = {}
-
-        const { data: posterFiles } = await supabase.storage
-            .from('posters')
-            .list('', { limit: 1000 })
-
-        const posterSet = new Set(
-            (posterFiles || []).map(f => f.name.replace(/\.[^.]+$/, ''))
-        )
-
         await Promise.all(pids.map(async (pid) => {
-            const viewsResult = await supabase.storage
-                .from('exhibition_views')
-                .list(pid, { limit: 100 })
-
+            const viewsResult = await supabase.storage.from('exhibition_views').list(pid, { limit: 100 })
             results[pid] = {
-                hasPoster: posterSet.has(pid),
                 viewCount: (viewsResult.data || []).filter(f => f.name && !f.name.startsWith('.')).length
             }
         }))
-
         res.json(results)
     })
 
     // ---------------------------------------------------------------------------
-    // AGENT AUTOCOMPLETE API
+    // AGENT API
     // ---------------------------------------------------------------------------
 
     adminRouter.get('/api/agents', requireAuth, async (req, res) => {
@@ -260,23 +198,19 @@ export function setupAdmin(app) {
             .select('agent_ID, json_ld_v2')
             .textSearch('search_vector', q, { type: 'websearch', config: 'simple' })
             .limit(10)
-        res.json((data || []).map(r => ({
-            id:    r.agent_ID,
-            label: r.json_ld_v2?.['rdfs:label'] ?? r.agent_ID
-        })))
+        res.json((data || []).map(r => ({ id: r.agent_ID, label: r.json_ld_v2?.['rdfs:label'] ?? r.agent_ID })))
     })
 
     // ---------------------------------------------------------------------------
-    // EXHIBITIONS — consolidated (redirects from old URLs)
+    // EXHIBITIONS — overview
     // ---------------------------------------------------------------------------
 
-    adminRouter.get('/exhibitions/media',  requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
-    adminRouter.get('/publications',       requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
-    adminRouter.get('/translations',       requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+    adminRouter.get('/exhibitions/media', requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+    adminRouter.get('/publications',      requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
+    adminRouter.get('/translations',      requireAuth, (req, res) => res.redirect('/admin/exhibitions'))
 
     adminRouter.get('/exhibitions', requireAuth, async (req, res) => {
-        const search  = req.query.q?.trim() || null
-        const section = req.query.section || null
+        const search = req.query.q?.trim() || null
 
         let query = supabase
             .from('dmg_tentoonstelling_LDES')
@@ -284,78 +218,61 @@ export function setupAdmin(app) {
             .not('exh_PID', 'is', null)
             .order('exh_PID', { ascending: true })
             .limit(1000)
-
         if (search) query = query.or(`exh_PID.ilike.%${search}%,title_NL.ilike.%${search}%,title_EN.ilike.%${search}%`)
 
-        const { data, error } = await query
+        const [{ data, error }, { data: posterFiles }] = await Promise.all([
+            query,
+            supabase.storage.from('posters').list('', { limit: 1000 })
+        ])
 
-        res.send(exhibitionsPage(
-            data || [], error?.message,
-            req.query.success, req.query.error,
-            search, section, req.session.user
-        ))
+        const posterSet = new Set((posterFiles || []).map(f => f.name.replace(/\.[^.]+$/, '')))
+
+        res.send(exhibitionsPage(data || [], error?.message, req.query.success, req.query.error, search, posterSet, req.session.user))
     })
+
+    // ---------------------------------------------------------------------------
+    // EXHIBITIONS — detail POST routes (all redirect back to detail page)
+    // ---------------------------------------------------------------------------
 
     adminRouter.post('/exhibitions/add', requireAuth, async (req, res) => {
         const { exh_PID, title, url, date } = req.body
-        if (!exh_PID || !url) return res.redirect('/admin/exhibitions?error=missing+required+fields&section=media')
-
-        const { data: exh } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('exh_PID')
-            .eq('exh_PID', exh_PID)
-            .maybeSingle()
-        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=media')
-
-        const { error } = await supabase
-            .from('dmg_exhibitions_media')
-            .insert({ exh_PID, title, url, date, type: 'VIDEO' })
-        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=media')
-        return res.redirect('/admin/exhibitions?success=1&section=media')
+        if (!exh_PID || !url) return res.redirect(`/admin/exhibitions/${exh_PID}?error=missing+required+fields`)
+        const { data: exh } = await supabase.from('dmg_tentoonstelling_LDES').select('exh_PID').eq('exh_PID', exh_PID).maybeSingle()
+        if (!exh) return res.redirect(`/admin/exhibitions/${exh_PID}?error=exhibition+not+found`)
+        const { error } = await supabase.from('dmg_exhibitions_media').insert({ exh_PID, title, url, date, type: 'VIDEO' })
+        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
     })
 
     adminRouter.post('/exhibitions/delete/:id', requireAuth, async (req, res) => {
         if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+        const { exh_PID } = req.body
         await supabase.from('dmg_exhibitions_media').delete().eq('id', req.params.id)
-        return res.redirect('/admin/exhibitions?section=overview')
+        return res.redirect(`/admin/exhibitions/${exh_PID}`)
     })
 
     adminRouter.post('/publications/add', requireAuth, async (req, res) => {
         const { exh_PID, title, url, year } = req.body
-        if (!exh_PID || !title) return res.redirect('/admin/exhibitions?error=missing+required+fields&section=publications')
-
-        const { data: exh } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('exh_PID')
-            .eq('exh_PID', exh_PID)
-            .maybeSingle()
-        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=publications')
-
-        const { error } = await supabase
-            .from('dmg_exhibitions_publications')
-            .insert({ exh_PID, title, url: url || null, year: year || null })
-        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=publications')
-        return res.redirect('/admin/exhibitions?success=1&section=publications')
+        if (!exh_PID || !title) return res.redirect(`/admin/exhibitions/${exh_PID}?error=missing+required+fields`)
+        const { data: exh } = await supabase.from('dmg_tentoonstelling_LDES').select('exh_PID').eq('exh_PID', exh_PID).maybeSingle()
+        if (!exh) return res.redirect(`/admin/exhibitions/${exh_PID}?error=exhibition+not+found`)
+        const { error } = await supabase.from('dmg_exhibitions_publications').insert({ exh_PID, title, url: url || null, year: year || null })
+        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
     })
 
     adminRouter.post('/publications/delete/:id', requireAuth, async (req, res) => {
         if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+        const { exh_PID } = req.body
         await supabase.from('dmg_exhibitions_publications').delete().eq('id', req.params.id)
-        return res.redirect('/admin/exhibitions?section=overview')
+        return res.redirect(`/admin/exhibitions/${exh_PID}`)
     })
 
     adminRouter.post('/translations/save', requireAuth, async (req, res) => {
         const { exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator } = req.body
-
-        if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition&section=translations')
-
-        const { data: exh } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .select('id')
-            .eq('exh_PID', exh_PID)
-            .maybeSingle()
-        if (!exh) return res.redirect('/admin/exhibitions?error=exhibition+not+found&section=translations')
-
+        if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition')
+        const { data: exh } = await supabase.from('dmg_tentoonstelling_LDES').select('id').eq('exh_PID', exh_PID).maybeSingle()
+        if (!exh) return res.redirect(`/admin/exhibitions/${exh_PID}?error=exhibition+not+found`)
         const payload = {}
         if (title_NL?.trim()) payload.title_NL = title_NL.trim()
         if (title_FR?.trim()) payload.title_FR = title_FR.trim()
@@ -364,18 +281,110 @@ export function setupAdmin(app) {
         if (text_FR?.trim())  payload.text_FR  = text_FR.trim()
         if (text_EN?.trim())  payload.text_EN  = text_EN.trim()
         if (curator?.trim())  payload.curator  = curator.trim()
+        if (Object.keys(payload).length === 0) return res.redirect(`/admin/exhibitions/${exh_PID}?error=no+content+provided`)
+        const { error } = await supabase.from('dmg_tentoonstelling_LDES').update(payload).eq('exh_PID', exh_PID)
+        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
+    })
 
-        if (Object.keys(payload).length === 0) {
-            return res.redirect('/admin/exhibitions?error=no+content+provided&section=translations')
-        }
+    // ---------------------------------------------------------------------------
+    // EXHIBITIONS — image uploads
+    // ---------------------------------------------------------------------------
 
-        const { error } = await supabase
-            .from('dmg_tentoonstelling_LDES')
-            .update(payload)
-            .eq('exh_PID', exh_PID)
+    const getPublicUrl = (bucket, path) => {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+        return data?.publicUrl ?? null
+    }
 
-        if (error) return res.redirect('/admin/exhibitions?error=' + encodeURIComponent(error.message) + '&section=translations')
-        return res.redirect('/admin/exhibitions?success=1&section=translations')
+    adminRouter.post('/exhibitions/upload-poster', requireAuth, async (req, res) => {
+        const { exh_PID } = req.body
+        if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition')
+        if (!req.files?.poster) return res.redirect(`/admin/exhibitions/${exh_PID}?error=no+file+selected`)
+        const file = req.files.poster
+        const ext  = file.name.split('.').pop().toLowerCase()
+        if (!['jpg','jpeg','png','webp'].includes(ext)) return res.redirect(`/admin/exhibitions/${exh_PID}?error=invalid+file+type`)
+        const path = `${exh_PID}.${ext}`
+        const { data: existing } = await supabase.storage.from('posters').list('', { limit: 100 })
+        const old = (existing || []).find(f => f.name.startsWith(exh_PID + '.') && f.name !== path)
+        if (old) await supabase.storage.from('posters').remove([old.name])
+        const { error } = await supabase.storage.from('posters').upload(path, file.data, { contentType: file.mimetype, upsert: true })
+        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
+    })
+
+    adminRouter.post('/exhibitions/delete-poster', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+        const { exh_PID, filename } = req.body
+        if (!exh_PID || !filename) return res.redirect(`/admin/exhibitions/${exh_PID}`)
+        await supabase.storage.from('posters').remove([filename])
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
+    })
+
+    adminRouter.post('/exhibitions/upload-view', requireAuth, async (req, res) => {
+        const { exh_PID } = req.body
+        if (!exh_PID) return res.redirect('/admin/exhibitions?error=missing+exhibition')
+        if (!req.files?.view) return res.redirect(`/admin/exhibitions/${exh_PID}?error=no+file+selected`)
+        const file = req.files.view
+        const ext  = file.name.split('.').pop().toLowerCase()
+        if (!['jpg','jpeg','png','webp'].includes(ext)) return res.redirect(`/admin/exhibitions/${exh_PID}?error=invalid+file+type`)
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path     = `${exh_PID}/${Date.now()}-${safeName}`
+        const { error } = await supabase.storage.from('exhibition_views').upload(path, file.data, { contentType: file.mimetype, upsert: false })
+        if (error) return res.redirect(`/admin/exhibitions/${exh_PID}?error=` + encodeURIComponent(error.message))
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
+    })
+
+    adminRouter.post('/exhibitions/delete-view', requireAuth, async (req, res) => {
+        if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
+        const { exh_PID, filename } = req.body
+        if (!exh_PID || !filename) return res.redirect(`/admin/exhibitions/${exh_PID}`)
+        await supabase.storage.from('exhibition_views').remove([filename])
+        return res.redirect(`/admin/exhibitions/${exh_PID}?success=1`)
+    })
+
+    // ---------------------------------------------------------------------------
+    // EXHIBITIONS — detail page
+    // ---------------------------------------------------------------------------
+
+    adminRouter.get('/exhibitions/:pid', requireAuth, async (req, res) => {
+        const exh_PID = req.params.pid
+
+        const [
+            { data: exh },
+            { data: media },
+            { data: pubs },
+            { data: posterFiles },
+            { data: viewFiles }
+        ] = await Promise.all([
+            supabase.from('dmg_tentoonstelling_LDES')
+                .select('exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN, curator, json_ld_v2')
+                .eq('exh_PID', exh_PID).maybeSingle(),
+            supabase.from('dmg_exhibitions_media').select('*').eq('exh_PID', exh_PID).order('created_at', { ascending: false }),
+            supabase.from('dmg_exhibitions_publications').select('*').eq('exh_PID', exh_PID).order('created_at', { ascending: false }),
+            supabase.storage.from('posters').list('', { limit: 100 }),
+            supabase.storage.from('exhibition_views').list(exh_PID, { limit: 100 })
+        ])
+
+        if (!exh) return res.status(404).send('Exhibition not found')
+
+        const posterFile = (posterFiles || []).find(f => f.name.startsWith(exh_PID + '.'))
+        const posterUrl  = posterFile ? getPublicUrl('posters', posterFile.name) : null
+
+        const views = (viewFiles || [])
+            .filter(f => f.name && !f.name.startsWith('.'))
+            .map(f => ({
+                name: f.name,
+                path: `${exh_PID}/${f.name}`,
+                url:  getPublicUrl('exhibition_views', `${exh_PID}/${f.name}`)
+            }))
+
+        res.send(exhibitionDetailPage(
+            exh, media || [], pubs || [],
+            posterFile ? { name: posterFile.name, url: posterUrl } : null,
+            views,
+            req.query.success, req.query.error,
+            req.session.user
+        ))
     })
 
     // ---------------------------------------------------------------------------
@@ -400,7 +409,6 @@ export function setupAdmin(app) {
         ])
 
         const rows = data || []
-
         const stats = {}
         for (const r of (statsData || [])) {
             stats[r.relation] = (stats[r.relation] ?? 0) + 1
@@ -408,15 +416,9 @@ export function setupAdmin(app) {
 
         if (rows.length > 0) {
             const ids = [...new Set(rows.flatMap(r => [r.agent_id_a, r.agent_id_b]))]
-            const { data: agents } = await supabase
-                .from('dmg_personen_LDES')
-                .select('agent_ID, json_ld_v2')
-                .in('agent_ID', ids)
-
+            const { data: agents } = await supabase.from('dmg_personen_LDES').select('agent_ID, json_ld_v2').in('agent_ID', ids)
             const labelMap = {}
-            for (const a of (agents || [])) {
-                labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
-            }
+            for (const a of (agents || [])) labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
             for (const r of rows) {
                 r.label_a = labelMap[r.agent_id_a] ?? r.agent_id_a
                 r.label_b = labelMap[r.agent_id_b] ?? r.agent_id_b
@@ -430,12 +432,7 @@ export function setupAdmin(app) {
                 seen[r.agent_id_a] = { agent_id: r.agent_id_a, label: r.label_a, relations: [] }
                 grouped.push(seen[r.agent_id_a])
             }
-            seen[r.agent_id_a].relations.push({
-                id:         r.id,
-                relation:   r.relation,
-                agent_id_b: r.agent_id_b,
-                label_b:    r.label_b
-            })
+            seen[r.agent_id_a].relations.push({ id: r.id, relation: r.relation, agent_id_b: r.agent_id_b, label_b: r.label_b })
         }
 
         res.send(relationsPage(grouped, rows.length, stats, error?.message, req.query.success, req.query.error, search, req.session.user))
@@ -443,13 +440,8 @@ export function setupAdmin(app) {
 
     adminRouter.post('/relations/add', requireAuth, async (req, res) => {
         const { agent_id_a, relation, agent_id_b } = req.body
-
-        if (!agent_id_a || !relation || !agent_id_b) {
-            return res.redirect('/admin/relations?error=missing+required+fields')
-        }
-        if (agent_id_a === agent_id_b) {
-            return res.redirect('/admin/relations?error=agent+cannot+relate+to+itself')
-        }
+        if (!agent_id_a || !relation || !agent_id_b) return res.redirect('/admin/relations?error=missing+required+fields')
+        if (agent_id_a === agent_id_b) return res.redirect('/admin/relations?error=agent+cannot+relate+to+itself')
 
         const [{ data: agentA }, { data: agentB }] = await Promise.all([
             supabase.from('dmg_personen_LDES').select('agent_ID').eq('agent_ID', agent_id_a).maybeSingle(),
@@ -458,18 +450,11 @@ export function setupAdmin(app) {
         if (!agentA) return res.redirect('/admin/relations?error=agent+A+not+found')
         if (!agentB) return res.redirect('/admin/relations?error=agent+B+not+found')
 
-        // check for duplicate
         const { data: existing } = await supabase
-            .from('dmg_agent_relations')
-            .select('id')
-            .eq('agent_id_a', agent_id_a)
-            .eq('relation', relation)
-            .eq('agent_id_b', agent_id_b)
+            .from('dmg_agent_relations').select('id')
+            .eq('agent_id_a', agent_id_a).eq('relation', relation).eq('agent_id_b', agent_id_b)
             .maybeSingle()
-
-        if (existing) {
-            return res.redirect('/admin/relations?error=' + encodeURIComponent(`Relation already exists: ${agent_id_a} ${RELATION_MAP[relation] ?? relation} ${agent_id_b}`))
-        }
+        if (existing) return res.redirect('/admin/relations?error=' + encodeURIComponent(`Relation already exists: ${agent_id_a} ${RELATION_MAP[relation] ?? relation} ${agent_id_b}`))
 
         const relDef = AGENT_RELATIONS.find(r => r.value === relation)
         if (!relDef) return res.redirect('/admin/relations?error=invalid+relation+type')
@@ -479,46 +464,29 @@ export function setupAdmin(app) {
             rows.push({ agent_id_a: agent_id_b, relation: relDef.inverse, agent_id_b: agent_id_a })
         }
 
-        const { error } = await supabase
-            .from('dmg_agent_relations')
-            .upsert(rows, { onConflict: 'agent_id_a,relation,agent_id_b', ignoreDuplicates: true })
-
+        const { error } = await supabase.from('dmg_agent_relations').upsert(rows, { onConflict: 'agent_id_a,relation,agent_id_b', ignoreDuplicates: true })
         if (error) return res.redirect('/admin/relations?error=' + encodeURIComponent(error.message))
         return res.redirect('/admin/relations?success=1')
     })
 
     adminRouter.post('/relations/delete/:id', requireAuth, async (req, res) => {
         if (!req.session.user.canDelete) return res.status(403).send('Not authorised to delete')
-
-        const { data: rel } = await supabase
-            .from('dmg_agent_relations')
-            .select('agent_id_a, relation, agent_id_b')
-            .eq('id', req.params.id)
-            .maybeSingle()
-
+        const { data: rel } = await supabase.from('dmg_agent_relations').select('agent_id_a, relation, agent_id_b').eq('id', req.params.id).maybeSingle()
         if (rel) {
             const relDef = AGENT_RELATIONS.find(r => r.value === rel.relation)
             await supabase.from('dmg_agent_relations').delete().eq('id', req.params.id)
             if (relDef) {
-                await supabase.from('dmg_agent_relations')
-                    .delete()
-                    .eq('agent_id_a', rel.agent_id_b)
-                    .eq('relation',   relDef.inverse)
-                    .eq('agent_id_b', rel.agent_id_a)
+                await supabase.from('dmg_agent_relations').delete()
+                    .eq('agent_id_a', rel.agent_id_b).eq('relation', relDef.inverse).eq('agent_id_b', rel.agent_id_a)
             }
         }
-
         return res.redirect('/admin/relations')
     })
 
     adminRouter.get('/relations/agent/:agentId', requireAuth, async (req, res) => {
         const agentId = req.params.agentId
 
-        const [
-            { data: agentData },
-            { data: outgoing },
-            { data: incoming }
-        ] = await Promise.all([
+        const [{ data: agentData }, { data: outgoing }, { data: incoming }] = await Promise.all([
             supabase.from('dmg_personen_LDES').select('agent_ID, json_ld_v2, agent_type').eq('agent_ID', agentId).maybeSingle(),
             supabase.from('dmg_agent_relations').select('id, relation, agent_id_b').eq('agent_id_a', agentId).order('relation', { ascending: true }),
             supabase.from('dmg_agent_relations').select('id, relation, agent_id_a').eq('agent_id_b', agentId).order('relation', { ascending: true })
@@ -526,30 +494,21 @@ export function setupAdmin(app) {
 
         if (!agentData) return res.status(404).send('Agent not found')
 
-        const relatedIds = [
-            ...(outgoing || []).map(r => r.agent_id_b),
-            ...(incoming || []).map(r => r.agent_id_a)
-        ]
-        const uniqueIds = [...new Set(relatedIds)]
+        const relatedIds = [...(outgoing || []).map(r => r.agent_id_b), ...(incoming || []).map(r => r.agent_id_a)]
+        const uniqueIds  = [...new Set(relatedIds)]
+        const labelMap   = {}
 
-        const labelMap = {}
         if (uniqueIds.length > 0) {
-            const { data: agents } = await supabase
-                .from('dmg_personen_LDES')
-                .select('agent_ID, json_ld_v2')
-                .in('agent_ID', uniqueIds)
-
-            for (const a of (agents || [])) {
-                labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
-            }
+            const { data: agents } = await supabase.from('dmg_personen_LDES').select('agent_ID, json_ld_v2').in('agent_ID', uniqueIds)
+            for (const a of (agents || [])) labelMap[a.agent_ID] = a.json_ld_v2?.['rdfs:label'] ?? a.agent_ID
         }
 
         const enriched = {
             agent_id:   agentData.agent_ID,
             label:      agentData.json_ld_v2?.['rdfs:label'] ?? agentData.agent_ID,
             agent_type: agentData.agent_type ?? 'unknown',
-            outgoing: (outgoing || []).map(r => ({ ...r, label_b: labelMap[r.agent_id_b] ?? r.agent_id_b })),
-            incoming: (incoming || []).map(r => ({ ...r, label_a: labelMap[r.agent_id_a] ?? r.agent_id_a }))
+            outgoing:   (outgoing || []).map(r => ({ ...r, label_b: labelMap[r.agent_id_b] ?? r.agent_id_b })),
+            incoming:   (incoming || []).map(r => ({ ...r, label_a: labelMap[r.agent_id_a] ?? r.agent_id_a }))
         }
 
         res.send(agentRelationsPage(enriched, req.session.user))
@@ -576,37 +535,31 @@ const css = `
 * { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:${F}; background:#f5f5f5; color:#333; }
 a { font-family:${F}; }
-
 header { background:#1a1a1a; color:white; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; }
 header a { color:#ccc; text-decoration:none; font-size:0.875rem; }
 header a:hover { color:white; }
 .header-right { display:flex; align-items:center; gap:1rem; }
 .header-user { color:#888; font-size:0.875rem; }
 .badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-left:0.5rem; }
-.badge-admin { background:#2d3748; color:#a0aec0; }
+.badge-admin  { background:#2d3748; color:#a0aec0; }
 .badge-viewer { background:#2d3748; color:#718096; }
-
 nav { background:#2a2a2a; padding:0.75rem 2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
 nav a { color:#aaa; text-decoration:none; font-size:0.875rem; }
 nav a:hover, nav a.active { color:white; }
 .nav-sep { color:#444; font-size:0.75rem; }
-
 main { max-width:1100px; margin:2rem auto; padding:0 2rem; }
 h1 { font-size:1.5rem; font-weight:700; margin-bottom:1.5rem; }
 h2 { font-size:1rem; font-weight:500; margin-bottom:1rem; color:#555; }
 h3 { font-size:0.8125rem; font-weight:700; color:#333; text-transform:uppercase; letter-spacing:0.06em; }
-
 .card { background:white; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 .card-link { text-decoration:none; display:block; }
 .card-link .card { cursor:pointer; transition:box-shadow 0.15s; }
 .card-link .card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.12); }
 .card-link p { color:#888; font-size:0.875rem; margin-top:0.375rem; }
 .card-stat { font-size:2rem; font-weight:700; color:#1a1a1a; margin:0.375rem 0 0; line-height:1; }
-
 .dashboard-section { margin-bottom:2rem; }
 .dashboard-section-title { font-size:0.75rem; font-weight:600; color:#bbb; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid #eee; }
 .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:1rem; }
-
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 .form-group { display:flex; flex-direction:column; gap:0.375rem; }
 .form-group.full { grid-column:1/-1; }
@@ -614,25 +567,21 @@ label { font-size:0.75rem; font-weight:500; color:#555; text-transform:uppercase
 input, select, textarea { padding:0.5rem 0.75rem; border:1px solid #ddd; border-radius:6px; font-size:0.9375rem; width:100%; font-family:${F}; background:white; }
 textarea { resize:vertical; line-height:1.6; }
 input:focus, select:focus, textarea:focus { outline:none; border-color:#555; box-shadow:0 0 0 3px rgba(0,0,0,0.06); }
-
 .btn { padding:0.5rem 1.25rem; border:none; border-radius:6px; font-size:0.9375rem; cursor:pointer; font-weight:500; font-family:${F}; }
 .btn-primary { background:#1a1a1a; color:white; }
 .btn-primary:hover { background:#333; }
 .btn-sm { padding:0.25rem 0.625rem; font-size:0.8125rem; }
 .btn-ghost { background:none; border:1px solid #ddd; color:#999; }
 .btn-ghost:hover { border-color:#e53e3e; color:#e53e3e; }
-
 .search-bar { display:flex; gap:0.75rem; align-items:flex-end; margin-bottom:1.25rem; }
 .search-bar .form-group { flex:1; margin:0; }
 .search-bar .btn { flex-shrink:0; height:38px; }
 .search-clear { font-size:0.8125rem; color:#999; text-decoration:none; align-self:center; }
 .search-clear:hover { color:#333; }
-
 table { width:100%; border-collapse:collapse; font-size:0.9375rem; }
 th { text-align:left; padding:0.625rem 0.75rem; font-size:0.75rem; color:#888; border-bottom:2px solid #eee; text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
 td { padding:0.75rem; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
 tr:last-child td { border-bottom:none; }
-
 .tag { display:inline-block; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700; }
 .tag-video    { background:#ebf4ff; color:#2b6cb0; }
 .tag-audio    { background:#f0fff4; color:#276749; }
@@ -650,15 +599,12 @@ tr:last-child td { border-bottom:none; }
 .perm-note { font-size:0.8125rem; color:#aaa; margin-top:0.75rem; }
 .check-yes { color:#276749; }
 .check-no  { color:#ddd; }
-
 .section-divider { display:flex; align-items:center; gap:0.75rem; margin:1.5rem 0 1rem; }
 .section-divider h3 { white-space:nowrap; }
 .section-divider::after { content:''; flex:1; border-top:1px solid #eee; }
-
-.reference-box { background:#f8f8f8; border:1px solid #eee; border-radius:6px; padding:0.75rem 1rem; margin-top:0.75rem; display:none; }
+.reference-box { background:#f8f8f8; border:1px solid #eee; border-radius:6px; padding:0.75rem 1rem; margin-bottom:1rem; }
 .reference-label { font-size:0.75rem; font-weight:500; color:#aaa; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.25rem; }
 .reference-value { color:#333; font-size:0.9375rem; }
-
 .ac-wrap { position:relative; }
 .ac-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 6px 6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:100; max-height:240px; overflow-y:auto; }
 .ac-item { padding:0.625rem 0.875rem; cursor:pointer; font-size:0.9375rem; border-bottom:1px solid #f5f5f5; }
@@ -670,11 +616,9 @@ tr:last-child td { border-bottom:none; }
 .ac-selected-pid { font-size:0.8125rem; color:#aaa; font-family:${MONO}; }
 .ac-clear { font-size:0.8125rem; color:#999; text-decoration:none; margin-left:0.25rem; }
 .ac-clear:hover { color:#c53030; }
-
 .relations-grouped { display:flex; flex-direction:column; gap:0; }
 .relation-group { border:1px solid #eee; border-radius:6px; margin-bottom:0.75rem; overflow:hidden; }
 .relation-group-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:#fafafa; border-bottom:1px solid #eee; }
-.relation-group-name { font-weight:500; font-size:0.9375rem; margin-right:0.625rem; }
 .relation-group-pid { font-size:0.8125rem; color:#aaa; }
 .relation-group-count { font-size:0.8125rem; color:#aaa; white-space:nowrap; }
 .relation-group-table { width:100%; border-collapse:collapse; }
@@ -773,12 +717,11 @@ const loginPage = (error) => `<!DOCTYPE html>
 // HELPERS
 // ---------------------------------------------------------------------------
 
-const mkAlert = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`
-
-const alerts = (success, error) => [
-    success ? mkAlert('success', 'Saved successfully.') : '',
-    error   ? mkAlert('error', error) : ''
-].join('')
+const mkAlert  = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`
+const alerts   = (success, error) => [success ? mkAlert('success', 'Saved successfully.') : '', error ? mkAlert('error', error) : ''].join('')
+const permNote = (canDelete) => canDelete ? '' : '<p class="perm-note">You do not have permission to delete entries.</p>'
+const resultCount  = (n, search) => `<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
+const sectionDivider = (title) => `<div class="section-divider"><h3>${title}</h3></div>`
 
 const searchBar = (action, value, label, placeholder) => `
     <form method="GET" action="${action}" class="search-bar">
@@ -791,164 +734,8 @@ const searchBar = (action, value, label, placeholder) => `
     </form>`
 
 const deleteBtn = (action, canDelete) => canDelete
-    ? `<form method="POST" action="${action}" style="display:inline">
-           <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button>
-       </form>`
+    ? `<form method="POST" action="${action}" style="display:inline"><button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this entry?')">delete</button></form>`
     : '<span class="no-perm">—</span>'
-
-const permNote = (canDelete) => canDelete ? '' :
-    '<p class="perm-note">You do not have permission to delete entries.</p>'
-
-const resultCount = (n, search) =>
-    `<p class="count">${n} ${n === 1 ? 'entry' : 'entries'}${search ? ` for "${search}"` : ''}</p>`
-
-const sectionDivider = (title) =>
-    `<div class="section-divider"><h3>${title}</h3></div>`
-
-// ---------------------------------------------------------------------------
-// EXHIBITION AUTOCOMPLETE WIDGET + SCRIPT (suffix to avoid ID collisions)
-// ---------------------------------------------------------------------------
-
-const acWidget = (suffix = '') => {
-    const id = suffix ? `-${suffix}` : ''
-    return `
-    <div class="ac-wrap">
-        <input type="text" id="ac-input${id}" placeholder="Search by title or PID..." autocomplete="off">
-        <div class="ac-dropdown" id="ac-dropdown${id}"></div>
-    </div>
-    <input type="hidden" name="exh_PID" id="ac-value${id}" required>
-    <div class="ac-selected" id="ac-selected${id}">
-        <span class="ac-selected-label" id="ac-label${id}"></span>
-        <span class="ac-selected-pid" id="ac-pid${id}"></span>
-        <a href="#" class="ac-clear" id="ac-clear${id}">&#10005; clear</a>
-    </div>`
-}
-
-const acScript = (suffix = '', prefillFields = []) => {
-    const id = suffix ? `-${suffix}` : ''
-
-    const prefillJs = prefillFields.length > 0 ? `
-        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(selectedPid))
-            .then(r => r.json())
-            .then(d => {
-                const ref = document.getElementById('harvested-title-box')
-                const val = document.getElementById('harvested-title')
-                if (ref && val) {
-                    val.textContent   = d.harvestedTitle || '—'
-                    ref.style.display = 'block'
-                }
-                ${prefillFields.map(f => `
-                const f_${f} = document.querySelector('[name="${f}"]')
-                if (f_${f} && d['${f}'] != null) f_${f}.value = d['${f}']`).join('')}
-            })` : ''
-
-    const clearJs = prefillFields.map(f => `
-        const c_${f} = document.querySelector('[name="${f}"]')
-        if (c_${f}) c_${f}.value = ''`).join('')
-
-    return `<script>
-(function () {
-    const input    = document.getElementById('ac-input${id}')
-    const dropdown = document.getElementById('ac-dropdown${id}')
-    const hidden   = document.getElementById('ac-value${id}')
-    const selected = document.getElementById('ac-selected${id}')
-    const lbl      = document.getElementById('ac-label${id}')
-    const pid      = document.getElementById('ac-pid${id}')
-    const clear    = document.getElementById('ac-clear${id}')
-    let timer
-
-    dropdown.addEventListener('click', (e) => {
-        const item = e.target.closest('[data-pid]')
-        if (!item) return
-        const selectedPid      = item.dataset.pid
-        hidden.value           = selectedPid
-        lbl.textContent        = item.dataset.label
-        pid.textContent        = selectedPid
-        selected.style.display = 'flex'
-        input.style.display    = 'none'
-        dropdown.style.display = 'none'
-        ${prefillJs}
-    })
-
-    input.addEventListener('input', () => {
-        clearTimeout(timer)
-        const q = input.value.trim()
-        if (q.length < 2) { dropdown.style.display = 'none'; return }
-        timer = setTimeout(async () => {
-            const res  = await fetch('/admin/api/exhibitions?q=' + encodeURIComponent(q))
-            const data = await res.json()
-            if (!data.length) { dropdown.style.display = 'none'; return }
-            dropdown.innerHTML = data.map(d =>
-                '<div class="ac-item" data-pid="' + d.pid + '" data-label="' + d.label.replace(/"/g, '&quot;') + '">' +
-                d.label + '<span class="ac-item-pid">' + d.pid + '</span></div>'
-            ).join('')
-            dropdown.style.display = 'block'
-        }, 250)
-    })
-
-    clear.addEventListener('click', (e) => {
-        e.preventDefault()
-        hidden.value           = ''
-        input.value            = ''
-        input.style.display    = 'block'
-        selected.style.display = 'none'
-        dropdown.style.display = 'none'
-        const ref = document.getElementById('harvested-title-box')
-        if (ref) ref.style.display = 'none'
-        ${clearJs}
-        input.focus()
-    })
-
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#ac-input${id}') &&
-            !e.target.closest('#ac-dropdown${id}')) {
-            dropdown.style.display = 'none'
-        }
-    })
-})()
-</script>`
-}
-
-// ---------------------------------------------------------------------------
-// ASSET CHECKER
-// ---------------------------------------------------------------------------
-
-const assetCheckerScript = () => `<script>
-(function () {
-    const rows = document.querySelectorAll('tr[data-pid]')
-    const pids = [...new Set([...rows].map(r => r.dataset.pid).filter(Boolean))]
-    if (!pids.length) return
-
-    const chunk = (arr, n) => Array.from(
-        { length: Math.ceil(arr.length / n) },
-        (_, i) => arr.slice(i * n, i * n + n)
-    )
-
-    chunk(pids, 20).forEach(batch => {
-        fetch('/admin/api/exhibition-assets?pids=' + batch.join(','))
-            .then(r => r.json())
-            .then(data => {
-                batch.forEach(pid => {
-                    const asset = data[pid]
-                    if (!asset) return
-                    const posterCell = document.querySelector('.asset-poster[data-pid="' + pid + '"]')
-                    const viewsCell  = document.querySelector('.asset-views[data-pid="'  + pid + '"]')
-                    if (posterCell) {
-                        posterCell.innerHTML = asset.hasPoster
-                            ? '<span class="check-yes">&#10003;</span>'
-                            : '<span class="check-no">&#8212;</span>'
-                    }
-                    if (viewsCell) {
-                        viewsCell.innerHTML = asset.viewCount > 0
-                            ? '<span class="tag tag-views">' + asset.viewCount + '</span>'
-                            : '<span class="check-no">&#8212;</span>'
-                    }
-                })
-            })
-            .catch(() => {})
-    })
-})()
-</script>`
 
 // ---------------------------------------------------------------------------
 // AGENT AUTOCOMPLETE WIDGET + SCRIPT
@@ -962,8 +749,8 @@ const agentAcWidget = (suffix) => `
     <input type="hidden" name="agent_id_${suffix}" id="ac-agent-value-${suffix}" required>
     <div class="ac-selected" id="ac-agent-selected-${suffix}">
         <span class="ac-selected-label" id="ac-agent-label-${suffix}"></span>
-        <span class="ac-selected-pid" id="ac-agent-pid-${suffix}"></span>
-        <a href="#" class="ac-clear" id="ac-agent-clear-${suffix}">&#10005; clear</a>
+        <span class="ac-selected-pid"   id="ac-agent-pid-${suffix}"></span>
+        <a href="#" class="ac-clear"    id="ac-agent-clear-${suffix}">&#10005; clear</a>
     </div>`
 
 const agentAcScript = () => `<script>
@@ -977,9 +764,7 @@ const agentAcScript = () => `<script>
         var pid      = document.getElementById('ac-agent-pid-'      + suffix)
         var clear    = document.getElementById('ac-agent-clear-'    + suffix)
         var timer
-
         if (!input) return
-
         dropdown.addEventListener('click', function (e) {
             var item = e.target.closest('[data-id]')
             if (!item) return
@@ -990,7 +775,6 @@ const agentAcScript = () => `<script>
             input.style.display    = 'none'
             dropdown.style.display = 'none'
         })
-
         input.addEventListener('input', function () {
             clearTimeout(timer)
             var q = input.value.trim()
@@ -1001,36 +785,28 @@ const agentAcScript = () => `<script>
                     .then(function (data) {
                         if (!data.length) { dropdown.style.display = 'none'; return }
                         dropdown.innerHTML = data.map(function (d) {
-                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
-                                d.label.replace(/"/g, '&quot;') + '">' +
-                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' + d.label.replace(/"/g, '&quot;') + '">' + d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
                         }).join('')
                         dropdown.style.display = 'block'
                     })
             }, 250)
         })
-
         clear.addEventListener('click', function (e) {
             e.preventDefault()
-            hidden.value           = ''
-            input.value            = ''
-            input.style.display    = 'block'
-            selected.style.display = 'none'
-            dropdown.style.display = 'none'
+            hidden.value = ''; input.value = ''; input.style.display = 'block'; selected.style.display = 'none'; dropdown.style.display = 'none'
             input.focus()
         })
-
         document.addEventListener('click', function (e) {
-            if (!e.target.closest('#ac-agent-input-' + suffix) &&
-                !e.target.closest('#ac-agent-dropdown-' + suffix)) {
-                dropdown.style.display = 'none'
-            }
+            if (!e.target.closest('#ac-agent-input-' + suffix) && !e.target.closest('#ac-agent-dropdown-' + suffix)) dropdown.style.display = 'none'
         })
     })
 })()
 </script>`
 
-// relations search with autocomplete
+// ---------------------------------------------------------------------------
+// RELATIONS SEARCH BAR (with agent autocomplete + type filter)
+// ---------------------------------------------------------------------------
+
 const relationsSearchBar = (search, activeType) => `
     <div style="display:flex;gap:0.75rem;align-items:flex-end;margin-bottom:1.25rem;flex-wrap:wrap;">
         <div class="form-group" style="flex:1;min-width:200px;position:relative;">
@@ -1043,23 +819,23 @@ const relationsSearchBar = (search, activeType) => `
             <select id="relations-type-filter" onchange="applyRelationsFilter()">
                 <option value="">— all types —</option>
                 <optgroup label="Family">
-                    <option value="parent_of"   ${activeType === 'parent_of'   ? 'selected' : ''}>is parent of</option>
-                    <option value="child_of"    ${activeType === 'child_of'    ? 'selected' : ''}>is child of</option>
-                    <option value="spouse_of"   ${activeType === 'spouse_of'   ? 'selected' : ''}>is spouse of</option>
-                    <option value="sibling_of"  ${activeType === 'sibling_of'  ? 'selected' : ''}>is sibling of</option>
+                    <option value="parent_of"   ${activeType === 'parent_of'    ? 'selected' : ''}>is parent of</option>
+                    <option value="child_of"    ${activeType === 'child_of'     ? 'selected' : ''}>is child of</option>
+                    <option value="spouse_of"   ${activeType === 'spouse_of'    ? 'selected' : ''}>is spouse of</option>
+                    <option value="sibling_of"  ${activeType === 'sibling_of'   ? 'selected' : ''}>is sibling of</option>
                 </optgroup>
                 <optgroup label="Professional">
-                    <option value="employer_of" ${activeType === 'employer_of' ? 'selected' : ''}>is employer of</option>
-                    <option value="employee_of" ${activeType === 'employee_of' ? 'selected' : ''}>is employee of</option>
-                    <option value="mentor_of"   ${activeType === 'mentor_of'   ? 'selected' : ''}>is mentor of</option>
-                    <option value="student_of"  ${activeType === 'student_of'  ? 'selected' : ''}>is student of</option>
-                    <option value="collaborator"${activeType === 'collaborator'? 'selected' : ''}>collaborates with</option>
+                    <option value="employer_of" ${activeType === 'employer_of'  ? 'selected' : ''}>is employer of</option>
+                    <option value="employee_of" ${activeType === 'employee_of'  ? 'selected' : ''}>is employee of</option>
+                    <option value="mentor_of"   ${activeType === 'mentor_of'    ? 'selected' : ''}>is mentor of</option>
+                    <option value="student_of"  ${activeType === 'student_of'   ? 'selected' : ''}>is student of</option>
+                    <option value="collaborator"${activeType === 'collaborator' ? 'selected' : ''}>collaborates with</option>
                 </optgroup>
                 <optgroup label="Organisational">
-                    <option value="member_of"   ${activeType === 'member_of'   ? 'selected' : ''}>is member of</option>
-                    <option value="has_member"  ${activeType === 'has_member'  ? 'selected' : ''}>has member</option>
-                    <option value="founded"     ${activeType === 'founded'     ? 'selected' : ''}>founded</option>
-                    <option value="founded_by"  ${activeType === 'founded_by'  ? 'selected' : ''}>was founded by</option>
+                    <option value="member_of"   ${activeType === 'member_of'    ? 'selected' : ''}>is member of</option>
+                    <option value="has_member"  ${activeType === 'has_member'   ? 'selected' : ''}>has member</option>
+                    <option value="founded"     ${activeType === 'founded'      ? 'selected' : ''}>founded</option>
+                    <option value="founded_by"  ${activeType === 'founded_by'   ? 'selected' : ''}>was founded by</option>
                 </optgroup>
             </select>
         </div>
@@ -1075,10 +851,8 @@ const relationsSearchBar = (search, activeType) => `
         var dropdown = document.getElementById('relations-search-dropdown')
         var hidden   = document.getElementById('relations-search-value')
         var timer
-
         input.addEventListener('input', function () {
-            clearTimeout(timer)
-            hidden.value = input.value
+            clearTimeout(timer); hidden.value = input.value
             var q = input.value.trim()
             if (q.length < 2) { dropdown.style.display = 'none'; return }
             timer = setTimeout(function () {
@@ -1087,90 +861,76 @@ const relationsSearchBar = (search, activeType) => `
                     .then(function (data) {
                         if (!data.length) { dropdown.style.display = 'none'; return }
                         dropdown.innerHTML = data.map(function (d) {
-                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' +
-                                d.label.replace(/"/g, '&quot;') + '">' +
-                                d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
+                            return '<div class="ac-item" data-id="' + d.id + '" data-label="' + d.label.replace(/"/g, '&quot;') + '">' + d.label + '<span class="ac-item-pid">' + d.id + '</span></div>'
                         }).join('')
                         dropdown.style.display = 'block'
                     })
             }, 250)
         })
-
         dropdown.addEventListener('click', function (e) {
             var item = e.target.closest('[data-id]')
             if (!item) return
-            input.value  = item.dataset.label
-            hidden.value = item.dataset.id
-            dropdown.style.display = 'none'
+            input.value = item.dataset.label; hidden.value = item.dataset.id; dropdown.style.display = 'none'
             document.getElementById('relations-search-form').submit()
         })
-
         input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                dropdown.style.display = 'none'
-                document.getElementById('relations-search-form').submit()
-            }
+            if (e.key === 'Enter') { dropdown.style.display = 'none'; document.getElementById('relations-search-form').submit() }
         })
-
         document.addEventListener('click', function (e) {
-            if (!e.target.closest('#relations-search-input') &&
-                !e.target.closest('#relations-search-dropdown')) {
-                dropdown.style.display = 'none'
-            }
+            if (!e.target.closest('#relations-search-input') && !e.target.closest('#relations-search-dropdown')) dropdown.style.display = 'none'
         })
     })()
-
     function applyRelationsFilter() {
-        var type = document.getElementById('relations-type-filter').value
+        var type   = document.getElementById('relations-type-filter').value
         var groups = document.querySelectorAll('.relation-group')
-
-        groups.forEach(function(group) {
+        groups.forEach(function (group) {
             if (!type) {
-                // show all, but restore hidden rows within groups
                 group.style.display = ''
-                group.querySelectorAll('tr[data-relation]').forEach(function(row) {
-                    row.style.display = ''
-                })
+                group.querySelectorAll('tr[data-relation]').forEach(function (row) { row.style.display = '' })
                 return
             }
-
-            // filter rows within the group
-            var rows = group.querySelectorAll('tr[data-relation]')
-            var visibleCount = 0
-            rows.forEach(function(row) {
-                if (row.dataset.relation === type) {
-                    row.style.display = ''
-                    visibleCount++
-                } else {
-                    row.style.display = 'none'
-                }
+            var rows = group.querySelectorAll('tr[data-relation]'), visibleCount = 0
+            rows.forEach(function (row) {
+                if (row.dataset.relation === type) { row.style.display = ''; visibleCount++ }
+                else row.style.display = 'none'
             })
-
-            // hide the whole group if no rows match
             group.style.display = visibleCount === 0 ? 'none' : ''
-
-            // update the count in the group header
             var countEl = group.querySelector('.relation-group-count')
-            if (countEl) {
-                countEl.textContent = visibleCount + (visibleCount === 1 ? ' relation' : ' relations')
-            }
+            if (countEl) countEl.textContent = visibleCount + (visibleCount === 1 ? ' relation' : ' relations')
         })
-
-        // update the summary count
         var visibleGroups = document.querySelectorAll('.relation-group:not([style*="display: none"])')
         var countEl = document.querySelector('.relations-total-count')
         if (countEl) {
             var totalVisible = 0
-            visibleGroups.forEach(function(g) {
-                totalVisible += g.querySelectorAll('tr[data-relation]:not([style*="display: none"])').length
-            })
-            countEl.dataset.filtered = type
-                ? visibleGroups.length + ' agents · ' + totalVisible + ' relations'
-                : countEl.dataset.original
-            countEl.textContent = countEl.dataset.filtered
+            visibleGroups.forEach(function (g) { totalVisible += g.querySelectorAll('tr[data-relation]:not([style*="display: none"])').length })
+            countEl.textContent = type ? visibleGroups.length + ' agents · ' + totalVisible + ' relations' : countEl.dataset.original
         }
     }
     </script>`
+
+// ---------------------------------------------------------------------------
+// VIEW COUNT CHECKER (async, overview table only)
+// ---------------------------------------------------------------------------
+
+const viewCountCheckerScript = () => `<script>
+(function () {
+    var cells = document.querySelectorAll('td.asset-views[data-pid]')
+    var pids  = [...new Set([...cells].map(function(c) { return c.dataset.pid }).filter(Boolean))]
+    if (!pids.length) return
+    var chunk = function(arr, n) { return Array.from({ length: Math.ceil(arr.length / n) }, function(_, i) { return arr.slice(i * n, i * n + n) }) }
+    chunk(pids, 20).forEach(function(batch) {
+        fetch('/admin/api/exhibition-assets?pids=' + batch.join(','))
+            .then(function(r) { return r.json() })
+            .then(function(data) {
+                batch.forEach(function(pid) {
+                    var asset = data[pid]; if (!asset) return
+                    var cell = document.querySelector('td.asset-views[data-pid="' + pid + '"]')
+                    if (cell) cell.innerHTML = asset.viewCount > 0 ? '<span class="tag tag-views">' + asset.viewCount + '</span>' : '<span class="check-no">&#8212;</span>'
+                })
+            }).catch(function() {})
+    })
+})()
+</script>`
 
 // ---------------------------------------------------------------------------
 // DASHBOARD
@@ -1178,75 +938,31 @@ const relationsSearchBar = (search, activeType) => `
 
 const dashboardPage = (user, stats) => layout('Dashboard', `
     <h1>Dashboard</h1>
-
     <div class="dashboard-section">
         <div class="dashboard-section-title">Objects</div>
         <div class="dashboard-grid">
-            <a href="/admin/media" class="card-link">
-                <div class="card">
-                    <h2>Object media</h2>
-                    <div class="card-stat">${stats.mediaCount ?? '—'}</div>
-                    <p>Video and audio resources linked to collection objects.</p>
-                </div>
-            </a>
-            <a href="/admin/projects" class="card-link">
-                <div class="card">
-                    <h2>Projects</h2>
-                    <div class="card-stat">${stats.projectsCount ?? '—'}</div>
-                    <p>Creative projects inspired by collection objects.</p>
-                </div>
-            </a>
+            <a href="/admin/media" class="card-link"><div class="card"><h2>Object media</h2><div class="card-stat">${stats.mediaCount ?? '—'}</div><p>Video and audio resources linked to collection objects.</p></div></a>
+            <a href="/admin/projects" class="card-link"><div class="card"><h2>Projects</h2><div class="card-stat">${stats.projectsCount ?? '—'}</div><p>Creative projects inspired by collection objects.</p></div></a>
         </div>
     </div>
-
     <div class="dashboard-section">
         <div class="dashboard-section-title">Exhibitions</div>
         <div class="dashboard-grid">
-            <a href="/admin/exhibitions" class="card-link">
-                <div class="card">
-                    <h2>Exhibitions</h2>
-                    <div class="card-stat">${(stats.exhibitionsMediaCount ?? 0) + (stats.publicationsCount ?? 0)}</div>
-                    <p>Media, publications and multilingual information for all exhibitions.</p>
-                </div>
-            </a>
-            <a href="/admin/exhibitions#section-translations" class="card-link">
-                <div class="card">
-                    <h2>Translations</h2>
-                    <div class="card-stat">${stats.translationsCount ?? '—'}</div>
-                    <p>Exhibitions with FR translation.</p>
-                </div>
-            </a>
+            <a href="/admin/exhibitions" class="card-link"><div class="card"><h2>Exhibitions</h2><div class="card-stat">${(stats.exhibitionsMediaCount ?? 0) + (stats.publicationsCount ?? 0)}</div><p>Media, publications and multilingual information for all exhibitions.</p></div></a>
+            <a href="/admin/exhibitions" class="card-link"><div class="card"><h2>Translations</h2><div class="card-stat">${stats.translationsCount ?? '—'}</div><p>Exhibitions with FR translation.</p></div></a>
         </div>
     </div>
-
     <div class="dashboard-section">
         <div class="dashboard-section-title">Agents</div>
         <div class="dashboard-grid">
-            <a href="/admin/relations" class="card-link">
-                <div class="card">
-                    <h2>Agent relations</h2>
-                    <div class="card-stat">${stats.relationsCount ?? '—'}</div>
-                    <p>Family, professional and organisational relationships between agents.</p>
-                </div>
-            </a>
+            <a href="/admin/relations" class="card-link"><div class="card"><h2>Agent relations</h2><div class="card-stat">${stats.relationsCount ?? '—'}</div><p>Family, professional and organisational relationships between agents.</p></div></a>
         </div>
     </div>
-
     <div class="dashboard-section">
         <div class="dashboard-section-title">API</div>
         <div class="dashboard-grid">
-            <a href="https://data.designmuseumgent.be" target="_blank" class="card-link">
-                <div class="card">
-                    <h2>Documentation ↗</h2>
-                    <p>data.designmuseumgent.be</p>
-                </div>
-            </a>
-            <a href="/api-docs" target="_blank" class="card-link">
-                <div class="card">
-                    <h2>Swagger UI ↗</h2>
-                    <p>Interactive API explorer.</p>
-                </div>
-            </a>
+            <a href="https://data.designmuseumgent.be" target="_blank" class="card-link"><div class="card"><h2>Documentation ↗</h2><p>data.designmuseumgent.be</p></div></a>
+            <a href="/api-docs" target="_blank" class="card-link"><div class="card"><h2>Swagger UI ↗</h2><p>Interactive API explorer.</p></div></a>
         </div>
     </div>
 `, '/', user)
@@ -1258,60 +974,34 @@ const dashboardPage = (user, stats) => layout('Dashboard', `
 const mediaPage = (rows, error, success, search, user) => layout('Object media', `
     <h1>Object media</h1>
     ${alerts(success, error)}
-
     <div class="card">
         <h2>Add media</h2>
         <form method="POST" action="/admin/media/add">
             <div class="form-grid">
-                <div class="form-group">
-                    <label>Object number *</label>
-                    <input type="text" name="objectNumber" placeholder="1987-1105" required>
-                </div>
-                <div class="form-group">
-                    <label>Type *</label>
-                    <select name="type" required>
-                        <option value="">— select —</option>
-                        <option value="VIDEO">Video</option>
-                        <option value="AUDIO">Audio</option>
-                    </select>
-                </div>
-                <div class="form-group full">
-                    <label>URL *</label>
-                    <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" name="title" placeholder="Video title">
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="date" placeholder="2024" pattern="[0-9]{4}">
-                </div>
+                <div class="form-group"><label>Object number *</label><input type="text" name="objectNumber" placeholder="1987-1105" required></div>
+                <div class="form-group"><label>Type *</label><select name="type" required><option value="">— select —</option><option value="VIDEO">Video</option><option value="AUDIO">Audio</option></select></div>
+                <div class="form-group full"><label>URL *</label><input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required></div>
+                <div class="form-group"><label>Title</label><input type="text" name="title" placeholder="Video title"></div>
+                <div class="form-group"><label>Year</label><input type="text" name="date" placeholder="2024" pattern="[0-9]{4}"></div>
             </div>
-            <div style="margin-top:1rem;">
-                <button type="submit" class="btn btn-primary">Add media</button>
-            </div>
+            <div style="margin-top:1rem;"><button type="submit" class="btn btn-primary">Add media</button></div>
         </form>
     </div>
-
     <div class="card">
         <h2>Entries</h2>
         ${searchBar('/admin/media', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
     ? `<p class="empty">${search ? `No media found for "${search}".` : 'No media entries yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
+    : `${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Type</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
             <tbody>
-                ${rows.map(r => `
-                <tr>
+                ${rows.map(r => `<tr>
                     <td><span class="mono">${r.objectNumber}</span></td>
                     <td><span class="tag ${r.type === 'VIDEO' ? 'tag-video' : 'tag-audio'}">${r.type}</span></td>
-                    <td>${r.title || '—'}</td>
-                    <td>${r.date || '—'}</td>
+                    <td>${r.title || '—'}</td><td>${r.date || '—'}</td>
                     <td><a href="${r.url}" target="_blank" class="link">↗ link</a></td>
-                    <td>${deleteBtn(`/admin/media/delete/${r.id}`, user.canDelete)}</td>
+                    <td>${deleteBtn('/admin/media/delete/' + r.id, user.canDelete)}</td>
                 </tr>`).join('')}
             </tbody>
         </table>
@@ -1326,51 +1016,32 @@ const mediaPage = (rows, error, success, search, user) => layout('Object media',
 const projectsPage = (rows, error, success, search, user) => layout('Projects', `
     <h1>Projects</h1>
     ${alerts(success, error)}
-
     <div class="card">
         <h2>Add project</h2>
         <form method="POST" action="/admin/projects/add">
             <div class="form-grid">
-                <div class="form-group">
-                    <label>Object number *</label>
-                    <input type="text" name="objectNumber" placeholder="1987-1105" required>
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="date" placeholder="2024" pattern="[0-9]{4}">
-                </div>
-                <div class="form-group full">
-                    <label>Title *</label>
-                    <input type="text" name="title" placeholder="Project title" required>
-                </div>
-                <div class="form-group full">
-                    <label>URL</label>
-                    <input type="url" name="url" placeholder="https://...">
-                </div>
+                <div class="form-group"><label>Object number *</label><input type="text" name="objectNumber" placeholder="1987-1105" required></div>
+                <div class="form-group"><label>Year</label><input type="text" name="date" placeholder="2024" pattern="[0-9]{4}"></div>
+                <div class="form-group full"><label>Title *</label><input type="text" name="title" placeholder="Project title" required></div>
+                <div class="form-group full"><label>URL</label><input type="url" name="url" placeholder="https://..."></div>
             </div>
-            <div style="margin-top:1rem;">
-                <button type="submit" class="btn btn-primary">Add project</button>
-            </div>
+            <div style="margin-top:1rem;"><button type="submit" class="btn btn-primary">Add project</button></div>
         </form>
     </div>
-
     <div class="card">
         <h2>Entries</h2>
         ${searchBar('/admin/projects', search, 'Filter by object number', '1987, 0913, ...')}
         ${rows.length === 0
     ? `<p class="empty">${search ? `No projects found for "${search}".` : 'No project entries yet.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
+    : `${resultCount(rows.length, search)}
         <table>
             <thead><tr><th>Object</th><th>Title</th><th>Year</th><th>URL</th><th></th></tr></thead>
             <tbody>
-                ${rows.map(r => `
-                <tr>
+                ${rows.map(r => `<tr>
                     <td><span class="mono">${r.objectNumber}</span></td>
-                    <td>${r.title || '—'}</td>
-                    <td>${r.date || '—'}</td>
+                    <td>${r.title || '—'}</td><td>${r.date || '—'}</td>
                     <td>${r.url ? `<a href="${r.url}" target="_blank" class="link">↗ link</a>` : '—'}</td>
-                    <td>${deleteBtn(`/admin/projects/delete/${r.id}`, user.canDelete)}</td>
+                    <td>${deleteBtn('/admin/projects/delete/' + r.id, user.canDelete)}</td>
                 </tr>`).join('')}
             </tbody>
         </table>
@@ -1379,201 +1050,34 @@ const projectsPage = (rows, error, success, search, user) => layout('Projects', 
 `, '/projects', user)
 
 // ---------------------------------------------------------------------------
-// EXHIBITIONS CONSOLIDATED PAGE
+// EXHIBITIONS OVERVIEW PAGE
 // ---------------------------------------------------------------------------
 
-const exhibitionsPage = (rows, error, success, errorMsg, search, section, user) => layout('Exhibitions', `
+const exhibitionsPage = (rows, error, success, errorMsg, search, posterSet, user) => layout('Exhibitions', `
     <h1>Exhibitions</h1>
     ${alerts(success, errorMsg)}
-
     <div class="card">
-        <h2>Select exhibition to edit</h2>
-        <div class="form-group" style="max-width:500px;">
-            <label>Exhibition</label>
-            <div class="ac-wrap">
-                <input type="text" id="exh-picker-input" placeholder="Search by title or PID..." autocomplete="off">
-                <div class="ac-dropdown" id="exh-picker-dropdown"></div>
-            </div>
-            <div class="ac-selected" id="exh-picker-selected" style="margin-top:0.5rem;">
-                <span class="ac-selected-label" id="exh-picker-label"></span>
-                <span class="ac-selected-pid" id="exh-picker-pid"></span>
-                <a href="#" class="ac-clear" id="exh-picker-clear">&#10005; clear</a>
-            </div>
-        </div>
-    </div>
-
-    <div id="exh-edit-forms" style="display:none;">
-
-        ${sectionDivider('Add video')}
-        <div class="card" id="section-media">
-            <h2>Add video</h2>
-            <form method="POST" action="/admin/exhibitions/add">
-                <input type="hidden" name="exh_PID" id="form-media-pid">
-                <div class="exh-locked-display" id="media-locked-display"
-                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
-                    <span style="font-weight:500;" id="media-locked-label"></span>
-                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="media-locked-pid"></span>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group full">
-                        <label>URL *</label>
-                        <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" name="title" placeholder="Video title">
-                    </div>
-                    <div class="form-group">
-                        <label>Year</label>
-                        <input type="text" name="date" placeholder="2024" pattern="[0-9]{4}">
-                    </div>
-                </div>
-                <div style="margin-top:1rem;">
-                    <button type="submit" class="btn btn-primary">Add video</button>
-                </div>
-            </form>
-        </div>
-
-        ${sectionDivider('Add publication')}
-        <div class="card" id="section-publications">
-            <h2>Add publication</h2>
-            <form method="POST" action="/admin/publications/add">
-                <input type="hidden" name="exh_PID" id="form-pub-pid">
-                <div class="exh-locked-display"
-                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
-                    <span style="font-weight:500;" id="pub-locked-label"></span>
-                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="pub-locked-pid"></span>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group full">
-                        <label>Title *</label>
-                        <input type="text" name="title" placeholder="Publication title" required>
-                    </div>
-                    <div class="form-group full">
-                        <label>Library URL</label>
-                        <input type="url" name="url" placeholder="https://catalog.designmuseumgent.be/...">
-                    </div>
-                    <div class="form-group">
-                        <label>Year</label>
-                        <input type="text" name="year" placeholder="2024" pattern="[0-9]{4}">
-                    </div>
-                </div>
-                <div style="margin-top:1rem;">
-                    <button type="submit" class="btn btn-primary">Add publication</button>
-                </div>
-            </form>
-        </div>
-
-        ${sectionDivider('Exhibition information')}
-        <div class="card" id="section-translations">
-            <h2>Add or update</h2>
-            <form method="POST" action="/admin/translations/save">
-                <input type="hidden" name="exh_PID" id="form-trans-pid">
-                <div class="exh-locked-display"
-                     style="margin-bottom:1rem;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;display:flex;align-items:center;gap:0.625rem;">
-                    <span style="font-weight:500;" id="trans-locked-label"></span>
-                    <span class="mono" style="font-size:0.8125rem;color:#aaa;" id="trans-locked-pid"></span>
-                </div>
-                <div class="reference-box" id="harvested-title-box" style="margin-bottom:1rem;">
-                    <span class="reference-label">Harvested title (NL — from source system)</span>
-                    <span class="reference-value" id="harvested-title"></span>
-                </div>
-
-                ${sectionDivider('Titles')}
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Title NL</label>
-                        <input type="text" name="title_NL" id="field-title_NL" placeholder="Nederlandstalige titel">
-                    </div>
-                    <div class="form-group">
-                        <label>Title FR</label>
-                        <input type="text" name="title_FR" id="field-title_FR" placeholder="Titre en français">
-                    </div>
-                    <div class="form-group full">
-                        <label>Title EN</label>
-                        <input type="text" name="title_EN" id="field-title_EN" placeholder="English title">
-                    </div>
-                </div>
-
-                ${sectionDivider('Descriptions')}
-                <div class="form-grid">
-                    <div class="form-group full">
-                        <label>Description NL</label>
-                        <textarea name="text_NL" id="field-text_NL" rows="3" placeholder="Nederlandstalige beschrijving"></textarea>
-                    </div>
-                    <div class="form-group full">
-                        <label>Description FR</label>
-                        <textarea name="text_FR" id="field-text_FR" rows="3" placeholder="Description en français"></textarea>
-                    </div>
-                    <div class="form-group full">
-                        <label>Description EN</label>
-                        <textarea name="text_EN" id="field-text_EN" rows="3" placeholder="English description"></textarea>
-                    </div>
-                </div>
-
-                ${sectionDivider('Curator')}
-                <div class="form-grid">
-                    <div class="form-group full">
-                        <label>Curator(s)</label>
-                        <input type="text" name="curator" id="field-curator" placeholder="Kaat Debo, Lotte Vandermeersch">
-                        <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">Separate multiple curators with a comma.</span>
-                    </div>
-                </div>
-
-                <div style="margin-top:1.5rem;">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-
-    </div>
-
-    ${sectionDivider('Overview')}
-    <div class="card" id="section-overview">
         <h2>All exhibitions</h2>
+        <p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;margin-top:-0.25rem;">Click any row to manage an exhibition.</p>
         ${searchBar('/admin/exhibitions', search, 'Filter by PID or title', 'TE_2020, Kleureyck, ...')}
         ${rows.length === 0
     ? `<p class="empty">${search ? `No exhibitions found for "${search}".` : 'No exhibitions found.'}</p>`
-    : `
-        ${resultCount(rows.length, search)}
+    : `${resultCount(rows.length, search)}
         <div style="overflow-x:auto;">
         <table>
-            <thead>
-                <tr>
-                    <th>Exhibition</th>
-                    <th>NL</th>
-                    <th>FR</th>
-                    <th>EN</th>
-                    <th>Desc</th>
-                    <th>Curator</th>
-                    <th>Media</th>
-                    <th>Pubs</th>
-                    <th>Poster</th>
-                    <th>Views</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Exhibition</th><th>NL</th><th>FR</th><th>EN</th><th>Desc</th><th>Curator</th><th>Media</th><th>Pubs</th><th>Poster</th><th>Views</th></tr></thead>
             <tbody>
                 ${rows.map(r => {
-        const media   = r.dmg_exhibitions_media || []
-        const pubs    = r.dmg_exhibitions_publications || []
-        const videos  = media.filter(m => m.type === 'VIDEO').length
-        const audio   = media.filter(m => m.type === 'AUDIO').length
-        const hasDesc = r.text_NL || r.text_FR || r.text_EN
+        const media        = r.dmg_exhibitions_media || []
+        const pubs         = r.dmg_exhibitions_publications || []
+        const videos       = media.filter(m => m.type === 'VIDEO').length
+        const audio        = media.filter(m => m.type === 'AUDIO').length
+        const hasDesc      = r.text_NL || r.text_FR || r.text_EN
         const titleDisplay = r.title_NL || r.title_FR || r.title_EN || '—'
-
-        const mediaCell = media.length === 0
-            ? '<span class="check-no">—</span>'
-            : [
-                videos > 0 ? `<span class="tag tag-video">${videos}v</span>` : '',
-                audio  > 0 ? `<span class="tag tag-audio">${audio}a</span>`  : ''
-            ].filter(Boolean).join(' ')
-
-        const pubsCell = pubs.length > 0
-            ? `<span class="tag tag-pub">${pubs.length}</span>`
-            : '<span class="check-no">—</span>'
-
-        return `
-                    <tr data-pid="${r.exh_PID || ''}" style="cursor:pointer;" onclick="selectExhibitionFromTable('${r.exh_PID || ''}', '${(r.title_NL || r.title_EN || r.exh_PID || '').replace(/'/g, "\\'")}')">
+        const hasPoster    = posterSet.has(r.exh_PID)
+        const mediaCell    = media.length === 0 ? '<span class="check-no">—</span>' : [videos > 0 ? `<span class="tag tag-video">${videos}v</span>` : '', audio > 0 ? `<span class="tag tag-audio">${audio}a</span>` : ''].filter(Boolean).join(' ')
+        const pubsCell     = pubs.length > 0 ? `<span class="tag tag-pub">${pubs.length}</span>` : '<span class="check-no">—</span>'
+        return `<tr data-pid="${r.exh_PID || ''}" style="cursor:pointer;" onclick="window.location='/admin/exhibitions/${r.exh_PID}'">
                         <td>
                             <span class="mono" style="font-size:0.8125rem;">${r.exh_PID || r.id}</span>
                             <div style="font-size:0.8125rem;color:#555;margin-top:0.125rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${titleDisplay}">${titleDisplay}</div>
@@ -1585,143 +1089,193 @@ const exhibitionsPage = (rows, error, success, errorMsg, search, section, user) 
                         <td style="font-size:0.8125rem;color:#555;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.curator || ''}">${r.curator || '—'}</td>
                         <td>${mediaCell}</td>
                         <td>${pubsCell}</td>
-                        <td class="asset-poster" data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
-                        <td class="asset-views"  data-pid="${r.exh_PID || ''}"><span class="check-no">…</span></td>
+                        <td class="${hasPoster ? 'check-yes' : 'check-no'}">${hasPoster ? '✓' : '—'}</td>
+                        <td class="asset-views" data-pid="${r.exh_PID || ''}"><span style="color:#ddd">…</span></td>
                     </tr>`
     }).join('')}
             </tbody>
         </table>
-        </div>
-        ${permNote(user.canDelete)}`}
+        </div>`}
+    </div>
+    ${viewCountCheckerScript()}
+`, '/exhibitions', user)
+
+// ---------------------------------------------------------------------------
+// EXHIBITION DETAIL PAGE
+// ---------------------------------------------------------------------------
+
+const exhibitionDetailPage = (exh, media, pubs, poster, views, success, errorMsg, user) => {
+    const title          = exh.title_NL || exh.title_FR || exh.title_EN || exh.exh_PID
+    const harvestedTitle = exh.json_ld_v2?.['rdfs:label'] ?? null
+
+    return layout(`${exh.exh_PID} — Exhibitions`, `
+    <div style="margin-bottom:0.25rem;">
+        <a href="/admin/exhibitions" style="font-size:0.875rem;color:#aaa;text-decoration:none;">← All exhibitions</a>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:0.75rem;margin-top:1rem;margin-bottom:0.25rem;">
+        <h1 style="margin-bottom:0;">${title}</h1>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <span class="mono" style="color:#666;">${exh.exh_PID}</span>
+        ${exh.curator ? `<span style="font-size:0.875rem;color:#aaa;">Curator: ${exh.curator}</span>` : ''}
     </div>
 
-    ${assetCheckerScript()}
+    ${alerts(success ? '1' : null, errorMsg)}
 
-    <script>
-    // activate all locked display labels and form hidden fields
-    function activateExhibition(pid, label) {
-        // show the edit block
-        document.getElementById('exh-edit-forms').style.display = 'block'
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;margin-bottom:1.5rem;align-items:start;">
 
-        // fill all hidden PID fields
-        document.getElementById('form-media-pid').value = pid
-        document.getElementById('form-pub-pid').value   = pid
-        document.getElementById('form-trans-pid').value = pid
+        <div class="card" style="margin-bottom:0;">
+            <h2>Poster</h2>
+            ${poster ? `
+            <img src="${poster.url}" alt="Poster" style="width:100%;border-radius:6px;border:1px solid #eee;display:block;margin-bottom:0.75rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                <span class="mono" style="font-size:0.75rem;color:#aaa;overflow:hidden;text-overflow:ellipsis;">${poster.name}</span>
+                ${user.canDelete ? `
+                <form method="POST" action="/admin/exhibitions/delete-poster" style="display:inline;flex-shrink:0;margin-left:0.5rem;">
+                    <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                    <input type="hidden" name="filename" value="${poster.name}">
+                    <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete poster?')">delete</button>
+                </form>` : ''}
+            </div>` : `<p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;">No poster uploaded yet.</p>`}
+            <form method="POST" action="/admin/exhibitions/upload-poster" enctype="multipart/form-data">
+                <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                <div class="form-group" style="margin-bottom:0.75rem;">
+                    <label>${poster ? 'Replace poster' : 'Upload poster'}</label>
+                    <input type="file" name="poster" accept="image/jpeg,image/png,image/webp" required>
+                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">JPG, PNG or WebP.</span>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+            </form>
+        </div>
 
-        // fill all locked display labels
-        ;['media', 'pub', 'trans'].forEach(function(prefix) {
-            var lbl = document.getElementById(prefix + '-locked-label')
-            var p   = document.getElementById(prefix + '-locked-pid')
-            if (lbl) lbl.textContent = label
-            if (p)   p.textContent   = pid
-        })
+        <div class="card" style="margin-bottom:0;">
+            <h2>Exhibition information</h2>
+            ${harvestedTitle ? `<div class="reference-box"><span class="reference-label">Harvested title (NL — from source system)</span><span class="reference-value">${harvestedTitle}</span></div>` : ''}
+            <form method="POST" action="/admin/translations/save">
+                <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                ${sectionDivider('Titles')}
+                <div class="form-grid">
+                    <div class="form-group"><label>Title NL</label><input type="text" name="title_NL" value="${exh.title_NL || ''}" placeholder="Nederlandstalige titel"></div>
+                    <div class="form-group"><label>Title FR</label><input type="text" name="title_FR" value="${exh.title_FR || ''}" placeholder="Titre en français"></div>
+                    <div class="form-group full"><label>Title EN</label><input type="text" name="title_EN" value="${exh.title_EN || ''}" placeholder="English title"></div>
+                </div>
+                ${sectionDivider('Descriptions')}
+                <div class="form-grid">
+                    <div class="form-group full"><label>Description NL</label><textarea name="text_NL" rows="3" placeholder="Nederlandstalige beschrijving">${exh.text_NL || ''}</textarea></div>
+                    <div class="form-group full"><label>Description FR</label><textarea name="text_FR" rows="3" placeholder="Description en français">${exh.text_FR || ''}</textarea></div>
+                    <div class="form-group full"><label>Description EN</label><textarea name="text_EN" rows="3" placeholder="English description">${exh.text_EN || ''}</textarea></div>
+                </div>
+                ${sectionDivider('Curator')}
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Curator(s)</label>
+                        <input type="text" name="curator" value="${exh.curator || ''}" placeholder="Kaat Debo, Lotte Vandermeersch">
+                        <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">Separate multiple curators with a comma.</span>
+                    </div>
+                </div>
+                <div style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Save information</button></div>
+            </form>
+        </div>
+    </div>
 
-        // fetch and prefill translation fields
-        fetch('/admin/api/exhibition-translations?pid=' + encodeURIComponent(pid))
-            .then(function(r) { return r.json() })
-            .then(function(d) {
-                var ref = document.getElementById('harvested-title-box')
-                var val = document.getElementById('harvested-title')
-                if (ref && val && d.harvestedTitle) {
-                    val.textContent   = d.harvestedTitle
-                    ref.style.display = 'block'
-                }
-                var fields = ['title_NL', 'title_FR', 'title_EN', 'text_NL', 'text_FR', 'text_EN', 'curator']
-                fields.forEach(function(f) {
-                    var el = document.getElementById('field-' + f)
-                    if (el && d[f] != null) el.value = d[f]
-                })
-            })
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;align-items:start;">
 
-        // scroll to forms
-        setTimeout(function() {
-            document.getElementById('exh-edit-forms').scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 100)
-    }
+        <div class="card" style="margin-bottom:0;">
+            <h2>Video</h2>
+            ${media.length === 0
+        ? `<p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;">No videos linked yet.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
+                    ${media.map(m => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+                        <div style="min-width:0;">
+                            <a href="${m.url}" target="_blank" style="font-size:0.875rem;color:#4a90d9;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.title || m.url}</a>
+                            ${m.date ? `<span style="font-size:0.8125rem;color:#aaa;">${m.date}</span>` : ''}
+                        </div>
+                        <form method="POST" action="/admin/exhibitions/delete/${m.id}" style="display:inline;flex-shrink:0;margin-left:0.5rem;">
+                            <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                            ${user.canDelete ? `<button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this video?')">delete</button>` : '<span class="no-perm">—</span>'}
+                        </form>
+                    </div>`).join('')}
+                </div>`}
+            <form method="POST" action="/admin/exhibitions/add">
+                <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                <div class="form-grid">
+                    <div class="form-group full"><label>Video URL *</label><input type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required></div>
+                    <div class="form-group"><label>Title</label><input type="text" name="title" placeholder="Video title"></div>
+                    <div class="form-group"><label>Year</label><input type="text" name="date" placeholder="2024" pattern="[0-9]{4}"></div>
+                </div>
+                <div style="margin-top:0.75rem;"><button type="submit" class="btn btn-primary">Add video</button></div>
+            </form>
+        </div>
 
-    // called when clicking a table row
-    function selectExhibitionFromTable(pid, label) {
-        // update the picker display
-        document.getElementById('exh-picker-input').style.display  = 'none'
-        document.getElementById('exh-picker-selected').style.display = 'flex'
-        document.getElementById('exh-picker-label').textContent = label
-        document.getElementById('exh-picker-pid').textContent   = pid
-        activateExhibition(pid, label)
-    }
+        <div class="card" style="margin-bottom:0;">
+            <h2>Publications</h2>
+            ${pubs.length === 0
+        ? `<p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;">No publications linked yet.</p>`
+        : `<div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
+                    ${pubs.map(p => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+                        <div style="min-width:0;">
+                            <span style="font-size:0.875rem;font-weight:500;">${p.title}</span>
+                            ${p.year ? `<span style="font-size:0.8125rem;color:#aaa;margin-left:0.5rem;">${p.year}</span>` : ''}
+                            ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.8125rem;color:#4a90d9;margin-left:0.5rem;">↗</a>` : ''}
+                        </div>
+                        <form method="POST" action="/admin/publications/delete/${p.id}" style="display:inline;flex-shrink:0;margin-left:0.5rem;">
+                            <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                            ${user.canDelete ? `<button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this publication?')">delete</button>` : '<span class="no-perm">—</span>'}
+                        </form>
+                    </div>`).join('')}
+                </div>`}
+            <form method="POST" action="/admin/publications/add">
+                <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                <div class="form-grid">
+                    <div class="form-group full"><label>Title *</label><input type="text" name="title" placeholder="Publication title" required></div>
+                    <div class="form-group full"><label>Library URL</label><input type="url" name="url" placeholder="https://catalog.designmuseumgent.be/..."></div>
+                    <div class="form-group"><label>Year</label><input type="text" name="year" placeholder="2024" pattern="[0-9]{4}"></div>
+                </div>
+                <div style="margin-top:0.75rem;"><button type="submit" class="btn btn-primary">Add publication</button></div>
+            </form>
+        </div>
+    </div>
 
-    // picker autocomplete
-    (function() {
-        var input    = document.getElementById('exh-picker-input')
-        var dropdown = document.getElementById('exh-picker-dropdown')
-        var selected = document.getElementById('exh-picker-selected')
-        var lbl      = document.getElementById('exh-picker-label')
-        var pid      = document.getElementById('exh-picker-pid')
-        var clear    = document.getElementById('exh-picker-clear')
-        var timer
-
-        dropdown.addEventListener('click', function(e) {
-            var item = e.target.closest('[data-pid]')
-            if (!item) return
-            lbl.textContent          = item.dataset.label
-            pid.textContent          = item.dataset.pid
-            selected.style.display   = 'flex'
-            input.style.display      = 'none'
-            dropdown.style.display   = 'none'
-            activateExhibition(item.dataset.pid, item.dataset.label)
-        })
-
-        input.addEventListener('input', function() {
-            clearTimeout(timer)
-            var q = input.value.trim()
-            if (q.length < 2) { dropdown.style.display = 'none'; return }
-            timer = setTimeout(function() {
-                fetch('/admin/api/exhibitions?q=' + encodeURIComponent(q))
-                    .then(function(r) { return r.json() })
-                    .then(function(data) {
-                        if (!data.length) { dropdown.style.display = 'none'; return }
-                        dropdown.innerHTML = data.map(function(d) {
-                            return '<div class="ac-item" data-pid="' + d.pid + '" data-label="' +
-                                d.label.replace(/"/g, '&quot;') + '">' +
-                                d.label + '<span class="ac-item-pid">' + d.pid + '</span></div>'
-                        }).join('')
-                        dropdown.style.display = 'block'
-                    })
-            }, 250)
-        })
-
-        clear.addEventListener('click', function(e) {
-            e.preventDefault()
-            input.value              = ''
-            input.style.display      = 'block'
-            selected.style.display   = 'none'
-            dropdown.style.display   = 'none'
-            document.getElementById('exh-edit-forms').style.display = 'none'
-            // clear all fields
-            ;['title_NL','title_FR','title_EN','text_NL','text_FR','text_EN','curator'].forEach(function(f) {
-                var el = document.getElementById('field-' + f)
-                if (el) el.value = ''
-            })
-            var ref = document.getElementById('harvested-title-box')
-            if (ref) ref.style.display = 'none'
-            input.focus()
-        })
-
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('#exh-picker-input') &&
-                !e.target.closest('#exh-picker-dropdown')) {
-                dropdown.style.display = 'none'
-            }
-        })
-    })()
-
-    // scroll to section after redirect
-    ${section ? `
-    setTimeout(function() {
-        var el = document.getElementById('section-${section}')
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)` : ''}
-    </script>
+    <div class="card">
+        <h2>Installation views <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${views.length}</span></h2>
+        ${views.length > 0 ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+            ${views.map(v => `
+            <div style="border:1px solid #eee;border-radius:6px;overflow:hidden;">
+                <a href="${v.url}" target="_blank">
+                    <img src="${v.url}" alt="${v.name}" style="width:100%;height:140px;object-fit:cover;display:block;">
+                </a>
+                <div style="padding:0.375rem 0.5rem;display:flex;align-items:center;justify-content:space-between;background:white;">
+                    <span class="mono" style="font-size:0.75rem;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${v.name}</span>
+                    ${user.canDelete ? `
+                    <form method="POST" action="/admin/exhibitions/delete-view" style="display:inline;flex-shrink:0;">
+                        <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+                        <input type="hidden" name="filename" value="${v.path}">
+                        <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Delete this view?')" style="padding:0.125rem 0.375rem;font-size:0.75rem;">✕</button>
+                    </form>` : ''}
+                </div>
+            </div>`).join('')}
+        </div>` : `<p style="font-size:0.875rem;color:#aaa;margin-bottom:1rem;">No installation views uploaded yet.</p>`}
+        <form method="POST" action="/admin/exhibitions/upload-view" enctype="multipart/form-data">
+            <input type="hidden" name="exh_PID" value="${exh.exh_PID}">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Upload installation view</label>
+                    <input type="file" name="view" accept="image/jpeg,image/png,image/webp" required>
+                    <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">JPG, PNG or WebP.</span>
+                </div>
+            </div>
+            <div style="margin-top:0.75rem;"><button type="submit" class="btn btn-primary">Upload view</button></div>
+        </form>
+    </div>
 `, '/exhibitions', user)
+}
+
+// ---------------------------------------------------------------------------
+// AGENT RELATIONS PAGE
+// ---------------------------------------------------------------------------
 
 const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, search, user) => {
     const statGroups = [
@@ -1735,22 +1289,33 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
     const statsStrip = Object.keys(stats).length === 0 ? '' : `
         <div class="relation-stats">
             ${statGroups.map(group => {
-        const entries = group.keys
-            .filter(k => stats[k])
-            .map(k => `
-                        <div class="relation-stat-item" onclick="document.getElementById('relations-type-filter').value='${k}';applyRelationsFilter()" style="cursor:pointer;" title="Filter by ${RELATION_MAP[k] ?? k}">
-                            <span class="relation-stat-label">${RELATION_MAP[k] ?? k}</span>
-                            <span class="relation-stat-count">${stats[k]}</span>
-                        </div>`)
-            .join('')
+        const entries = group.keys.filter(k => stats[k]).map(k => `
+                    <div class="relation-stat-item" onclick="document.getElementById('relations-type-filter').value='${k}';applyRelationsFilter()" style="cursor:pointer;" title="Filter by ${RELATION_MAP[k] ?? k}">
+                        <span class="relation-stat-label">${RELATION_MAP[k] ?? k}</span>
+                        <span class="relation-stat-count">${stats[k]}</span>
+                    </div>`).join('')
         if (!entries) return ''
-        return `
-                    <div class="relation-stat-group">
-                        <div class="relation-stat-group-title">${group.label}</div>
-                        ${entries}
-                    </div>`
+        return `<div class="relation-stat-group"><div class="relation-stat-group-title">${group.label}</div>${entries}</div>`
     }).join('')}
         </div>`
+
+    const relationSelect = `
+        <select name="relation" required>
+            <option value="">— select —</option>
+            <optgroup label="Family">
+                <option value="parent_of">is parent of</option><option value="child_of">is child of</option>
+                <option value="spouse_of">is spouse of</option><option value="sibling_of">is sibling of</option>
+            </optgroup>
+            <optgroup label="Professional">
+                <option value="employer_of">is employer of</option><option value="employee_of">is employee of</option>
+                <option value="mentor_of">is mentor of</option><option value="student_of">is student of</option>
+                <option value="collaborator">collaborates with</option>
+            </optgroup>
+            <optgroup label="Organisational">
+                <option value="member_of">is member of</option><option value="has_member">has member</option>
+                <option value="founded">founded</option><option value="founded_by">was founded by</option>
+            </optgroup>
+        </select>`
 
     return layout('Agent relations', `
     <h1>Agent relations</h1>
@@ -1760,44 +1325,15 @@ const relationsPage = (grouped, totalRows, stats, error, success, errorMsg, sear
         <h2>Add relation</h2>
         <form method="POST" action="/admin/relations/add">
             <div class="form-grid">
-                <div class="form-group full">
-                    <label>Agent A *</label>
-                    ${agentAcWidget('a')}
-                </div>
+                <div class="form-group full"><label>Agent A *</label>${agentAcWidget('a')}</div>
                 <div class="form-group full">
                     <label>Relation *</label>
-                    <select name="relation" required>
-                        <option value="">— select —</option>
-                        <optgroup label="Family">
-                            <option value="parent_of">is parent of</option>
-                            <option value="child_of">is child of</option>
-                            <option value="spouse_of">is spouse of</option>
-                            <option value="sibling_of">is sibling of</option>
-                        </optgroup>
-                        <optgroup label="Professional">
-                            <option value="employer_of">is employer of</option>
-                            <option value="employee_of">is employee of</option>
-                            <option value="mentor_of">is mentor of</option>
-                            <option value="student_of">is student of</option>
-                            <option value="collaborator">collaborates with</option>
-                        </optgroup>
-                        <optgroup label="Organisational">
-                            <option value="member_of">is member of</option>
-                            <option value="has_member">has member</option>
-                            <option value="founded">founded</option>
-                            <option value="founded_by">was founded by</option>
-                        </optgroup>
-                    </select>
+                    ${relationSelect}
                     <span style="font-size:0.8125rem;color:#aaa;margin-top:0.25rem;">The inverse relation is stored automatically.</span>
                 </div>
-                <div class="form-group full">
-                    <label>Agent B *</label>
-                    ${agentAcWidget('b')}
-                </div>
+                <div class="form-group full"><label>Agent B *</label>${agentAcWidget('b')}</div>
             </div>
-            <div style="margin-top:1rem;">
-                <button type="submit" class="btn btn-primary">Add relation</button>
-            </div>
+            <div style="margin-top:1rem;"><button type="submit" class="btn btn-primary">Add relation</button></div>
         </form>
     </div>
 
@@ -1852,21 +1388,12 @@ const agentRelationsPage = (agent, user) => {
     const typeBadge = `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:${typeBg}">${typeLabel}</span>`
 
     const outgoingByType = {}
-    for (const r of agent.outgoing) {
-        if (!outgoingByType[r.relation]) outgoingByType[r.relation] = []
-        outgoingByType[r.relation].push(r)
-    }
-
+    for (const r of agent.outgoing) { if (!outgoingByType[r.relation]) outgoingByType[r.relation] = []; outgoingByType[r.relation].push(r) }
     const incomingByType = {}
-    for (const r of agent.incoming) {
-        if (!incomingByType[r.relation]) incomingByType[r.relation] = []
-        incomingByType[r.relation].push(r)
-    }
+    for (const r of agent.incoming) { if (!incomingByType[r.relation]) incomingByType[r.relation] = []; incomingByType[r.relation].push(r) }
 
     const renderRelationBlock = (grouped, direction) => {
-        if (Object.keys(grouped).length === 0) {
-            return `<p class="empty" style="padding:1rem 0;text-align:left;font-style:italic;">No ${direction} relations.</p>`
-        }
+        if (Object.keys(grouped).length === 0) return `<p class="empty" style="padding:1rem 0;text-align:left;font-style:italic;">No ${direction} relations.</p>`
         return Object.entries(grouped).map(([relation, rels]) => `
             <div style="margin-bottom:1rem;">
                 <div style="font-size:0.75rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">
@@ -1890,16 +1417,32 @@ const agentRelationsPage = (agent, user) => {
             </div>`).join('')
     }
 
+    const relationSelect = `
+        <select name="relation" required>
+            <option value="">— select —</option>
+            <optgroup label="Family">
+                <option value="parent_of">is parent of</option><option value="child_of">is child of</option>
+                <option value="spouse_of">is spouse of</option><option value="sibling_of">is sibling of</option>
+            </optgroup>
+            <optgroup label="Professional">
+                <option value="employer_of">is employer of</option><option value="employee_of">is employee of</option>
+                <option value="mentor_of">is mentor of</option><option value="student_of">is student of</option>
+                <option value="collaborator">collaborates with</option>
+            </optgroup>
+            <optgroup label="Organisational">
+                <option value="member_of">is member of</option><option value="has_member">has member</option>
+                <option value="founded">founded</option><option value="founded_by">was founded by</option>
+            </optgroup>
+        </select>`
+
     return layout(`${agent.label} — Agent relations`, `
     <div style="margin-bottom:0.25rem;">
         <a href="/admin/relations" style="font-size:0.875rem;color:#aaa;text-decoration:none;">← Agent relations</a>
     </div>
-
     <div style="display:flex;align-items:baseline;gap:0.75rem;margin-bottom:0.5rem;margin-top:1rem;">
         <h1 style="margin-bottom:0;">${agent.label}</h1>
         ${typeBadge}
     </div>
-
     <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1.5rem;">
         <span class="mono" style="font-size:0.9375rem;color:#666;">${agent.agent_id}</span>
         <a href="https://data.designmuseumgent.be/v2/id/agent/${agent.agent_id}" target="_blank" style="font-size:0.8125rem;color:#4a90d9;">↗ API</a>
@@ -1907,17 +1450,12 @@ const agentRelationsPage = (agent, user) => {
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
         <div class="card" style="margin-bottom:0;">
-            <h2>Outgoing
-                <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.outgoing.length}</span>
-            </h2>
+            <h2>Outgoing <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.outgoing.length}</span></h2>
             <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">This agent is the subject — <em>is parent of, member of, etc.</em></p>
             ${renderRelationBlock(outgoingByType, 'outgoing')}
         </div>
-
         <div class="card" style="margin-bottom:0;">
-            <h2>Incoming
-                <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.incoming.length}</span>
-            </h2>
+            <h2>Incoming <span style="font-weight:400;color:#bbb;font-size:0.875rem;margin-left:0.375rem;">${agent.incoming.length}</span></h2>
             <p style="font-size:0.8125rem;color:#aaa;margin-bottom:1rem;">Other agents refer to this one — <em>has member, has parent, etc.</em></p>
             ${renderRelationBlock(incomingByType, 'incoming')}
         </div>
@@ -1932,35 +1470,8 @@ const agentRelationsPage = (agent, user) => {
                 <span class="mono" style="font-size:0.8125rem;color:#aaa;">${agent.agent_id}</span>
             </div>
             <div class="form-grid" style="margin-bottom:1rem;">
-                <div class="form-group">
-                    <label>Relation *</label>
-                    <select name="relation" required>
-                        <option value="">— select —</option>
-                        <optgroup label="Family">
-                            <option value="parent_of">is parent of</option>
-                            <option value="child_of">is child of</option>
-                            <option value="spouse_of">is spouse of</option>
-                            <option value="sibling_of">is sibling of</option>
-                        </optgroup>
-                        <optgroup label="Professional">
-                            <option value="employer_of">is employer of</option>
-                            <option value="employee_of">is employee of</option>
-                            <option value="mentor_of">is mentor of</option>
-                            <option value="student_of">is student of</option>
-                            <option value="collaborator">collaborates with</option>
-                        </optgroup>
-                        <optgroup label="Organisational">
-                            <option value="member_of">is member of</option>
-                            <option value="has_member">has member</option>
-                            <option value="founded">founded</option>
-                            <option value="founded_by">was founded by</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Agent B *</label>
-                    ${agentAcWidget('b')}
-                </div>
+                <div class="form-group"><label>Relation *</label>${relationSelect}</div>
+                <div class="form-group"><label>Agent B *</label>${agentAcWidget('b')}</div>
             </div>
             <button type="submit" class="btn btn-primary">Add relation</button>
         </form>

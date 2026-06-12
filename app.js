@@ -8,6 +8,9 @@ import v1Router from "./src/routes/v1/index.js";
 import v2Router from "./src/routes/v2/index.js";
 import { setupAdmin } from "./src/admin/index.js";
 
+import fileUpload from 'express-fileupload'
+
+
 const app = express();
 
 // behind proxies (e.g., Heroku) so rate limiting and IP work correctly
@@ -73,5 +76,11 @@ setupAdmin(app)
 
 app.use('/v1', v1Router)
 app.use('/v2', v2Router)
+
+
+app.use(fileUpload({
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+    abortOnLimit: true
+}))
 
 export default app;

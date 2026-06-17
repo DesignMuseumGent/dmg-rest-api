@@ -1,5 +1,6 @@
 import { supabase } from '../../../../supabaseClient.js'
 import { buildLinkHeader } from "../../../utils/linkHeader.js"
+import { applyImagesToObject } from "../../../utils/iiif_images.js"
 
 export function requestObjects(app, BASE_URI) {
     const objectsHandler = async (req, res) => {
@@ -179,7 +180,7 @@ export function requestObjects(app, BASE_URI) {
             } else if (showColors) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             } else {
-                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
+                selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             }
 
             // ─────────────────────────────────────────────────────────────
@@ -438,6 +439,10 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
             }))
         }
     }
+
+    // ── IIIF images ──────────────────────────────────────────
+    applyImagesToObject(obj, row)
+
 
     // ── color data — only when ?colors=true ─────────────────
     if (showColors) {

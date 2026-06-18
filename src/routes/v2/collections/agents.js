@@ -129,7 +129,8 @@ export function requestAgents(app, BASE_URI) {
                     "crm": "http://www.cidoc-crm.org/cidoc-crm/",
                     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
                     "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl": "https://www.w3.org/2002/07/owl#"
+                    "owl": "https://www.w3.org/2002/07/owl#",
+                    "person": "http://www.w3.org/ns/person#"
                 },
                 "@id": collectionId,
                 "@type": "hydra:Collection",

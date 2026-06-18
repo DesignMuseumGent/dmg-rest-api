@@ -1,4 +1,4 @@
-import {supabase} from "../../supabaseClient.js";
+import { supabase } from "../../supabaseClient.js";
 
 // ---------------------------------------------------------------------------
 // CIDOC TYPE
@@ -35,22 +35,58 @@ const RELATION_CIDOC = {
 // ---------------------------------------------------------------------------
 
 export function parseBios(wikipedia_bios) {
-    if (!wikipedia_bios) return []
-    const bios = Array.isArray(wikipedia_bios) ? wikipedia_bios : [wikipedia_bios]
-    return bios
-        .filter(b => b?.text && b?.lang)
-        .map(b => ({
-            "@type": "crm:E33_Linguistic_Object",
-            "rdfs:label": b.text,
-            "crm:P2_has_type": {
-                "@id": "http://vocab.getty.edu/aat/300080091",
-                "@type": "crm:E55_Type",
-                "rdfs:label": "description"
-            },
-            "crm:P72_has_language": {
-                "@id": `http://publications.europa.eu/resource/authority/language/${b.lang.toUpperCase()}`
-            }
-        }))
+    if (!wikipedia_bios) return { bios: [], labels: [], thumbnail: null }
+
+    const langMap = { nl: 'NLD', fr: 'FRA', en: 'ENG' }
+
+    const bios      = []
+    const labels    = []
+    let   thumbnail = null
+
+    for (const [lang, data] of Object.entries(wikipedia_bios)) {
+        if (!data || data.status === 'no_qid' || data.status === 'error') continue
+
+        const cidocLang = langMap[lang]
+        if (!cidocLang) continue
+
+        if (data.snippet && data.snippet !== 'no data') {
+            bios.push({
+                "@type": "crm:E33_Linguistic_Object",
+                "rdfs:label": data.snippet,
+                "crm:P2_has_type": {
+                    "@id":        "http://vocab.getty.edu/aat/300080091",
+                    "@type":      "crm:E55_Type",
+                    "rdfs:label": "description"
+                },
+                "crm:P72_has_language": {
+                    "@id": `http://publications.europa.eu/resource/authority/language/${cidocLang}`
+                },
+                ...(data.source && data.source !== 'no data' && {
+                    "crm:P129i_is_subject_of": {
+                        "@id":        data.source,
+                        "@type":      "crm:E73_Information_Object",
+                        "rdfs:label": `Wikipedia (${lang})`
+                    }
+                })
+            })
+        }
+
+        if (data.title && data.title !== 'no data') {
+            labels.push({
+                "@type": "crm:E41_Appellation",
+                "rdfs:label": data.title,
+                "crm:P72_has_language": {
+                    "@id": `http://publications.europa.eu/resource/authority/language/${cidocLang}`
+                }
+            })
+        }
+
+        if (!thumbnail && data.thumbnail?.source) {
+            thumbnail = data.thumbnail.source
+        }
+    }
+
+    return { bios, labels, thumbnail }
 }
 
 // ---------------------------------------------------------------------------
@@ -58,12 +94,10 @@ export function parseBios(wikipedia_bios) {
 // ---------------------------------------------------------------------------
 
 export function applyBiosToObj(obj, row) {
-    // agent type
-    const type = cidocType(row['agent_type'])
-    obj['@type'] = type
+    obj['@type'] = cidocType(row['agent_type'])
 
-    // wikipedia bios
-    const bios = parseBios(row['wikipedia_bios'])
+    const { bios, labels, thumbnail } = parseBios(row['wikipedia_bios'])
+
     if (bios.length > 0) {
         const existing = Array.isArray(obj['crm:P67i_is_referred_to_by'])
             ? obj['crm:P67i_is_referred_to_by']
@@ -73,7 +107,19 @@ export function applyBiosToObj(obj, row) {
         obj['crm:P67i_is_referred_to_by'] = [...existing, ...bios]
     }
 
-    // agent relations as CIDOC-CRM properties
+    if (labels.length > 0) {
+        const existing = Array.isArray(obj['crm:P1_is_identified_by'])
+            ? obj['crm:P1_is_identified_by']
+            : obj['crm:P1_is_identified_by']
+                ? [obj['crm:P1_is_identified_by']]
+                : []
+        obj['crm:P1_is_identified_by'] = [...existing, ...labels]
+    }
+
+    if (thumbnail) {
+        obj['thumbnail'] = thumbnail
+    }
+
     if (Array.isArray(row._relations) && row._relations.length > 0) {
         const grouped = {}
 
@@ -89,11 +135,10 @@ export function applyBiosToObj(obj, row) {
                 "@type": mapping.type
             }
 
-            // add type qualifier where multiple relations share the same CRM property
             if (mapping.note) {
                 node["crm:P2_has_type"] = {
-                    "@id": `https://data.designmuseumgent.be/v2/id/type/relation/${rel.relation}`,
-                    "@type": "crm:E55_Type",
+                    "@id":        `https://data.designmuseumgent.be/v2/id/type/relation/${rel.relation}`,
+                    "@type":      "crm:E55_Type",
                     "rdfs:label": rel.relation.replace(/_/g, ' ')
                 }
             }

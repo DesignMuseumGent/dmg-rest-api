@@ -1,5 +1,3 @@
-import { supabase } from "../../supabaseClient.js";
-
 // ---------------------------------------------------------------------------
 // CIDOC TYPE
 // ---------------------------------------------------------------------------
@@ -31,12 +29,32 @@ const RELATION_CIDOC = {
 }
 
 // ---------------------------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------------------------
+
+// Normalise any value to an array, filtering out nulls
+const toArray = (v) => {
+    if (v == null) return []
+    return Array.isArray(v) ? v : [v]
+}
+
+// Merge new nodes into an existing property, always producing an array
+// when there is more than one node, or a single object when there is exactly one
+const mergeProperty = (obj, prop, newNodes) => {
+    if (!newNodes || newNodes.length === 0) return
+    const existing = toArray(obj[prop])
+    const merged   = [...existing, ...newNodes]
+    obj[prop]      = merged.length === 1 ? merged[0] : merged
+}
+
+// ---------------------------------------------------------------------------
 // BIO PARSING
 // ---------------------------------------------------------------------------
 
 export function parseBios(wikipedia_bios) {
     if (!wikipedia_bios) return { bios: [], labels: [], thumbnail: null }
 
+    // shape: { nl: { title, snippet, thumbnail, status, source }, fr: {...}, en: {...} }
     const langMap = { nl: 'NLD', fr: 'FRA', en: 'ENG' }
 
     const bios      = []
@@ -49,6 +67,7 @@ export function parseBios(wikipedia_bios) {
         const cidocLang = langMap[lang]
         if (!cidocLang) continue
 
+        // biographical snippet
         if (data.snippet && data.snippet !== 'no data') {
             bios.push({
                 "@type": "crm:E33_Linguistic_Object",
@@ -71,6 +90,7 @@ export function parseBios(wikipedia_bios) {
             })
         }
 
+        // Wikipedia title as appellation
         if (data.title && data.title !== 'no data') {
             labels.push({
                 "@type": "crm:E41_Appellation",
@@ -81,6 +101,7 @@ export function parseBios(wikipedia_bios) {
             })
         }
 
+        // thumbnail — first non-null across languages
         if (!thumbnail && data.thumbnail?.source) {
             thumbnail = data.thumbnail.source
         }
@@ -94,31 +115,38 @@ export function parseBios(wikipedia_bios) {
 // ---------------------------------------------------------------------------
 
 export function applyBiosToObj(obj, row) {
+
+    // ── agent type ───────────────────────────────────────────
     obj['@type'] = cidocType(row['agent_type'])
 
+    // ── wikipedia data ───────────────────────────────────────
     const { bios, labels, thumbnail } = parseBios(row['wikipedia_bios'])
 
+    // bios → merge into crm:P67i_is_referred_to_by
+    // (may already contain descriptions from the harvester)
     if (bios.length > 0) {
-        const existing = Array.isArray(obj['crm:P67i_is_referred_to_by'])
-            ? obj['crm:P67i_is_referred_to_by']
-            : obj['crm:P67i_is_referred_to_by']
-                ? [obj['crm:P67i_is_referred_to_by']]
-                : []
-        obj['crm:P67i_is_referred_to_by'] = [...existing, ...bios]
+        mergeProperty(obj, 'crm:P67i_is_referred_to_by', bios)
     }
 
+    // Wikipedia titles → merge into crm:P1_is_identified_by
+    // (may already contain appellations from the harvester)
     if (labels.length > 0) {
-        const existing = Array.isArray(obj['crm:P1_is_identified_by'])
-            ? obj['crm:P1_is_identified_by']
-            : obj['crm:P1_is_identified_by']
-                ? [obj['crm:P1_is_identified_by']]
-                : []
-        obj['crm:P1_is_identified_by'] = [...existing, ...labels]
+        mergeProperty(obj, 'crm:P1_is_identified_by', labels)
     }
 
+    // thumbnail — convenience key, not a CIDOC property
     if (thumbnail) {
         obj['thumbnail'] = thumbnail
     }
+
+    // ── agent relations ──────────────────────────────────────
+    // Relations come from dmg_agent_relations via fetchByAgentID.
+    // crm:P107i_is_current_or_former_member_of may already contain
+    // nationality data from the harvester (geonames URI, no crm:P2_has_type).
+    // We merge relation nodes into that property so both are preserved.
+    // Consumers can distinguish:
+    //   - nationality: no crm:P2_has_type, @id points to geonames
+    //   - relation:    has crm:P2_has_type, @id points to /v2/id/agent/
 
     if (Array.isArray(row._relations) && row._relations.length > 0) {
         const grouped = {}
@@ -135,6 +163,7 @@ export function applyBiosToObj(obj, row) {
                 "@type": mapping.type
             }
 
+            // qualifier distinguishes relations that share the same CRM property
             if (mapping.note) {
                 node["crm:P2_has_type"] = {
                     "@id":        `https://data.designmuseumgent.be/v2/id/type/relation/${rel.relation}`,
@@ -147,7 +176,8 @@ export function applyBiosToObj(obj, row) {
         }
 
         for (const [prop, nodes] of Object.entries(grouped)) {
-            obj[prop] = nodes.length === 1 ? nodes[0] : nodes
+            // merge with existing value (e.g. nationality already in json_ld_v2)
+            mergeProperty(obj, prop, nodes)
         }
     }
 

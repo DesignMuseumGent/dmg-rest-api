@@ -1,6 +1,6 @@
 import { fetchByAgentID } from "../../../utils/parsers.js";
 import { supabase } from '../../../../supabaseClient.js';
-import { applyBiosToObj, cidocType, parseBios } from '../../../utils/agentHelpers.js'
+import { applyBiosToObj } from '../../../utils/agentHelpers.js'
 
 // ---------------------------------------------------------------------------
 // SINGLE AGENT
@@ -29,6 +29,13 @@ export function requestAgent(app, BASE_URI) {
 
             applyBiosToObj(obj, row)
 
+            // ensure person: namespace is declared — may be absent in records
+            // harvested before the agentClient.js update that added person:citizenship.
+            // Redundant after a full reharvest but harmless.
+            if (obj["@context"] && typeof obj["@context"] === 'object') {
+                obj["@context"]["person"] = "http://www.w3.org/ns/person#"
+            }
+
             return res.status(200).json(obj)
 
         } catch (error) {
@@ -42,7 +49,7 @@ export function requestAgent(app, BASE_URI) {
         try {
             const { data, error } = await supabase
                 .from('dmg_personen_LDES')
-                .select('"agent_ID", generated_at_time')
+                .select('agent_ID, generated_at_time')
                 .eq('agent_ID', req.params.agentPID)
                 .maybeSingle()
 

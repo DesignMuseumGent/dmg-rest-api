@@ -7,12 +7,13 @@ export function requestExhibitions(app, BASE_URI) {
         res.setHeader('Content-Disposition', 'inline');
 
         try {
-            const page = parseInt(req.query.page) || 1
-            const itemsPerPage = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
-            const fullRecord = req.query.fullRecord === 'true'
+            const page          = parseInt(req.query.page) || 1
+            const itemsPerPage  = Math.min(parseInt(req.query.itemsPerPage) || 10, 100)
+            const fullRecord    = req.query.fullRecord === 'true'
             const modifiedSince = req.query.modifiedSince ?? null
-            const offset = (page - 1) * itemsPerPage
+            const offset        = (page - 1) * itemsPerPage
             const languageFilter = req.query.language?.toUpperCase().trim() || null
+            const searchQuery   = req.query.q?.trim() || null
             const colMap = { NLD: 'title_NL', FRA: 'title_FR', ENG: 'title_EN' }
             const col = colMap[languageFilter]
 
@@ -24,10 +25,10 @@ export function requestExhibitions(app, BASE_URI) {
                 ? 'id, json_ld_v2, exh_PID, title_NL, title_FR, title_EN, text_NL, text_FR, text_EN'
                 : 'id, exh_PID, title_NL'
 
-
             const applyFilters = (query) => {
-                query = query.not('exh_PID', 'is', null)  // ← add this
+                query = query.not('exh_PID', 'is', null)
                 if (modifiedSince) query = query.gte('generated_at_time', new Date(modifiedSince).toISOString())
+                if (searchQuery)   query = query.or(`title_NL.ilike.%${searchQuery}%,title_FR.ilike.%${searchQuery}%,title_EN.ilike.%${searchQuery}%,exh_PID.ilike.%${searchQuery}%`)
                 if (languageFilter && col) {
                     query = query.not(col, 'is', null)
                     query = query.neq(col, 'unknown')
@@ -35,7 +36,7 @@ export function requestExhibitions(app, BASE_URI) {
                 return query
             }
 
-            // count query
+            // ── count query ──────────────────────────────────────────
             const { count, error: countError } = await applyFilters(
                 supabase
                     .from('dmg_tentoonstelling_LDES')
@@ -47,7 +48,7 @@ export function requestExhibitions(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching exhibitions' })
             }
 
-            // data query
+            // ── data query ───────────────────────────────────────────
             const { data, error } = await applyFilters(
                 supabase
                     .from('dmg_tentoonstelling_LDES')
@@ -65,16 +66,39 @@ export function requestExhibitions(app, BASE_URI) {
                 return res.status(404).json({ error: 'No exhibitions found' })
             }
 
-            const totalPages = Math.ceil(count / itemsPerPage)
+            // ── poster lookup — full record only ────────────────────
+            // batch-fetch poster filenames once, match against exh_PIDs
+            // in the current page, resolve public URLs
+            let posterMap = {}
+            if (fullRecord && data.length > 0) {
+                const { data: posterFiles } = await supabase.storage
+                    .from('posters')
+                    .list('', { limit: 1000 })
+
+                const pidSet = new Set(data.map(r => r.exh_PID).filter(Boolean))
+
+                for (const file of (posterFiles || [])) {
+                    const pid = file.name.replace(/\.[^.]+$/, '')
+                    if (pidSet.has(pid)) {
+                        const { data: urlData } = supabase.storage
+                            .from('posters')
+                            .getPublicUrl(file.name)
+                        if (urlData?.publicUrl) posterMap[pid] = urlData.publicUrl
+                    }
+                }
+            }
+
+            const totalPages   = Math.ceil(count / itemsPerPage)
             const collectionId = `${BASE_URI}id/exhibitions`
 
             const buildParams = (p) => {
                 const params = new URLSearchParams({
                     page: p,
                     itemsPerPage,
-                    ...(fullRecord && { fullRecord: 'true' }),
-                    ...(modifiedSince && { modifiedSince }),
-                    ...(languageFilter && { language: languageFilter })
+                    ...(fullRecord     && { fullRecord: 'true' }),
+                    ...(modifiedSince  && { modifiedSince }),
+                    ...(languageFilter && { language: languageFilter }),
+                    ...(searchQuery    && { q: searchQuery })
                 })
                 return `${collectionId}?${params.toString()}`
             }
@@ -86,8 +110,8 @@ export function requestExhibitions(app, BASE_URI) {
                 "hydra:last": buildParams(totalPages)
             }
 
-            if (page > 1) hydraView["hydra:previous"] = buildParams(page - 1)
-            if (page < totalPages) hydraView["hydra:next"] = buildParams(page + 1)
+            if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
+            if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
             const members = (data || []).map(row => {
                 if (!fullRecord) {
@@ -107,12 +131,12 @@ export function requestExhibitions(app, BASE_URI) {
                     exh["@id"] = `${BASE_URI}id/exhibition/${pid}`
 
                     const identifier = {
-                        "@id": `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
+                        "@id":   `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
                         "@type": "crm:E42_Identifier",
                         "rdfs:label": pid,
                         "crm:P2_has_type": {
-                            "@id": "https://data.designmuseumgent.be/v2/id/type/intern-referentienummer",
-                            "@type": "crm:E55_Type",
+                            "@id":        "https://data.designmuseumgent.be/v2/id/type/intern-referentienummer",
+                            "@type":      "crm:E55_Type",
                             "rdfs:label": "Intern referentienummer"
                         }
                     }
@@ -121,6 +145,14 @@ export function requestExhibitions(app, BASE_URI) {
                         exh["crm:P1_is_identified_by"].push(identifier)
                     } else {
                         exh["crm:P1_is_identified_by"] = [identifier]
+                    }
+
+                    // ── poster image ─────────────────────────────────
+                    if (posterMap[pid]) {
+                        exh["crm:P138i_has_representation"] = {
+                            "@id":   posterMap[pid],
+                            "@type": "crm:E38_Image"
+                        }
                     }
                 }
 
@@ -161,8 +193,8 @@ export function requestExhibitions(app, BASE_URI) {
                         ...descriptions.map(d => ({
                             "@type": "crm:E33_Linguistic_Object",
                             "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300080091",
-                                "@type": "crm:E55_Type",
+                                "@id":        "http://vocab.getty.edu/aat/300080091",
+                                "@type":      "crm:E55_Type",
                                 "rdfs:label": "description"
                             },
                             "rdfs:label": d.value,
@@ -178,10 +210,10 @@ export function requestExhibitions(app, BASE_URI) {
 
             const response = {
                 "@context": {
-                    "crm": "http://www.cidoc-crm.org/cidoc-crm/",
-                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
+                    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
                     "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl": "https://www.w3.org/2002/07/owl#"
+                    "owl":   "https://www.w3.org/2002/07/owl#"
                 },
                 "@id": collectionId,
                 "@type": "hydra:Collection",

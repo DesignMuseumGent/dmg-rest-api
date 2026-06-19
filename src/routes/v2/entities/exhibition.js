@@ -36,7 +36,7 @@ export function requestExhibition(app, BASE_URI) {
 
             // resolve poster from storage bucket — try common extensions
             const SUPABASE_URL = process.env.SUPABASE_URL
-            const bucketBase = `${SUPABASE_URL}/storage/v1/object/public/posters`
+            const bucketBase   = `${SUPABASE_URL}/storage/v1/object/public/posters`
 
             let posterUrl = null
             for (const ext of ['jpeg', 'jpg', 'png', 'webp']) {
@@ -58,12 +58,12 @@ export function requestExhibition(app, BASE_URI) {
                 exh["@id"] = `${BASE_URI}id/exhibition/${pid}`
 
                 const identifier = {
-                    "@id": `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
+                    "@id":   `${BASE_URI}id/exhibition/${pid}/identifier/intern`,
                     "@type": "crm:E42_Identifier",
                     "rdfs:label": pid,
                     "crm:P2_has_type": {
-                        "@id": "https://data.designmuseumgent.be/v2/id/type/intern-referentienummer",
-                        "@type": "crm:E55_Type",
+                        "@id":        "https://data.designmuseumgent.be/v2/id/type/intern-referentienummer",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": "Intern referentienummer"
                     }
                 }
@@ -115,8 +115,8 @@ export function requestExhibition(app, BASE_URI) {
                     ...descriptions.map(d => ({
                         "@type": "crm:E33_Linguistic_Object",
                         "crm:P2_has_type": {
-                            "@id": "http://vocab.getty.edu/aat/300080091",
-                            "@type": "crm:E55_Type",
+                            "@id":        "http://vocab.getty.edu/aat/300080091",
+                            "@type":      "crm:E55_Type",
                             "rdfs:label": "description"
                         },
                         "rdfs:label": d.value,
@@ -135,75 +135,89 @@ export function requestExhibition(app, BASE_URI) {
                 }
             }
 
-            // build crm:P129i_is_subject_of — media + publications
-            const subjectOfNodes = []
-
+            // ── poster — crm:P65_shows_visual_item, always a single object ──
+            // standardised shape — identical property/type across
+            // /id/exhibition/:pid and /id/exhibitions?fullRecord=true
             if (posterUrl) {
                 exh["crm:P65_shows_visual_item"] = {
-                    "@id": posterUrl,
+                    "@id":   posterUrl,
                     "@type": "crm:E36_Visual_Item",
                     "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300027221",
-                        "@type": "crm:E55_Type",
+                        "@id":        "http://vocab.getty.edu/aat/300027221",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": "poster"
                     }
                 }
             }
 
-            // exhibition views from storage bucket
-            if (views.length > 0) {
-                const SUPABASE_URL = process.env.SUPABASE_URL
-                const bucketBase = `${SUPABASE_URL}/storage/v1/object/public/exhibition_views/${exhibitionPID}`
+            // ── installation views — crm:P138i_has_representation, always an array ──
+            // standardised shape — never collapses to a single object, even with one view
+            const SUPABASE_URL_VIEWS = process.env.SUPABASE_URL
+            const viewsBucketBase    = `${SUPABASE_URL_VIEWS}/storage/v1/object/public/exhibition_views/${exhibitionPID}`
 
-                exh["crm:P138i_has_representation"] = views.map((f, i) => ({
-                    "@id": `${bucketBase}/${f.name}`,
+            exh["crm:P138i_has_representation"] = views.map((f) => {
+                const node = {
+                    "@id":   `${viewsBucketBase}/${f.name}`,
                     "@type": "crm:E36_Visual_Item",
                     "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300210730",
-                        "@type": "crm:E55_Type",
+                        "@id":        "http://vocab.getty.edu/aat/300210730",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": "exhibition view"
                     },
-                    "rdfs:label": f.name.replace(/\.[^.]+$/, ''),
-                    "crm:P43_has_dimension": [
-                        ...(f.metadata?.width  ? [{ "@type": "crm:E54_Dimension", "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055647", "rdfs:label": "width" },  "crm:P90_has_value": f.metadata.width,  "crm:P91_has_unit": { "rdfs:label": "px" } }] : []),
-                        ...(f.metadata?.height ? [{ "@type": "crm:E54_Dimension", "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055644", "rdfs:label": "height" }, "crm:P90_has_value": f.metadata.height, "crm:P91_has_unit": { "rdfs:label": "px" } }] : [])
-                    ].filter(d => d) || undefined
-                }))
+                    "rdfs:label": f.name.replace(/\.[^.]+$/, '')
+                }
 
-                // strip empty dimensions array if nothing was set
-                exh["crm:P138i_has_representation"].forEach(v => {
-                    if (!v["crm:P43_has_dimension"]?.length) delete v["crm:P43_has_dimension"]
-                })
-            }
+                const dimensions = []
+                if (f.metadata?.width) {
+                    dimensions.push({
+                        "@type": "crm:E54_Dimension",
+                        "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055647", "rdfs:label": "width" },
+                        "crm:P90_has_value": f.metadata.width,
+                        "crm:P91_has_unit": { "rdfs:label": "px" }
+                    })
+                }
+                if (f.metadata?.height) {
+                    dimensions.push({
+                        "@type": "crm:E54_Dimension",
+                        "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055644", "rdfs:label": "height" },
+                        "crm:P90_has_value": f.metadata.height,
+                        "crm:P91_has_unit": { "rdfs:label": "px" }
+                    })
+                }
+                if (dimensions.length > 0) node["crm:P43_has_dimension"] = dimensions
 
-            // existing nodes from json_ld_v2 (e.g. IIIF manifest)
+                return node
+            })
+
+            // build crm:P129i_is_subject_of — media + publications + existing IIIF manifest
+            const subjectOfNodes = []
+
             if (exh["crm:P129i_is_subject_of"]) {
                 const existing = exh["crm:P129i_is_subject_of"]
                 const existingArray = Array.isArray(existing) ? existing : [existing]
                 subjectOfNodes.push(...existingArray)
             }
 
-            // media nodes
             for (const m of media) {
                 subjectOfNodes.push({
-                    "@id": m.url,
+                    "@id":   m.url,
                     "@type": "crm:E73_Information_Object",
                     "crm:P2_has_type": {
                         "@id": m.type === 'AUDIO'
                             ? "http://vocab.getty.edu/aat/300312042"
                             : "http://vocab.getty.edu/aat/300263419",
-                        "@type": "crm:E55_Type",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": m.type === 'AUDIO' ? "audio" : "video"
                     },
                     ...(m.title && {
                         "crm:P102_has_title": {
-                            "@type": "crm:E35_Title",
+                            "@type":      "crm:E35_Title",
                             "rdfs:label": m.title
                         }
                     }),
                     ...(m.date && {
                         "crm:P4_has_time-span": {
-                            "@type": "crm:E52_Time-Span",
+                            "@type":      "crm:E52_Time-Span",
                             "rdfs:label": m.date,
                             "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
                             "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
@@ -212,25 +226,24 @@ export function requestExhibition(app, BASE_URI) {
                 })
             }
 
-            // publication nodes
             for (const p of publications) {
                 subjectOfNodes.push({
                     ...(p.url && { "@id": p.url }),
                     "@type": "crm:E73_Information_Object",
                     "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300048715",
-                        "@type": "crm:E55_Type",
+                        "@id":        "http://vocab.getty.edu/aat/300048715",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": "publication"
                     },
                     ...(p.title && {
                         "crm:P102_has_title": {
-                            "@type": "crm:E35_Title",
+                            "@type":      "crm:E35_Title",
                             "rdfs:label": p.title
                         }
                     }),
                     ...(p.year && {
                         "crm:P4_has_time-span": {
-                            "@type": "crm:E52_Time-Span",
+                            "@type":      "crm:E52_Time-Span",
                             "rdfs:label": p.year,
                             "crm:P82a_begin_of_the_begin": { "@value": p.year, "@type": "xsd:gYear" }
                         }

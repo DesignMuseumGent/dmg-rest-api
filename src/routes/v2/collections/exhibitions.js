@@ -66,16 +66,29 @@ export function requestExhibitions(app, BASE_URI) {
                 return res.status(404).json({ error: 'No exhibitions found' })
             }
 
-            // ── poster lookup — full record only ────────────────────
-            // batch-fetch poster filenames once, match against exh_PIDs
-            // in the current page, resolve public URLs
+            // ── images — full record only ────────────────────────────
+            // poster: batch-list the posters bucket once, match against exh_PIDs
+            // views: batch-list exhibition_views/{pid} per exhibition in parallel
+            // Standardised shape — identical to /id/exhibition/:pid
             let posterMap = {}
-            if (fullRecord && data.length > 0) {
-                const { data: posterFiles } = await supabase.storage
-                    .from('posters')
-                    .list('', { limit: 1000 })
+            let viewsMap  = {}
 
-                const pidSet = new Set(data.map(r => r.exh_PID).filter(Boolean))
+            if (fullRecord && data.length > 0) {
+                const SUPABASE_URL = process.env.SUPABASE_URL
+                const pids = data.map(r => r.exh_PID).filter(Boolean)
+                const pidSet = new Set(pids)
+
+                const [{ data: posterFiles }, viewsResults] = await Promise.all([
+                    supabase.storage.from('posters').list('', { limit: 1000 }),
+                    Promise.all(
+                        pids.map(pid =>
+                            supabase.storage
+                                .from('exhibition_views')
+                                .list(pid, { limit: 100, sortBy: { column: 'name', order: 'asc' } })
+                                .then(res => ({ pid, files: res.data || [] }))
+                        )
+                    )
+                ])
 
                 for (const file of (posterFiles || [])) {
                     const pid = file.name.replace(/\.[^.]+$/, '')
@@ -85,6 +98,44 @@ export function requestExhibitions(app, BASE_URI) {
                             .getPublicUrl(file.name)
                         if (urlData?.publicUrl) posterMap[pid] = urlData.publicUrl
                     }
+                }
+
+                const viewsBucketRoot = `${SUPABASE_URL}/storage/v1/object/public/exhibition_views`
+                for (const { pid, files } of viewsResults) {
+                    const filtered = files.filter(f => f.name && !f.name.startsWith('.'))
+                    viewsMap[pid] = filtered.map(f => {
+                        const node = {
+                            "@id":   `${viewsBucketRoot}/${pid}/${f.name}`,
+                            "@type": "crm:E36_Visual_Item",
+                            "crm:P2_has_type": {
+                                "@id":        "http://vocab.getty.edu/aat/300210730",
+                                "@type":      "crm:E55_Type",
+                                "rdfs:label": "exhibition view"
+                            },
+                            "rdfs:label": f.name.replace(/\.[^.]+$/, '')
+                        }
+
+                        const dimensions = []
+                        if (f.metadata?.width) {
+                            dimensions.push({
+                                "@type": "crm:E54_Dimension",
+                                "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055647", "rdfs:label": "width" },
+                                "crm:P90_has_value": f.metadata.width,
+                                "crm:P91_has_unit": { "rdfs:label": "px" }
+                            })
+                        }
+                        if (f.metadata?.height) {
+                            dimensions.push({
+                                "@type": "crm:E54_Dimension",
+                                "crm:P2_has_type": { "@id": "http://vocab.getty.edu/aat/300055644", "rdfs:label": "height" },
+                                "crm:P90_has_value": f.metadata.height,
+                                "crm:P91_has_unit": { "rdfs:label": "px" }
+                            })
+                        }
+                        if (dimensions.length > 0) node["crm:P43_has_dimension"] = dimensions
+
+                        return node
+                    })
                 }
             }
 
@@ -147,13 +198,21 @@ export function requestExhibitions(app, BASE_URI) {
                         exh["crm:P1_is_identified_by"] = [identifier]
                     }
 
-                    // ── poster image ─────────────────────────────────
+                    // ── poster — crm:P65_shows_visual_item, always a single object ──
                     if (posterMap[pid]) {
-                        exh["crm:P138i_has_representation"] = {
+                        exh["crm:P65_shows_visual_item"] = {
                             "@id":   posterMap[pid],
-                            "@type": "crm:E38_Image"
+                            "@type": "crm:E36_Visual_Item",
+                            "crm:P2_has_type": {
+                                "@id":        "http://vocab.getty.edu/aat/300027221",
+                                "@type":      "crm:E55_Type",
+                                "rdfs:label": "poster"
+                            }
                         }
                     }
+
+                    // ── installation views — crm:P138i_has_representation, always an array ──
+                    exh["crm:P138i_has_representation"] = viewsMap[pid] ?? []
                 }
 
                 const langsToAdd = ["NLD", "FRA", "ENG"]

@@ -65,13 +65,13 @@ export function requestObjects(app, BASE_URI) {
 
             // sortBy: which column to sort on; sortOrder: asc or desc
             const SORT_FIELDS = {
-                'objectNumber':        'objectNumber',
-                'modified':            'generated_at_time',
-                'titleNL':             'object_title_nl',
-                'titleFR':             'object_title_fr',
-                'titleEN':             'object_title_en',
-                'dateBegin':           'production_year_begin',
-                'dateEnd':             'production_year_end',
+                'objectNumber':  'objectNumber',
+                'modified':      'generated_at_time',
+                'titleNL':       'object_title_nl',
+                'titleFR':       'object_title_fr',
+                'titleEN':       'object_title_en',
+                'dateBegin':     'production_year_begin',
+                'dateEnd':       'production_year_end',
             }
 
             const sortByParam    = req.query.sortBy    ?? 'objectNumber'
@@ -118,10 +118,10 @@ export function requestObjects(app, BASE_URI) {
 
             const emptyCollection = () => res.status(200).json({
                 "@context": {
-                    "crm": "http://www.cidoc-crm.org/cidoc-crm/",
-                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
+                    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
                     "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl": "https://www.w3.org/2002/07/owl#"
+                    "owl":   "https://www.w3.org/2002/07/owl#"
                 },
                 "@id": collectionId,
                 "@type": "hydra:Collection",
@@ -188,9 +188,13 @@ export function requestObjects(app, BASE_URI) {
             // ─────────────────────────────────────────────────────────────
             const applyFilters = (q) => {
                 q = q.eq('STATUS', 'HEALTHY')
-                //q = q.eq('COLLECTION_PRESENTATION', true)
+                // exclude removed and unhealthy objects at query time so that
+                // count and member count are always in sync — previously these
+                // were filtered in JS after the DB had already limited the page,
+                // causing pages to return fewer items than itemsPerPage
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
+                if (onDisplay)                     q = q.eq('COLLECTION_PRESENTATION', true)
                 if (hasImages)                     q = q.not('iiif_manifest', 'is', null)
                 if (hasColors)                     q = q.not('colors', 'is', null)
                 if (hasParts)                      q = q.not('hasParts', 'is', null)
@@ -221,6 +225,32 @@ export function requestObjects(app, BASE_URI) {
             }
 
             // ─────────────────────────────────────────────────────────────
+            // PROJECTS BATCH FETCH — full record only
+            // ─────────────────────────────────────────────────────────────
+            // Fetches all projects for the object numbers on this page in one
+            // query, then attaches them per row before building members.
+            // Mirrors the pattern used for agent relations in requestAgents.js.
+            // This ensures crm:P15i_was_motivation_of is present in collection
+            // responses even for projects not yet in json_ld_v2 (harvester lag).
+            async function attachProjects(rows) {
+                if (!fullRecord || !rows?.length) return
+                const objectNumbers = rows.map(r => r.objectNumber)
+                const { data: allProjects } = await supabase
+                    .from('dmg_objects_projects')
+                    .select('objectNumber, url, title, date')
+                    .in('objectNumber', objectNumbers)
+
+                const projectsMap = {}
+                for (const p of (allProjects || [])) {
+                    if (!projectsMap[p.objectNumber]) projectsMap[p.objectNumber] = []
+                    projectsMap[p.objectNumber].push({ url: p.url, title: p.title, date: p.date })
+                }
+                for (const row of rows) {
+                    row._projects = projectsMap[row.objectNumber] || []
+                }
+            }
+
+            // ─────────────────────────────────────────────────────────────
             // AGENT FILTER — via RPC
             // ─────────────────────────────────────────────────────────────
             if (agentURI) {
@@ -232,10 +262,17 @@ export function requestObjects(app, BASE_URI) {
                     return res.status(500).json({ error: 'Error fetching objects by agent' })
                 }
 
-                const allRows    = rpcData || []
+                const allRows    = (rpcData || []).filter(row => {
+                    if (!row["RESOLVES_TO"]) return true
+                    const resolved = row["RESOLVES_TO"].replace("id/object/", "")
+                    if (resolved.includes("REMOVED") || resolved.includes("UNHEALTHY")) return false
+                    return resolved === row.objectNumber
+                })
                 const total      = allRows.length
                 const sliced     = allRows.slice(offset, offset + itemsPerPage)
                 const totalPages = Math.ceil(total / itemsPerPage)
+
+                await attachProjects(sliced)
 
                 const hydraView = {
                     "@id": buildParams(page),
@@ -246,24 +283,17 @@ export function requestObjects(app, BASE_URI) {
                 if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
                 if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
-                const members = sliced
-                    .filter(row => {
-                        if (!row["RESOLVES_TO"]) return true
-                        const resolved = row["RESOLVES_TO"].replace("id/object/", "")
-                        if (resolved.includes("REMOVED")) return false
-                        return resolved === row.objectNumber
-                    })
-                    .map(row => buildMember(row, fullRecord, showColors, BASE_URI))
+                const members = sliced.map(row => buildMember(row, fullRecord, showColors, BASE_URI))
 
                 const linkHeader = buildLinkHeader(hydraView)
                 if (linkHeader) res.setHeader('Link', linkHeader)
 
                 return res.status(200).json({
                     "@context": {
-                        "crm": "http://www.cidoc-crm.org/cidoc-crm/",
-                        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                        "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
+                        "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
                         "hydra": "http://www.w3.org/ns/hydra/core#",
-                        "owl": "https://www.w3.org/2002/07/owl#"
+                        "owl":   "https://www.w3.org/2002/07/owl#"
                     },
                     "@id": collectionId,
                     "@type": "hydra:Collection",
@@ -297,6 +327,8 @@ export function requestObjects(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching objects', details: error.message })
             }
 
+            await attachProjects(data)
+
             const totalPages = Math.ceil(count / itemsPerPage)
 
             const hydraView = {
@@ -308,24 +340,17 @@ export function requestObjects(app, BASE_URI) {
             if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
             if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
-            const members = (data || [])
-                .filter(row => {
-                    if (!row["RESOLVES_TO"]) return true
-                    const resolved = row["RESOLVES_TO"].replace("id/object/", "")
-                    if (resolved.includes("REMOVED")) return false
-                    return resolved === row.objectNumber
-                })
-                .map(row => buildMember(row, fullRecord, showColors, BASE_URI))
+            const members = (data || []).map(row => buildMember(row, fullRecord, showColors, BASE_URI))
 
             const linkHeader = buildLinkHeader(hydraView)
             if (linkHeader) res.setHeader('Link', linkHeader)
 
             return res.status(200).json({
                 "@context": {
-                    "crm": "http://www.cidoc-crm.org/cidoc-crm/",
-                    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
+                    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
                     "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl": "https://www.w3.org/2002/07/owl#"
+                    "owl":   "https://www.w3.org/2002/07/owl#"
                 },
                 "@id": collectionId,
                 "@type": "hydra:Collection",
@@ -400,8 +425,8 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
             "@type": "crm:E33_Linguistic_Object",
             "rdfs:label": d.value,
             "crm:P2_has_type": {
-                "@id": "http://vocab.getty.edu/aat/300080091",
-                "@type": "crm:E55_Type",
+                "@id":        "http://vocab.getty.edu/aat/300080091",
+                "@type":      "crm:E55_Type",
                 "rdfs:label": "description"
             },
             "crm:P72_has_language": {
@@ -410,33 +435,26 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
         }))
     }
 
-    // ── isPartOf — this object is a member of a koepelrecord set
-    // Overwrite from computed column — single value, no rich data lost
+    // ── isPartOf ─────────────────────────────────────────────
     delete obj["crm:P46i_forms_part_of"]
     const rowIsPartOf = row["isPartOf"] ?? null
-
     if (rowIsPartOf) {
         obj["crm:P46i_forms_part_of"] = {
-            "@id": `${BASE_URI}id/object/${rowIsPartOf}`,
+            "@id":   `${BASE_URI}id/object/${rowIsPartOf}`,
             "@type": "crm:E22_Human-Made_Object"
         }
     }
 
-    // ── hasParts — koepelrecord: this set is composed of these objects
-    // Uses crm:P106_is_composed_of — distinct from crm:P46_has_component
-    // crm:P46_has_component (fysiekeOnderdelen with names, materials, dimensions)
-    // is left untouched from json_ld_v2
+    // ── hasParts ─────────────────────────────────────────────
     delete obj["crm:P106_is_composed_of"]
     const rowHasParts = row["hasParts"] ?? null
-
     if (rowHasParts) {
         const parts = typeof rowHasParts === 'string'
             ? rowHasParts.split(',').map(p => p.trim()).filter(Boolean)
             : Array.isArray(rowHasParts) ? rowHasParts : []
-
         if (parts.length > 0) {
             obj["crm:P106_is_composed_of"] = parts.map(p => ({
-                "@id": `${BASE_URI}id/object/${p}`,
+                "@id":   `${BASE_URI}id/object/${p}`,
                 "@type": "crm:E22_Human-Made_Object"
             }))
         }
@@ -445,6 +463,42 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
     // ── IIIF images ──────────────────────────────────────────
     applyImagesToObject(obj, row)
 
+    // ── creative projects ─────────────────────────────────────
+    // _projects is attached by attachProjects() before buildMember is called.
+    // It overwrites whatever was in json_ld_v2 so the live join is always
+    // authoritative — this also fixes the case where projects exist in the
+    // join table but haven't been written to json_ld_v2 yet (harvester lag).
+    const projects = row["_projects"] ?? []
+    if (projects.length > 0) {
+        obj["crm:P15i_was_motivation_of"] = projects.map(p => ({
+            "@type": "crm:E7_Activity",
+            "crm:P2_has_type": {
+                "@id":        "http://vocab.getty.edu/aat/300404591",
+                "@type":      "crm:E55_Type",
+                "rdfs:label": "creative project"
+            },
+            ...(p.title && {
+                "crm:P102_has_title": {
+                    "@type":      "crm:E35_Title",
+                    "rdfs:label": p.title
+                }
+            }),
+            ...(p.url && {
+                "crm:P129i_is_subject_of": {
+                    "@id":   p.url,
+                    "@type": "crm:E73_Information_Object"
+                }
+            }),
+            ...(p.date && {
+                "crm:P4_has_time-span": {
+                    "@type":      "crm:E52_Time-Span",
+                    "rdfs:label": p.date,
+                    "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": p.date },
+                    "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": p.date }
+                }
+            })
+        }))
+    }
 
     // ── color data — only when ?colors=true ─────────────────
     if (showColors) {
@@ -460,76 +514,76 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
                 }
 
                 return {
-                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}`,
+                    "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}`,
                     "@type": "crm:E36_Visual_Item",
                     "crm:P2_has_type": {
-                        "@id": "http://vocab.getty.edu/aat/300264863",
-                        "@type": "crm:E55_Type",
+                        "@id":        "http://vocab.getty.edu/aat/300264863",
+                        "@type":      "crm:E55_Type",
                         "rdfs:label": "digital image"
                     },
                     "crm:P138i_has_representation": {
-                        "@id": iiifImageUri,
+                        "@id":   iiifImageUri,
                         "@type": "crm:E38_Image"
                     },
                     "crm:P56_bears_feature": [
                         {
-                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
+                            "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
                             "@type": "crm:E26_Physical_Feature",
                             "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300056130",
-                                "@type": "crm:E55_Type",
+                                "@id":        "http://vocab.getty.edu/aat/300056130",
+                                "@type":      "crm:E55_Type",
                                 "rdfs:label": "color"
                             },
                             "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
                             "crm:P3_has_note": imageColors.map(c => ({
-                                "@type": "crm:E62_String",
-                                "rdf:value": c.hex,
+                                "@type":      "crm:E62_String",
+                                "rdf:value":  c.hex,
                                 "rdfs:label": c.css,
                                 "crm:P43_has_dimension": {
                                     "@type": "crm:E54_Dimension",
                                     "crm:P2_has_type": {
-                                        "@id": "http://vocab.getty.edu/aat/300417476",
-                                        "@type": "crm:E55_Type",
+                                        "@id":        "http://vocab.getty.edu/aat/300417476",
+                                        "@type":      "crm:E55_Type",
                                         "rdfs:label": "percentage"
                                     },
                                     "crm:P90_has_value": {
                                         "@value": Math.round(c.percentage * 100 * 100) / 100,
-                                        "@type": "xsd:decimal"
+                                        "@type":  "xsd:decimal"
                                     },
                                     "crm:P91_has_unit": {
-                                        "@id": "http://vocab.getty.edu/aat/300417476",
+                                        "@id":        "http://vocab.getty.edu/aat/300417476",
                                         "rdfs:label": "%"
                                     }
                                 }
                             }))
                         },
                         {
-                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
+                            "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
                             "@type": "crm:E26_Physical_Feature",
                             "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300056130",
-                                "@type": "crm:E55_Type",
+                                "@id":        "http://vocab.getty.edu/aat/300056130",
+                                "@type":      "crm:E55_Type",
                                 "rdfs:label": "color"
                             },
                             "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
                             "crm:P3_has_note": Object.entries(baseColorMap)
                                 .sort((a, b) => b[1] - a[1])
                                 .map(([base, pct]) => ({
-                                    "@type": "crm:E62_String",
+                                    "@type":     "crm:E62_String",
                                     "rdf:value": base,
                                     "crm:P43_has_dimension": {
                                         "@type": "crm:E54_Dimension",
                                         "crm:P2_has_type": {
-                                            "@id": "http://vocab.getty.edu/aat/300417476",
-                                            "@type": "crm:E55_Type",
+                                            "@id":        "http://vocab.getty.edu/aat/300417476",
+                                            "@type":      "crm:E55_Type",
                                             "rdfs:label": "percentage"
                                         },
                                         "crm:P90_has_value": {
                                             "@value": Math.round(pct * 100 * 100) / 100,
-                                            "@type": "xsd:decimal"
+                                            "@type":  "xsd:decimal"
                                         },
                                         "crm:P91_has_unit": {
-                                            "@id": "http://vocab.getty.edu/aat/300417476",
+                                            "@id":        "http://vocab.getty.edu/aat/300417476",
                                             "rdfs:label": "%"
                                         }
                                     }

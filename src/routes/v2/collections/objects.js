@@ -20,7 +20,7 @@ export function requestObjects(app, BASE_URI) {
             const hasColors     = req.query.hasColors === 'true'
             const hasParts      = req.query.hasParts === 'true'
             const isPartOf      = req.query.isPartOf === 'true'
-            const onDisplay     = req.query.onDisplay === 'true' || req.query.onDisplay === '1'
+            const onDisplayParam = req.query.onDisplay
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery   = req.query.q ?? null
             const excludeKoepels = req.query.koepels === 'exclude'
@@ -95,7 +95,7 @@ export function requestObjects(app, BASE_URI) {
                     ...(hasColors         && { hasColors: 'true' }),
                     ...(hasParts          && { hasParts: 'true' }),
                     ...(isPartOf          && { isPartOf: 'true' }),
-                    ...(onDisplay         && { onDisplay: 'true' }),
+                    ...(onDisplayParam !== undefined && { onDisplay: onDisplayParam }),
                     ...(modifiedSince     && { modifiedSince }),
                     ...(searchQuery       && { q: searchQuery }),
                     ...(colorFilter       && { color: colorFilter.join(',') }),
@@ -194,7 +194,8 @@ export function requestObjects(app, BASE_URI) {
                 // causing pages to return fewer items than itemsPerPage
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
-                if (onDisplay)                     q = q.eq('COLLECTION_PRESENTATION', true)
+                if (onDisplayParam === 'true' || onDisplayParam === '1')        q = q.eq('COLLECTION_PRESENTATION', true)
+                else if (onDisplayParam === 'false' || onDisplayParam === '0')  q = q.eq('COLLECTION_PRESENTATION', false)
                 if (hasImages)                     q = q.not('iiif_manifest', 'is', null)
                 if (hasColors)                     q = q.not('colors', 'is', null)
                 if (hasParts)                      q = q.not('hasParts', 'is', null)

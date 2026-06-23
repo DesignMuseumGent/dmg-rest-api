@@ -188,7 +188,9 @@ export function requestObjects(app, BASE_URI) {
             // ─────────────────────────────────────────────────────────────
             const applyFilters = (q) => {
                 q = q.eq('STATUS', 'HEALTHY')
-                if (onDisplay)                     q = q.eq('COLLECTION_PRESENTATION', true)
+                //q = q.eq('COLLECTION_PRESENTATION', true)
+                q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
+                q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
                 if (hasImages)                     q = q.not('iiif_manifest', 'is', null)
                 if (hasColors)                     q = q.not('colors', 'is', null)
                 if (hasParts)                      q = q.not('hasParts', 'is', null)

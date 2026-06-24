@@ -292,7 +292,7 @@ export async function fetchObjectByID(objectNumber) {
   const [objectResult, mediaResult, projectsResult] = await Promise.all([
     supabase
         .from('dmg_objects_LDES')
-        .select('objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, hasParts, isPartOf, generated_at_time')
+        .select('objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, hasParts, isPartOf, generated_at_time, COLLECTION_PRESENTATION')
         .eq('objectNumber', objectNumber),
     supabase
         .from('dmg_objects_media')

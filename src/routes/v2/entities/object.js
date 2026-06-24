@@ -121,6 +121,21 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
+            // ── collection presentation ──────────────────────────────
+            if (row["COLLECTION_PRESENTATION"] === true) {
+                obj["crm:P55_has_current_location"] = {
+                    "@id":   "https://data.designmuseumgent.be/v2/id/place/collection-presentation",
+                    "@type": "crm:E53_Place",
+                    "crm:P2_has_type": {
+                        "@id":        "http://vocab.getty.edu/aat/300054766",
+                        "@type":      "crm:E55_Type",
+                        "rdfs:label": "permanent collection display"
+                    },
+                    "rdfs:label": "Collection presentation Design Museum Gent"
+                }
+            }
+
+
             // ── IIIF images ──────────────────────────────────────────────
             applyImagesToObject(obj, row)
 

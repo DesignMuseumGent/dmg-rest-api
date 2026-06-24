@@ -188,10 +188,6 @@ export function requestObjects(app, BASE_URI) {
             // ─────────────────────────────────────────────────────────────
             const applyFilters = (q) => {
                 q = q.eq('STATUS', 'HEALTHY')
-                // exclude removed and unhealthy objects at query time so that
-                // count and member count are always in sync — previously these
-                // were filtered in JS after the DB had already limited the page,
-                // causing pages to return fewer items than itemsPerPage
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
                 if (onDisplayParam === 'true' || onDisplayParam === '1')        q = q.eq('COLLECTION_PRESENTATION', true)
@@ -226,13 +222,8 @@ export function requestObjects(app, BASE_URI) {
             }
 
             // ─────────────────────────────────────────────────────────────
-            // PROJECTS BATCH FETCH — full record only
+            // BATCH FETCH — projects and media, full record only
             // ─────────────────────────────────────────────────────────────
-            // Fetches all projects for the object numbers on this page in one
-            // query, then attaches them per row before building members.
-            // Mirrors the pattern used for agent relations in requestAgents.js.
-            // This ensures crm:P15i_was_motivation_of is present in collection
-            // responses even for projects not yet in json_ld_v2 (harvester lag).
             async function attachProjects(rows) {
                 if (!fullRecord || !rows?.length) return
                 const objectNumbers = rows.map(r => r.objectNumber)
@@ -248,6 +239,24 @@ export function requestObjects(app, BASE_URI) {
                 }
                 for (const row of rows) {
                     row._projects = projectsMap[row.objectNumber] || []
+                }
+            }
+
+            async function attachMedia(rows) {
+                if (!fullRecord || !rows?.length) return
+                const objectNumbers = rows.map(r => r.objectNumber)
+                const { data: allMedia } = await supabase
+                    .from('dmg_objects_media')
+                    .select('objectNumber, url, type, title, date')
+                    .in('objectNumber', objectNumbers)
+
+                const mediaMap = {}
+                for (const m of (allMedia || [])) {
+                    if (!mediaMap[m.objectNumber]) mediaMap[m.objectNumber] = []
+                    mediaMap[m.objectNumber].push({ url: m.url, type: m.type, title: m.title, date: m.date })
+                }
+                for (const row of rows) {
+                    row._media = mediaMap[row.objectNumber] || []
                 }
             }
 
@@ -273,7 +282,7 @@ export function requestObjects(app, BASE_URI) {
                 const sliced     = allRows.slice(offset, offset + itemsPerPage)
                 const totalPages = Math.ceil(total / itemsPerPage)
 
-                await attachProjects(sliced)
+                await Promise.all([attachProjects(sliced), attachMedia(sliced)])
 
                 const hydraView = {
                     "@id": buildParams(page),
@@ -328,7 +337,7 @@ export function requestObjects(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching objects', details: error.message })
             }
 
-            await attachProjects(data)
+            await Promise.all([attachProjects(data), attachMedia(data)])
 
             const totalPages = Math.ceil(count / itemsPerPage)
 
@@ -464,11 +473,38 @@ function buildMember(row, fullRecord, showColors, BASE_URI) {
     // ── IIIF images ──────────────────────────────────────────
     applyImagesToObject(obj, row)
 
+    // ── media — video and audio ──────────────────────────────
+    const media = row["_media"] ?? []
+    if (media.length > 0) {
+        const mediaNodes = media.map(m => ({
+            "@id":   m.url,
+            "@type": "crm:E73_Information_Object",
+            "crm:P2_has_type": m.type === 'video'
+                ? { "@id": "http://vocab.getty.edu/aat/300263419", "@type": "crm:E55_Type", "rdfs:label": "video" }
+                : { "@id": "http://vocab.getty.edu/aat/300263472", "@type": "crm:E55_Type", "rdfs:label": "audio" },
+            ...(m.title && {
+                "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": m.title }
+            }),
+            ...(m.date && {
+                "crm:P4_has_time-span": {
+                    "@type":      "crm:E52_Time-Span",
+                    "rdfs:label": m.date,
+                    "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
+                    "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
+                }
+            })
+        }))
+
+        const existing = obj["crm:P129i_is_subject_of"]
+        if (existing) {
+            const existingArray = Array.isArray(existing) ? existing : [existing]
+            obj["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
+        } else {
+            obj["crm:P129i_is_subject_of"] = mediaNodes.length === 1 ? mediaNodes[0] : mediaNodes
+        }
+    }
+
     // ── creative projects ─────────────────────────────────────
-    // _projects is attached by attachProjects() before buildMember is called.
-    // It overwrites whatever was in json_ld_v2 so the live join is always
-    // authoritative — this also fixes the case where projects exist in the
-    // join table but haven't been written to json_ld_v2 yet (harvester lag).
     const projects = row["_projects"] ?? []
     if (projects.length > 0) {
         obj["crm:P15i_was_motivation_of"] = projects.map(p => ({

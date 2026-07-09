@@ -312,11 +312,11 @@
         imgWrap.className = 'img-wrap';
 
         const img = document.createElement('img');
-        // Served from our own cached proxy (which also tries the IIIF manifest
-        // if the direct thumbnail fails), not api.collectie.gent directly —
-        // this element is only ever created once per object, so it's never
-        // re-fetched by the 5s poll either.
-        img.src = `/pick/api/thumb/${obj.id}`;
+        // thumbnailUrl comes straight from /api/objects — a direct Supabase
+        // Storage CDN URL, pre-populated by scripts/copy-images-to-supabase.js.
+        // No proxy route involved; this element is only ever created once per
+        // object, so it's never re-fetched by the 5s poll either.
+        img.src = obj.thumbnailUrl;
         img.loading = 'lazy';
         img.alt = obj.label;
 

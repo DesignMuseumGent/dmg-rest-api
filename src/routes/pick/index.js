@@ -12,20 +12,6 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { publicLimiter } from '../../utils/limiters.js'; // src/utils/limiters.js — same depth as v2Router's own import
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const THUMB_CACHE_DIR = path.join(__dirname, '.thumb-cache');
-try {
-    await fs.mkdir(THUMB_CACHE_DIR, { recursive: true });
-} catch (err) {
-    // Non-fatal: thumbnails just won't get disk-cached (each request falls
-    // back to fetching live, wrapped in its own try/catch below). This must
-    // never be allowed to take the whole app down over a filesystem hiccup.
-    console.error('[pick] Could not create thumbnail cache dir — thumbnails will not be disk-cached:', err);
-}
 
 const router = express.Router();
 
@@ -57,6 +43,12 @@ const DMG_OBJECTS_BASE = 'https://data.designmuseumgent.be/v2/id/objects';
 const DMG_OBJECT_BASE = 'https://data.designmuseumgent.be/v2/id/object';
 const DMG_COLORS_URL = 'https://data.designmuseumgent.be/v2/id/colors';
 const POOL_ITEMS_PER_PAGE = 200;
+
+// Supabase Storage bucket that holds cached object thumbnails. Must exist
+// already and be set to Public (create it once via the Supabase dashboard —
+// Storage → New bucket); this app only reads/writes objects in it, it
+// doesn't create the bucket itself.
+const THUMB_BUCKET = process.env.SUPABASE_THUMB_BUCKET || 'object-thumbnails';
 
 function extractObject(member) {
     const id = member['@id'].split('/').pop();
@@ -266,37 +258,59 @@ async function fetchObjectImage(obj) {
     return null;
 }
 
-// GET /pick/api/thumb/:id
-// Proxies the object's image through a local disk cache. First request for
-// a given id fetches it (thumbnail, falling back to the IIIF manifest if
-// the thumbnail is missing or unreachable) and saves it; every request
-// after that, from any viewer, is served straight off disk with a
-// long-lived Cache-Control, so the browser caches it too.
-router.get('/api/thumb/:id', async (req, res) => {
-    const { id } = req.params;
-    const cachePath = path.join(THUMB_CACHE_DIR, `${id}.jpg`);
+// Checks whether the object's image already exists in Supabase Storage; if
+// not, fetches it (thumbnail, falling back to the IIIF manifest) and
+// uploads it there. Returns the public CDN URL either way. Storage is the
+// persistent cache here — deliberately not the local filesystem, since
+// Heroku's dyno filesystem is wiped on every restart/deploy, which would
+// otherwise silently defeat any on-disk cache.
+async function getThumbnailPublicUrl(obj) {
+    if (!supabase) return null;
+
+    const storagePath = `${obj.id}.jpg`;
+    const { data: publicUrlData } = supabase.storage.from(THUMB_BUCKET).getPublicUrl(storagePath);
+    const publicUrl = publicUrlData.publicUrl;
 
     try {
-        const cached = await fs.readFile(cachePath);
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable'); // 30 days
-        return res.send(cached);
+        const headRes = await fetch(publicUrl, { method: 'HEAD' });
+        if (headRes.ok) return publicUrl; // already cached in Storage
     } catch {
-        // not cached yet — fall through and fetch it
+        // fall through and (re)generate
     }
+
+    const image = await fetchObjectImage(obj);
+    if (!image) return null;
+
+    const { error } = await supabase.storage.from(THUMB_BUCKET).upload(storagePath, image.buffer, {
+        contentType: image.contentType,
+        cacheControl: '2592000', // 30 days, in seconds — sets the Cache-Control header Supabase serves
+        upsert: true,
+    });
+
+    if (error) {
+        console.error('[pick] Supabase Storage upload failed:', error);
+        return null;
+    }
+
+    return publicUrl;
+}
+
+// GET /pick/api/thumb/:id
+// Redirects to the object's image in Supabase Storage, generating and
+// uploading it first if this is the first time it's been requested. After
+// that first request, this route barely does anything — the browser is
+// sent straight to Supabase's CDN and your server isn't in the loop at all.
+router.get('/api/thumb/:id', async (req, res) => {
+    const { id } = req.params;
 
     try {
         const obj = await getObjectById(id);
         if (!obj) return res.status(404).end();
 
-        const result = await fetchObjectImage(obj);
-        if (!result) return res.status(502).end(); // both thumbnail and manifest failed — no cache write, will retry next time
+        const url = await getThumbnailPublicUrl(obj);
+        if (!url) return res.status(502).end(); // both thumbnail and manifest failed — will retry next request
 
-        await fs.writeFile(cachePath, result.buffer); // best-effort; a write race just means one extra fetch
-
-        res.setHeader('Content-Type', result.contentType);
-        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-        res.send(result.buffer);
+        res.redirect(302, url);
     } catch (err) {
         console.error('[pick] GET /api/thumb/:id failed:', err);
         res.status(502).end();

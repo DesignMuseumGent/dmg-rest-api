@@ -11,7 +11,7 @@
 
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { publicLimiter } from '../utils/limiters.js'; // adjust the relative path to match where this file lives
+import { publicLimiter } from '../../utils/limiters.js'; // src/utils/limiters.js — same depth as v2Router's own import
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +48,7 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
     }
 } else {
     console.error(
-        '[pick] SUPABASE_URL / SUPABASE_SERVICE_KEY are not set — claiming will be unavailable. ' +
+        '[pick] SUPABASE_URL / SUPABASE_KEY are not set — claiming will be unavailable. ' +
         'Set these as Heroku config vars, or rename these two lines to match whatever your app already uses.',
     );
 }

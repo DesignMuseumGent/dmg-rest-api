@@ -7,6 +7,7 @@ import session from "express-session";
 import fileUpload from 'express-fileupload'
 import v1Router from "./src/routes/v1/index.js";
 import v2Router from "./src/routes/v2/index.js";
+import pickRouter from './src/routes/pick/index.js';
 import { setupAdmin } from "./src/admin/index.js";
 
 const app = express();
@@ -51,5 +52,6 @@ setupAdmin(app)
 
 app.use('/v1', v1Router)
 app.use('/v2', v2Router)
+app.use('/pick', pickRouter);
 
 export default app;

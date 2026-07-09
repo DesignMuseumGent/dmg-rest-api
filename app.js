@@ -50,7 +50,7 @@ app.use(express.static('public'))
 
 setupAdmin(app)
 
-app.use('/v1', v1Router)
+//app.use('/v1', v1Router)
 app.use('/v2', v2Router)
 app.use('/pick', pickRouter);
 

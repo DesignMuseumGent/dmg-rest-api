@@ -11,14 +11,21 @@
 
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { publicLimiter } from '../../utils/limiters.js'; // adjust the relative path to match where this file lives
+import { publicLimiter } from '../utils/limiters.js'; // adjust the relative path to match where this file lives
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const THUMB_CACHE_DIR = path.join(__dirname, '.thumb-cache');
-await fs.mkdir(THUMB_CACHE_DIR, { recursive: true });
+try {
+    await fs.mkdir(THUMB_CACHE_DIR, { recursive: true });
+} catch (err) {
+    // Non-fatal: thumbnails just won't get disk-cached (each request falls
+    // back to fetching live, wrapped in its own try/catch below). This must
+    // never be allowed to take the whole app down over a filesystem hiccup.
+    console.error('[pick] Could not create thumbnail cache dir — thumbnails will not be disk-cached:', err);
+}
 
 const router = express.Router();
 
@@ -27,10 +34,24 @@ const router = express.Router();
 // just to stop someone mashing the claim button.
 router.use(publicLimiter);
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY // service role key, so RLS doesn't get in the way server-side
-);
+// If these env vars are missing or misnamed, createClient() throws
+// synchronously — and since this whole module gets imported unconditionally
+// at app boot, that exception would previously crash the ENTIRE app, not
+// just this route. Guard it instead: log clearly and let claim/objects
+// endpoints degrade to a 503 rather than taking everything down.
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+    try {
+        supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+    } catch (err) {
+        console.error('[pick] Failed to create Supabase client — claiming will be unavailable:', err);
+    }
+} else {
+    console.error(
+        '[pick] SUPABASE_URL / SUPABASE_SERVICE_KEY are not set — claiming will be unavailable. ' +
+        'Set these as Heroku config vars, or rename these two lines to match whatever your app already uses.',
+    );
+}
 
 const DMG_OBJECTS_BASE = 'https://data.designmuseumgent.be/v2/id/objects';
 const DMG_OBJECT_BASE = 'https://data.designmuseumgent.be/v2/id/object';
@@ -79,6 +100,36 @@ async function fetchObjectsPage(opts) {
     };
 }
 
+// Fetches every page of a filter until hydra:totalItems worth of objects
+// have actually been collected, instead of trusting that one request with a
+// large itemsPerPage returns everything — the API may cap itemsPerPage
+// below what we ask for, in which case a single request would silently
+// under-report the on-display set. MAX_PAGES is just a safety bound so a
+// misbehaving API can't spin this into an unbounded loop.
+const MAX_PAGES = 20;
+
+async function fetchAllPages({ onDisplayOnly, color, itemsPerPage }) {
+    let page = 1;
+    let all = [];
+    let totalItems = Infinity;
+
+    while (all.length < totalItems && page <= MAX_PAGES) {
+        const result = await fetchObjectsPage({ onDisplayOnly, color, itemsPerPage, page });
+        totalItems = result.totalItems;
+        if (result.members.length === 0) break; // no more pages, even if totalItems says otherwise
+        all = all.concat(result.members);
+        page++;
+    }
+
+    if (all.length < totalItems) {
+        console.warn(
+            `[pick] fetchAllPages stopped at ${all.length}/${totalItems} objects (onDisplayOnly=${onDisplayOnly}, color=${color || 'none'}) — hit MAX_PAGES=${MAX_PAGES} or the API returned fewer members than it claimed.`,
+        );
+    }
+
+    return all;
+}
+
 // One cache entry per (mode, color) combination the UI can ask for.
 // mode 'onDisplay' -> just the on-display set (optionally colour-filtered).
 // mode 'all' -> the on-display set PLUS one random page pulled from the
@@ -94,12 +145,13 @@ async function getPool({ mode, color }) {
     const cached = poolCache.get(key);
     if (cached && Date.now() - cached.fetchedAt < POOL_CACHE_TTL_MS) return cached.data;
 
-    const onDisplay = await fetchObjectsPage({
+    // Fully paginated — see fetchAllPages() for why this doesn't just take
+    // whatever a single itemsPerPage=200 request happens to return.
+    let merged = await fetchAllPages({
         onDisplayOnly: true,
         color,
         itemsPerPage: POOL_ITEMS_PER_PAGE,
     });
-    let merged = onDisplay.members;
 
     if (mode === 'all') {
         const probe = await fetchObjectsPage({ onDisplayOnly: false, color, itemsPerPage: 1 });
@@ -268,6 +320,10 @@ router.get('/api/colors', async (req, res) => {
 // a random page from the whole collection alongside the on-display set,
 // in one combined list — not a separate section.
 router.get('/api/objects', async (req, res) => {
+    if (!supabase) {
+        return res.status(503).json({ error: 'Claim service is not configured.' });
+    }
+
     try {
         const mode = req.query.mode === 'all' ? 'all' : 'onDisplay';
         const color = typeof req.query.color === 'string' && req.query.color.trim() ? req.query.color.trim() : null;
@@ -302,6 +358,10 @@ router.get('/api/objects', async (req, res) => {
 // Atomic claim: relies on the object_id primary key to guarantee only one
 // claim per object ever succeeds, even under concurrent requests.
 router.post('/api/claim', async (req, res) => {
+    if (!supabase) {
+        return res.status(503).json({ error: 'Claim service is not configured.' });
+    }
+
     const { id, name } = req.body ?? {};
 
     if (typeof id !== 'string' || !id.trim()) {
@@ -344,6 +404,10 @@ router.post('/api/claim', async (req, res) => {
 // There's no real auth here (matches the rest of the app's "type your name"
 // model), so this is a courtesy check, not a security boundary.
 router.delete('/api/claim/:id', async (req, res) => {
+    if (!supabase) {
+        return res.status(503).json({ error: 'Claim service is not configured.' });
+    }
+
     const { id } = req.params;
     const { name } = req.body ?? {};
 

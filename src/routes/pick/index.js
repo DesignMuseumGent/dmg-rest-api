@@ -32,14 +32,10 @@ const supabase = createClient(
     process.env.SUPABASE_KEY // service role key, so RLS doesn't get in the way server-side
 );
 
-const DMG_SOURCE_URL =
-    'https://data.designmuseumgent.be/v2/id/objects?onDisplay=true&fullRecord=true&itemsPerPage=200';
-
-// Simple in-memory cache for the object list itself (thumbnails/labels don't
-// need to be re-fetched from the public API on every click). Claim status is
-// always read fresh from Supabase, never from this cache.
-let objectListCache = { data: null, fetchedAt: 0 };
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const DMG_OBJECTS_BASE = 'https://data.designmuseumgent.be/v2/id/objects';
+const DMG_OBJECT_BASE = 'https://data.designmuseumgent.be/v2/id/object';
+const DMG_COLORS_URL = 'https://data.designmuseumgent.be/v2/id/colors';
+const POOL_ITEMS_PER_PAGE = 200;
 
 function extractObject(member) {
     const id = member['@id'].split('/').pop();
@@ -63,20 +59,112 @@ function extractObject(member) {
     };
 }
 
-async function getObjectList() {
-    const isFresh = Date.now() - objectListCache.fetchedAt < CACHE_TTL_MS;
-    if (objectListCache.data && isFresh) return objectListCache.data;
+function buildObjectsUrl({ onDisplayOnly, color, itemsPerPage, page }) {
+    const params = new URLSearchParams({ fullRecord: 'true', itemsPerPage: String(itemsPerPage) });
+    if (onDisplayOnly) params.set('onDisplay', 'true');
+    if (color) params.set('color', color);
+    if (page) params.set('page', String(page));
+    return `${DMG_OBJECTS_BASE}?${params.toString()}`;
+}
 
-    const res = await fetch(DMG_SOURCE_URL);
+async function fetchObjectsPage(opts) {
+    const res = await fetch(buildObjectsUrl(opts));
     if (!res.ok) {
         throw new Error(`DMG API request failed: ${res.status} ${res.statusText}`);
     }
     const json = await res.json();
-    const members = json['hydra:member'] ?? [];
-    const objects = members.map(extractObject);
+    return {
+        members: (json['hydra:member'] ?? []).map(extractObject),
+        totalItems: json['hydra:totalItems'] ?? 0,
+    };
+}
 
-    objectListCache = { data: objects, fetchedAt: Date.now() };
-    return objects;
+// One cache entry per (mode, color) combination the UI can ask for.
+// mode 'onDisplay' -> just the on-display set (optionally colour-filtered).
+// mode 'all' -> the on-display set PLUS one random page pulled from the
+// whole (optionally colour-filtered) collection, merged into a single list —
+// this is the "keep the collection together" pool, not a separate section.
+// The random page is re-rolled once per cache cycle (10 min), not on every
+// 5s poll, so the grid doesn't reshuffle under someone mid-click.
+const poolCache = new Map();
+const POOL_CACHE_TTL_MS = 10 * 60 * 1000;
+
+async function getPool({ mode, color }) {
+    const key = `${mode}:${color || ''}`;
+    const cached = poolCache.get(key);
+    if (cached && Date.now() - cached.fetchedAt < POOL_CACHE_TTL_MS) return cached.data;
+
+    const onDisplay = await fetchObjectsPage({
+        onDisplayOnly: true,
+        color,
+        itemsPerPage: POOL_ITEMS_PER_PAGE,
+    });
+    let merged = onDisplay.members;
+
+    if (mode === 'all') {
+        const probe = await fetchObjectsPage({ onDisplayOnly: false, color, itemsPerPage: 1 });
+        const totalPages = Math.max(1, Math.ceil(probe.totalItems / POOL_ITEMS_PER_PAGE));
+        const randomPage = 1 + Math.floor(Math.random() * totalPages);
+        const extra = await fetchObjectsPage({
+            onDisplayOnly: false,
+            color,
+            itemsPerPage: POOL_ITEMS_PER_PAGE,
+            page: randomPage,
+        });
+
+        const seen = new Set(merged.map((o) => o.id));
+        for (const obj of extra.members) {
+            if (!seen.has(obj.id)) {
+                merged.push(obj);
+                seen.add(obj.id);
+            }
+        }
+    }
+
+    poolCache.set(key, { data: merged, fetchedAt: Date.now() });
+    return merged;
+}
+
+// Per-object lookup, used for claim/thumbnail validation regardless of
+// whatever pool/filter combination is currently active in the UI — a claim
+// stays valid even if someone flips the colour filter afterwards.
+// Assumes GET /v2/id/object/:id?fullRecord=true returns the same JSON-LD
+// shape as one hydra:member entry from the collection endpoint; worth a
+// quick manual check against your API if this route ever 404s unexpectedly.
+const objectCache = new Map();
+const OBJECT_CACHE_TTL_MS = 10 * 60 * 1000;
+
+async function getObjectById(id) {
+    const cached = objectCache.get(id);
+    if (cached && Date.now() - cached.fetchedAt < OBJECT_CACHE_TTL_MS) return cached.data;
+
+    const res = await fetch(`${DMG_OBJECT_BASE}/${encodeURIComponent(id)}?fullRecord=true`);
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const obj = extractObject(json);
+    objectCache.set(id, { data: obj, fetchedAt: Date.now() });
+    return obj;
+}
+
+// Base colours (grey, blue, orange, ...) for the filter dropdown. Barely
+// changes, so cache it for an hour.
+let colorListCache = { data: null, fetchedAt: 0 };
+const COLOR_CACHE_TTL_MS = 60 * 60 * 1000;
+
+async function getBaseColors() {
+    const isFresh = Date.now() - colorListCache.fetchedAt < COLOR_CACHE_TTL_MS;
+    if (colorListCache.data && isFresh) return colorListCache.data;
+
+    const res = await fetch(DMG_COLORS_URL);
+    if (!res.ok) {
+        throw new Error(`DMG colors request failed: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    const colors = (json.base_colors ?? []).map((c) => ({ value: c.value, count: c.object_count }));
+
+    colorListCache = { data: colors, fetchedAt: Date.now() };
+    return colors;
 }
 
 // Tries the object's direct thumbnail first; if that's missing or fails to
@@ -146,8 +234,7 @@ router.get('/api/thumb/:id', async (req, res) => {
     }
 
     try {
-        const objects = await getObjectList();
-        const obj = objects.find((o) => o.id === id);
+        const obj = await getObjectById(id);
         if (!obj) return res.status(404).end();
 
         const result = await fetchObjectImage(obj);
@@ -164,12 +251,29 @@ router.get('/api/thumb/:id', async (req, res) => {
     }
 });
 
-// GET /pick/api/objects
-// Returns the object list merged with current claim status.
+// GET /pick/api/colors
+// Base colours (grey, blue, orange, ...) for the filter dropdown.
+router.get('/api/colors', async (req, res) => {
+    try {
+        const colors = await getBaseColors();
+        res.json(colors);
+    } catch (err) {
+        console.error('[pick] GET /api/colors failed:', err);
+        res.status(500).json({ error: 'Could not load colors.' });
+    }
+});
+
+// GET /pick/api/objects?mode=onDisplay|all&color=grey
+// Returns the current pool merged with live claim status. mode=all mixes in
+// a random page from the whole collection alongside the on-display set,
+// in one combined list — not a separate section.
 router.get('/api/objects', async (req, res) => {
     try {
+        const mode = req.query.mode === 'all' ? 'all' : 'onDisplay';
+        const color = typeof req.query.color === 'string' && req.query.color.trim() ? req.query.color.trim() : null;
+
         const [objects, claimsResult] = await Promise.all([
-            getObjectList(),
+            getPool({ mode, color }),
             supabase.from('object_claims').select('object_id, claimed_by, claimed_at'),
         ]);
 
@@ -208,9 +312,11 @@ router.post('/api/claim', async (req, res) => {
     }
 
     try {
-        // Make sure it's a real object from the current list, not an arbitrary id.
-        const objects = await getObjectList();
-        if (!objects.some((o) => o.id === id)) {
+        // Make sure it's a real object in the DMG collection, not an arbitrary id
+        // — checked directly against the API rather than against whatever pool
+        // happens to be cached, so this stays correct across filter changes.
+        const obj = await getObjectById(id);
+        if (!obj) {
             return res.status(404).json({ error: 'Unknown object.' });
         }
 

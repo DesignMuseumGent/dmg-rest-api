@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kies je object — Design Museum Gent</title>
+    <style>
+        @font-face {
+            font-family: 'Museum';
+            src: url('/fonts/Museum-Light.otf') format('opentype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Museum';
+            src: url('/fonts/Museum-Regular.otf') format('opentype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Museum';
+            src: url('/fonts/Museum-Medium.otf') format('opentype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Museum';
+            src: url('/fonts/Museum-Bold.otf') format('opentype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            --ink: #1a1a1a;
+            --muted: #767676;
+            --line: #e2e2e2;
+            --accent: #c8102e;
+            --bg: #fafafa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Museum', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            font-weight: 400;
+            background: var(--bg);
+            color: var(--ink);
+        }
+        header {
+            padding: 24px 20px 16px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0 0 4px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        #name-gate {
+            max-width: 360px;
+            margin: 60px auto;
+            padding: 24px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            text-align: center;
+        }
+        #name-gate input {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 15px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+        #name-gate button {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-weight: 500;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #whoami {
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        #whoami button {
+            border: none;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 13px;
+            padding: 0;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+            padding: 0 20px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .card img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            background: #eee;
+            display: block;
+        }
+        .img-wrap {
+            aspect-ratio: 1 / 1;
+            background: #eee;
+        }
+        .img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .img-placeholder {
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            background: #eee;
+        }
+        .card .body {
+            padding: 10px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+        .card .label {
+            font-size: 13px;
+            line-height: 1.3;
+            min-height: 2.6em;
+        }
+        .card button {
+            margin-top: auto;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 6px;
+            border: 1px solid var(--ink);
+            background: #fff;
+            color: var(--ink);
+            cursor: pointer;
+        }
+        .card button:hover { background: var(--ink); color: #fff; }
+        .card.taken { opacity: 0.55; }
+        .card.taken button {
+            cursor: default;
+            border-color: var(--line);
+            color: var(--muted);
+        }
+        .card.taken button:hover { background: #fff; color: var(--muted); }
+        .card.mine { border-color: var(--accent); }
+        .card .claimed-by {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #status {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+
+<div id="name-gate">
+    <h2 style="margin:0 0 4px;font-size:17px;">Wie ben je?</h2>
+    <p style="margin:0;color:var(--muted);font-size:13px;">Vul je naam in om een object te kunnen kiezen.</p>
+    <input id="name-input" type="text" placeholder="Voornaam Achternaam" autocomplete="off" />
+    <button id="name-submit">Verder</button>
+</div>
+
+<div id="app" style="display:none;">
+    <header>
+        <h1>Kies je object</h1>
+        <p>Klik op een object om het te claimen. Eens gekozen, is het niet meer beschikbaar voor anderen.</p>
+    </header>
+    <div id="whoami"></div>
+    <div id="status"></div>
+    <div id="grid"></div>
+</div>
+
+<script>
+
+    const gate = document.getElementById('name-gate');
+    const app = document.getElementById('app');
+    const grid = document.getElementById('grid');
+    const statusEl = document.getElementById('status');
+    const whoamiEl = document.getElementById('whoami');
+
+    const NAME_KEY = 'dmg_picker_name';
+
+    function getName() {
+        return localStorage.getItem(NAME_KEY);
+    }
+
+    function setName(name) {
+        localStorage.setItem(NAME_KEY, name);
+    }
+
+    function showApp() {
+        gate.style.display = 'none';
+        app.style.display = 'block';
+        const name = getName();
+        whoamiEl.innerHTML = `Jij bent <strong>${escapeHtml(name)}</strong> — <button id="change-name">niet jou?</button>`;
+        document.getElementById('change-name').addEventListener('click', () => {
+            localStorage.removeItem(NAME_KEY);
+            location.reload();
+        });
+        loadObjects();
+        setInterval(loadObjects, 5000);
+    }
+
+    document.getElementById('name-submit').addEventListener('click', submitName);
+    document.getElementById('name-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitName();
+    });
+
+    function submitName() {
+        const val = document.getElementById('name-input').value.trim();
+        if (!val) return;
+        setName(val);
+        showApp();
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    async function loadObjects() {
+        try {
+            const res = await fetch('/pick/api/objects');
+            if (!res.ok) throw new Error('failed to load');
+            const objects = await res.json();
+            render(objects);
+        } catch (err) {
+            statusEl.textContent = 'Kon objecten niet laden. Probeer de pagina te herladen.';
+        }
+    }
+
+    const cardsById = new Map();
+
+    function render(objects) {
+        statusEl.textContent = '';
+        const myName = getName();
+        const seen = new Set();
+
+        for (const obj of objects) {
+            seen.add(obj.id);
+            let card = cardsById.get(obj.id);
+            if (!card) {
+                card = buildCard(obj);
+                cardsById.set(obj.id, card);
+                grid.appendChild(card.el);
+            }
+            updateCard(card, obj, myName);
+        }
+
+        // Drop cards for objects no longer in the list (rare, but keeps things honest).
+        for (const [id, card] of cardsById) {
+            if (!seen.has(id)) {
+                card.el.remove();
+                cardsById.delete(id);
+            }
+        }
+    }
+
+    function buildCard(obj) {
+        const el = document.createElement('div');
+        el.className = 'card';
+
+        const imgWrap = document.createElement('div');
+        imgWrap.className = 'img-wrap';
+
+        const img = document.createElement('img');
+        // Served from our own cached proxy (which also tries the IIIF manifest
+        // if the direct thumbnail fails), not api.collectie.gent directly —
+        // this element is only ever created once per object, so it's never
+        // re-fetched by the 5s poll either.
+        img.src = `/pick/api/thumb/${obj.id}`;
+        img.loading = 'lazy';
+        img.alt = obj.label;
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'img-placeholder';
+        placeholder.textContent = 'Geen afbeelding beschikbaar';
+
+        img.addEventListener('error', () => {
+            img.remove();
+            placeholder.style.display = 'flex';
+        });
+
+        imgWrap.appendChild(img);
+        imgWrap.appendChild(placeholder);
+
+        const body = document.createElement('div');
+        body.className = 'body';
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = obj.label;
+
+        const claimedBy = document.createElement('div');
+        claimedBy.className = 'claimed-by';
+
+        const btn = document.createElement('button');
+
+        body.appendChild(label);
+        body.appendChild(claimedBy);
+        body.appendChild(btn);
+        el.appendChild(imgWrap);
+        el.appendChild(body);
+
+        return { el, claimedBy, btn };
+    }
+
+    function updateCard(card, obj, myName) {
+        const isMine = obj.claimed && obj.claimedBy === myName;
+        card.el.className = 'card' + (obj.claimed ? ' taken' : '') + (isMine ? ' mine' : '');
+
+        card.claimedBy.style.display = obj.claimed ? '' : 'none';
+        card.claimedBy.textContent = isMine ? 'Jouw keuze' : `Gekozen door ${obj.claimedBy ?? ''}`;
+
+        if (!obj.claimed) {
+            card.btn.textContent = 'Kies dit object';
+            card.btn.disabled = false;
+            card.btn.onclick = () => claim(obj.id, card.btn);
+        } else if (isMine) {
+            card.btn.textContent = 'Ongedaan maken';
+            card.btn.disabled = false;
+            card.btn.onclick = () => unclaim(obj.id, card.btn);
+        } else {
+            card.btn.textContent = 'Niet beschikbaar';
+            card.btn.disabled = true;
+            card.btn.onclick = null;
+        }
+    }
+
+    async function claim(id, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Bezig...';
+        try {
+            const res = await fetch('/pick/api/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, name: getName() }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Kon object niet kiezen.');
+            }
+        } catch (err) {
+            alert('Kon object niet kiezen. Probeer opnieuw.');
+        } finally {
+            loadObjects();
+        }
+    }
+
+    async function unclaim(id, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Bezig...';
+        try {
+            const res = await fetch(`/pick/api/claim/${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: getName() }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Kon keuze niet ongedaan maken.');
+            }
+        } catch (err) {
+            alert('Kon keuze niet ongedaan maken. Probeer opnieuw.');
+        } finally {
+            loadObjects();
+        }
+    }
+
+    // Skip the name gate if we already know who this browser is.
+    if (getName()) showApp();
+</script>
+
+</body>
+</html>

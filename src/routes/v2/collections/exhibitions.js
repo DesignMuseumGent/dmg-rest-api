@@ -66,19 +66,23 @@ export function requestExhibitions(app, BASE_URI) {
                 return res.status(404).json({ error: 'No exhibitions found' })
             }
 
-            // ── images — full record only ────────────────────────────
-            // poster: batch-list the posters bucket once, match against exh_PIDs
-            // views: batch-list exhibition_views/{pid} per exhibition in parallel
-            // Standardised shape — identical to /id/exhibition/:pid
-            let posterMap = {}
-            let viewsMap  = {}
+            // ── images + media + publications — full record only ─────
+            let posterMap       = {}
+            let viewsMap        = {}
+            let mediaMap        = {}
+            let publicationsMap = {}
 
             if (fullRecord && data.length > 0) {
                 const SUPABASE_URL = process.env.SUPABASE_URL
                 const pids = data.map(r => r.exh_PID).filter(Boolean)
                 const pidSet = new Set(pids)
 
-                const [{ data: posterFiles }, viewsResults] = await Promise.all([
+                const [
+                    { data: posterFiles },
+                    viewsResults,
+                    { data: allMedia },
+                    { data: allPublications }
+                ] = await Promise.all([
                     supabase.storage.from('posters').list('', { limit: 1000 }),
                     Promise.all(
                         pids.map(pid =>
@@ -87,7 +91,15 @@ export function requestExhibitions(app, BASE_URI) {
                                 .list(pid, { limit: 100, sortBy: { column: 'name', order: 'asc' } })
                                 .then(res => ({ pid, files: res.data || [] }))
                         )
-                    )
+                    ),
+                    supabase
+                        .from('dmg_exhibitions_media')
+                        .select('exh_PID, url, title, date, type')
+                        .in('exh_PID', pids),
+                    supabase
+                        .from('dmg_exhibitions_publications')
+                        .select('exh_PID, title, url, year')
+                        .in('exh_PID', pids)
                 ])
 
                 for (const file of (posterFiles || [])) {
@@ -136,6 +148,16 @@ export function requestExhibitions(app, BASE_URI) {
 
                         return node
                     })
+                }
+
+                // build mediaMap and publicationsMap keyed by exh_PID
+                for (const m of (allMedia || [])) {
+                    if (!mediaMap[m.exh_PID]) mediaMap[m.exh_PID] = []
+                    mediaMap[m.exh_PID].push(m)
+                }
+                for (const p of (allPublications || [])) {
+                    if (!publicationsMap[p.exh_PID]) publicationsMap[p.exh_PID] = []
+                    publicationsMap[p.exh_PID].push(p)
                 }
             }
 
@@ -198,7 +220,7 @@ export function requestExhibitions(app, BASE_URI) {
                         exh["crm:P1_is_identified_by"] = [identifier]
                     }
 
-                    // ── poster — crm:P65_shows_visual_item, always a single object ──
+                    // ── poster ───────────────────────────────────────────────
                     if (posterMap[pid]) {
                         exh["crm:P65_shows_visual_item"] = {
                             "@id":   posterMap[pid],
@@ -211,8 +233,72 @@ export function requestExhibitions(app, BASE_URI) {
                         }
                     }
 
-                    // ── installation views — crm:P138i_has_representation, always an array ──
+                    // ── installation views ───────────────────────────────────
                     exh["crm:P138i_has_representation"] = viewsMap[pid] ?? []
+
+                    // ── media + publications → crm:P129i_is_subject_of ───────
+                    // Mirrors requestExhibition.js: merge with any existing nodes
+                    // from json_ld_v2 (e.g. IIIF manifest), then append media and
+                    // publications from the join tables.
+                    const subjectOfNodes = []
+
+                    if (exh["crm:P129i_is_subject_of"]) {
+                        const existing = exh["crm:P129i_is_subject_of"]
+                        subjectOfNodes.push(...(Array.isArray(existing) ? existing : [existing]))
+                    }
+
+                    for (const m of (mediaMap[pid] || [])) {
+                        subjectOfNodes.push({
+                            "@id":   m.url,
+                            "@type": "crm:E73_Information_Object",
+                            "crm:P2_has_type": {
+                                "@id": m.type === 'AUDIO'
+                                    ? "http://vocab.getty.edu/aat/300312042"
+                                    : "http://vocab.getty.edu/aat/300263419",
+                                "@type":      "crm:E55_Type",
+                                "rdfs:label": m.type === 'AUDIO' ? "audio" : "video"
+                            },
+                            ...(m.title && {
+                                "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": m.title }
+                            }),
+                            ...(m.date && {
+                                "crm:P4_has_time-span": {
+                                    "@type":      "crm:E52_Time-Span",
+                                    "rdfs:label": m.date,
+                                    "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
+                                    "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
+                                }
+                            })
+                        })
+                    }
+
+                    for (const p of (publicationsMap[pid] || [])) {
+                        subjectOfNodes.push({
+                            ...(p.url && { "@id": p.url }),
+                            "@type": "crm:E73_Information_Object",
+                            "crm:P2_has_type": {
+                                "@id":        "http://vocab.getty.edu/aat/300048715",
+                                "@type":      "crm:E55_Type",
+                                "rdfs:label": "publication"
+                            },
+                            ...(p.title && {
+                                "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": p.title }
+                            }),
+                            ...(p.year && {
+                                "crm:P4_has_time-span": {
+                                    "@type":      "crm:E52_Time-Span",
+                                    "rdfs:label": p.year,
+                                    "crm:P82a_begin_of_the_begin": { "@value": p.year, "@type": "xsd:gYear" }
+                                }
+                            })
+                        })
+                    }
+
+                    if (subjectOfNodes.length > 0) {
+                        exh["crm:P129i_is_subject_of"] = subjectOfNodes.length === 1
+                            ? subjectOfNodes[0]
+                            : subjectOfNodes
+                    }
                 }
 
                 const langsToAdd = ["NLD", "FRA", "ENG"]

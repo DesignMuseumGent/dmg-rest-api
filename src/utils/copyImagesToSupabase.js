@@ -13,6 +13,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
+import { Agent, setGlobalDispatcher } from 'undici'
+
+const ca = fs.readFileSync(path.join(os.homedir(), 'system-ca-certs.pem'))
+setGlobalDispatcher(new Agent({ connect: { ca } }))
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const BUCKET = process.env.SUPABASE_THUMB_BUCKET || 'object-thumbnails';

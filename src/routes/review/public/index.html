@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exhibition Photo Review — DMG</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --panel: #ffffff;
+    --border: #ddd9d0;
+    --text: #2a2824;
+    --muted: #837c6f;
+    --pending: #c9a227;
+    --accepted: #3f7d54;
+    --rejected: #b3492f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 16px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+  }
+  select {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    font-size: 14px;
+    min-width: 280px;
+  }
+  #summary {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  #add-object-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #add-object-btn.active {
+    background: var(--text);
+    color: white;
+    border-color: var(--text);
+  }
+  .draw-preview {
+    border: 2px dashed var(--text) !important;
+    background: rgba(0,0,0,0.05);
+    pointer-events: none;
+  }
+  main {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 61px);
+  }
+  #image-pane {
+    flex: 1 1 60%;
+    padding: 24px;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  #image-wrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+  #photo-img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .bbox {
+    position: absolute;
+    border: 2px solid var(--pending);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .bbox:hover, .bbox.selected {
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
+  }
+  .bbox.selected { border-width: 3px; cursor: move; }
+  .bbox.status-accepted { border-color: var(--accepted); }
+  .bbox.status-rejected { border-color: var(--rejected); opacity: 0.5; }
+  .bbox-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border: 2px solid var(--text);
+    border-radius: 50%;
+    display: none;
+    z-index: 5;
+  }
+  .bbox.selected .bbox-handle { display: block; }
+  .handle-tl { top: -6px; left: -6px; cursor: nwse-resize; }
+  .handle-tr { top: -6px; right: -6px; cursor: nesw-resize; }
+  .handle-bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
+  .handle-br { bottom: -6px; right: -6px; cursor: nwse-resize; }
+  .bbox-delete {
+    position: absolute;
+    top: -20px;
+    right: -2px;
+    width: 16px;
+    height: 16px;
+    background: var(--rejected);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 6;
+  }
+  .bbox-delete:hover { background: #8a3623; }
+  .bbox-label {
+    position: absolute;
+    top: -20px;
+    left: -2px;
+    font-size: 11px;
+    background: var(--pending);
+    color: white;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .status-accepted .bbox-label { background: var(--accepted); }
+  .status-rejected .bbox-label { background: var(--rejected); }
+
+  #side-panel {
+    flex: 0 0 400px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .region-group {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    padding: 12px;
+    transition: box-shadow 0.15s;
+  }
+  .region-group.active {
+    box-shadow: 0 0 0 2px var(--text);
+  }
+  .region-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .region-header .reject-all, .region-header .dismiss-region, .region-header .clear-contained {
+    font-size: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .region-header .reject-all { color: var(--rejected); }
+  .region-header .clear-contained { color: var(--pending); }
+  .region-header .dismiss-region { color: var(--muted); }
+  .region-header .dismiss-region:hover { color: var(--text); }
+  .candidate {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 1px solid #f0eee9;
+  }
+  .candidate:first-of-type { border-top: none; }
+  .candidate img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #eee;
+    flex-shrink: 0;
+  }
+  .candidate-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .candidate-info .obj-ref {
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .candidate-info .obj-title {
+    font-size: 12px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 1px 0;
+  }
+  .candidate-info .sim {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .candidate-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .candidate-actions button {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    cursor: pointer;
+  }
+  .candidate.decided { opacity: 0.55; }
+  .candidate.decided.is-accepted { opacity: 1; }
+  .btn-accept:hover { border-color: var(--accepted); color: var(--accepted); }
+  .btn-reject:hover { border-color: var(--rejected); color: var(--rejected); }
+  .tag-accepted, .tag-rejected {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .tag-accepted { background: #e5f0e8; color: var(--accepted); }
+  .tag-rejected { background: #f4e6e1; color: var(--rejected); }
+  .tag-scoped {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #e8eef5;
+    color: #3a5f8a;
+    font-weight: 500;
+  }
+  #empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .manual-search {
+    margin-top: 10px;
+    border-top: 1px solid #f0eee9;
+    padding-top: 8px;
+  }
+  .search-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 12px;
+  }
+  .search-results {
+    margin-top: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .search-result-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 6px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .search-result-item:hover { background: var(--bg); }
+  .search-result-item .obj-ref { font-weight: 600; flex-shrink: 0; }
+  .search-result-item .obj-title {
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result-empty {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 5px 6px;
+  }
+
+  #browse-view {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .exhibition-group {
+    margin-bottom: 32px;
+  }
+  .exhibition-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .photo-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .photo-card:hover {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+  }
+  .photo-card img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+    background: var(--bg);
+  }
+  .photo-card-info {
+    padding: 10px;
+  }
+  .photo-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 6px;
+  }
+  .photo-card-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .photo-card-stats .accepted-count {
+    color: var(--accepted);
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--bg);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accepted);
+  }
+  #back-to-browse {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    font-size: 13px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Exhibition Photo Review</h1>
+  <button id="back-to-browse" style="display:none;">← All photos</button>
+  <button id="add-object-btn" style="display:none;">+ Add missed object</button>
+  <div id="summary"></div>
+</header>
+
+<div id="browse-view"></div>
+<main id="detail-view" style="display:none">
+  <div id="image-pane">
+    <div id="image-wrap">
+      <img id="photo-img" alt="Exhibition photo">
+    </div>
+  </div>
+  <div id="side-panel">
+    <div id="empty-state">Select a photo to begin review.</div>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const BUCKET = "object-thumbnails";
+  const publicUrl = (path) =>
+    `${window.SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+
+  const backBtn = document.getElementById("back-to-browse");
+  const browseView = document.getElementById("browse-view");
+  const detailView = document.getElementById("detail-view");
+  const addObjectBtn = document.getElementById("add-object-btn");
+  const photoImg = document.getElementById("photo-img");
+  const imageWrap = document.getElementById("image-wrap");
+  const sidePanel = document.getElementById("side-panel");
+  const summaryEl = document.getElementById("summary");
+
+  let currentRegions = [];
+  let currentCandidatesByRegion = {};
+  let currentPhotoId = null;
+
+  async function loadBrowseView() {
+    browseView.innerHTML = `<div id="empty-state">Loading photos…</div>`;
+
+    const { data: photos, error } = await supabase
+      .from("exhibition_photos")
+      .select("id, storage_path, original_filename, exhibition_ref, uploaded_at")
+      .not("processed_at", "is", null)
+      .order("exhibition_ref")
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      browseView.innerHTML = `<div id="empty-state">Error loading photos</div>`;
+      console.error(error);
+      return;
+    }
+    if (!photos.length) {
+      browseView.innerHTML = `<div id="empty-state">No processed photos yet</div>`;
+      return;
+    }
+
+    const photoIds = photos.map((p) => p.id);
+    const { data: regions } = await supabase
+      .from("exhibition_photo_regions")
+      .select("id, photo_id")
+      .eq("status", "active")
+      .in("photo_id", photoIds);
+
+    const regionIds = (regions || []).map((r) => r.id);
+    const { data: candidates } = regionIds.length
+      ? await supabase.from("exhibition_photo_region_candidates").select("region_id, decision").in("region_id", regionIds)
+      : { data: [] };
+
+    const candidatesByRegion = {};
+    for (const c of candidates || []) {
+      (candidatesByRegion[c.region_id] ??= []).push(c);
+    }
+
+    const statusOf = (regionId) => {
+      const cs = candidatesByRegion[regionId] || [];
+      if (cs.some((c) => c.decision === "accepted")) return "accepted";
+      if (cs.length && cs.every((c) => c.decision === "rejected")) return "rejected";
+      return "pending";
+    };
+
+    const statsByPhoto = {};
+    for (const r of regions || []) {
+      const s = (statsByPhoto[r.photo_id] ??= { total: 0, reviewed: 0, accepted: 0 });
+      s.total++;
+      const st = statusOf(r.id);
+      if (st !== "pending") s.reviewed++;
+      if (st === "accepted") s.accepted++;
+    }
+
+    const groups = {};
+    for (const p of photos) {
+      const key = p.exhibition_ref || "Unassigned";
+      (groups[key] ??= []).push(p);
+    }
+
+    browseView.innerHTML = Object.entries(groups)
+      .map(([exhRef, groupPhotos]) => `
+        <div class="exhibition-group">
+          <div class="exhibition-header">${exhRef}</div>
+          <div class="photo-grid">
+            ${groupPhotos
+              .map((p) => {
+                const stats = statsByPhoto[p.id] || { total: 0, reviewed: 0, accepted: 0 };
+                const pct = stats.total ? Math.round((stats.reviewed / stats.total) * 100) : 0;
+                return `
+                  <div class="photo-card" data-photo-id="${p.id}">
+                    <img src="${publicUrl(p.storage_path)}" alt="" loading="lazy">
+                    <div class="photo-card-info">
+                      <div class="photo-card-name">${p.original_filename || p.storage_path}</div>
+                      <div class="photo-card-stats">
+                        <span>${stats.reviewed}/${stats.total} reviewed</span>
+                        <span class="accepted-count">${stats.accepted} accepted</span>
+                      </div>
+                      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                    </div>
+                  </div>`;
+              })
+              .join("")}
+          </div>
+        </div>`)
+      .join("");
+
+    browseView.querySelectorAll(".photo-card").forEach((card) =>
+      card.addEventListener("click", () => openPhoto(Number(card.dataset.photoId)))
+    );
+  }
+
+  function openPhoto(photoId) {
+    currentPhotoId = photoId;
+    browseView.style.display = "none";
+    detailView.style.display = "flex";
+    backBtn.style.display = "inline-block";
+    addObjectBtn.style.display = "inline-block";
+    loadPhoto(photoId);
+  }
+
+  function backToBrowse() {
+    detailView.style.display = "none";
+    browseView.style.display = "block";
+    backBtn.style.display = "none";
+    addObjectBtn.style.display = "none";
+    summaryEl.textContent = "";
+    loadBrowseView(); // refresh stats since decisions may have changed while reviewing
+  }
+
+  backBtn.addEventListener("click", backToBrowse);
+
+  async function loadPhoto(photoId) {
+    sidePanel.innerHTML = `<div id="empty-state">Loading…</div>`;
+    imageWrap.querySelectorAll(".bbox").forEach((el) => el.remove());
+
+    const { data: photo } = await supabase
+      .from("exhibition_photos")
+      .select("storage_path")
+      .eq("id", photoId)
+      .single();
+
+    photoImg.src = publicUrl(photo.storage_path);
+
+    const { data: regions } = await supabase
+      .from("exhibition_photo_regions")
+      .select("*")
+      .eq("photo_id", photoId)
+      .eq("status", "active")
+      .order("id");
+
+    currentRegions = regions || [];
+
+    const { data: allCandidates } = await supabase
+      .from("exhibition_photo_region_candidates")
+      .select("*")
+      .in("region_id", currentRegions.map((r) => r.id))
+      .order("rank");
+
+    currentCandidatesByRegion = {};
+    for (const c of allCandidates || []) {
+      (currentCandidatesByRegion[c.region_id] ??= []).push(c);
+    }
+
+    const objectRefs = [...new Set((allCandidates || []).map((c) => c.candidate_object_ref))];
+    let thumbByRef = {};
+    let infoByRef = {};
+    if (objectRefs.length) {
+      const { data: thumbs } = await supabase
+        .from("object_image_embeddings")
+        .select("object_ref, storage_path_256")
+        .in("object_ref", objectRefs);
+      for (const t of thumbs || []) {
+        if (!thumbByRef[t.object_ref]) thumbByRef[t.object_ref] = t.storage_path_256;
+      }
+
+      const { data: objects } = await supabase
+        .from("dmg_objects_LDES")
+        .select('"objectNumber", object_title_en, object_title_nl, object_title_fr, production_year_begin, production_year_end')
+        .in('"objectNumber"', objectRefs);
+      for (const o of objects || []) {
+        infoByRef[o.objectNumber] = o;
+      }
+    }
+    window.__thumbByRef = thumbByRef;
+    window.__infoByRef = infoByRef;
+
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+  }
+
+  function regionStatus(regionId) {
+    const candidates = currentCandidatesByRegion[regionId] || [];
+    if (candidates.some((c) => c.decision === "accepted")) return "accepted";
+    if (candidates.length && candidates.every((c) => c.decision === "rejected")) return "rejected";
+    return "pending";
+  }
+
+  function renderBoxes() {
+    photoImg.onload = () => {
+      imageWrap.querySelectorAll(".bbox").forEach((el) => el.remove());
+      currentRegions.forEach((region, i) => {
+        const box = document.createElement("div");
+        box.className = `bbox status-${regionStatus(region.id)}`;
+        box.dataset.regionId = region.id;
+        box.style.left = `${region.bbox_x * 100}%`;
+        box.style.top = `${region.bbox_y * 100}%`;
+        box.style.width = `${region.bbox_width * 100}%`;
+        box.style.height = `${region.bbox_height * 100}%`;
+
+        const label = document.createElement("div");
+        label.className = "bbox-label";
+        label.textContent = `#${i + 1}`;
+        box.appendChild(label);
+
+        const deleteBtn = document.createElement("div");
+        deleteBtn.className = "bbox-delete";
+        deleteBtn.textContent = "×";
+        deleteBtn.title = "Not an object — remove";
+        deleteBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+        deleteBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          dismissRegion(region.id);
+        });
+        box.appendChild(deleteBtn);
+
+        ["tl", "tr", "bl", "br"].forEach((corner) => {
+          const handle = document.createElement("div");
+          handle.className = `bbox-handle handle-${corner}`;
+          handle.addEventListener("mousedown", (e) => {
+            if (drawMode) return;
+            startBoxResize(e, region, box, corner);
+          });
+          box.appendChild(handle);
+        });
+
+        box.addEventListener("mousedown", (e) => {
+          if (drawMode) return;
+          if (e.target.classList.contains("bbox-handle")) return;
+          if (!box.classList.contains("selected")) return;
+          startBoxMove(e, region, box);
+        });
+
+        box.addEventListener("click", () => selectRegion(region.id));
+        imageWrap.appendChild(box);
+      });
+    };
+    if (photoImg.complete) photoImg.onload();
+  }
+
+  function startBoxMove(e, region, box) {
+    e.stopPropagation();
+    const rect = imageWrap.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const orig = { x: region.bbox_x, y: region.bbox_y };
+    let moved = false;
+    let pending = null;
+
+    function onMove(ev) {
+      const dx = (ev.clientX - startX) / rect.width;
+      const dy = (ev.clientY - startY) / rect.height;
+      if (Math.abs(ev.clientX - startX) > 3 || Math.abs(ev.clientY - startY) > 3) moved = true;
+      const newX = Math.min(Math.max(orig.x + dx, 0), 1 - region.bbox_width);
+      const newY = Math.min(Math.max(orig.y + dy, 0), 1 - region.bbox_height);
+      box.style.left = `${newX * 100}%`;
+      box.style.top = `${newY * 100}%`;
+      pending = { x: newX, y: newY };
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (moved && pending) {
+        region.bbox_x = pending.x;
+        region.bbox_y = pending.y;
+        persistRegionBox(region);
+      }
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  function startBoxResize(e, region, box, corner) {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = imageWrap.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const orig = { x: region.bbox_x, y: region.bbox_y, w: region.bbox_width, h: region.bbox_height };
+    let pending = null;
+
+    function onMove(ev) {
+      const dx = (ev.clientX - startX) / rect.width;
+      const dy = (ev.clientY - startY) / rect.height;
+      let { x, y, w, h } = orig;
+
+      if (corner.includes("l")) { x = orig.x + dx; w = orig.w - dx; }
+      if (corner.includes("r")) { w = orig.w + dx; }
+      if (corner.includes("t")) { y = orig.y + dy; h = orig.h - dy; }
+      if (corner.includes("b")) { h = orig.h + dy; }
+
+      w = Math.max(w, 0.01);
+      h = Math.max(h, 0.01);
+      x = Math.min(Math.max(x, 0), 1 - w);
+      y = Math.min(Math.max(y, 0), 1 - h);
+
+      box.style.left = `${x * 100}%`;
+      box.style.top = `${y * 100}%`;
+      box.style.width = `${w * 100}%`;
+      box.style.height = `${h * 100}%`;
+      pending = { x, y, w, h };
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (pending) {
+        region.bbox_x = pending.x;
+        region.bbox_y = pending.y;
+        region.bbox_width = pending.w;
+        region.bbox_height = pending.h;
+        persistRegionBox(region);
+      }
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  async function persistRegionBox(region) {
+    await supabase.from("exhibition_photo_regions")
+      .update({
+        bbox_x: region.bbox_x,
+        bbox_y: region.bbox_y,
+        bbox_width: region.bbox_width,
+        bbox_height: region.bbox_height,
+        edited_at: new Date().toISOString(),
+      })
+      .eq("id", region.id);
+  }
+
+  function selectRegion(regionId) {
+    document.querySelectorAll(".bbox").forEach((b) =>
+      b.classList.toggle("selected", Number(b.dataset.regionId) === regionId)
+    );
+    document.querySelectorAll(".region-group").forEach((g) =>
+      g.classList.toggle("active", Number(g.dataset.regionId) === regionId)
+    );
+    document.getElementById(`region-${regionId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function renderSidePanel() {
+    if (!currentRegions.length) {
+      sidePanel.innerHTML = `<div id="empty-state">No regions detected for this photo.</div>`;
+      return;
+    }
+
+    sidePanel.innerHTML = currentRegions
+      .map((region, i) => {
+        const candidates = currentCandidatesByRegion[region.id] || [];
+        const candidatesHtml = candidates
+          .map((c) => {
+            const thumbPath = window.__thumbByRef[c.candidate_object_ref];
+            const thumbSrc = thumbPath ? publicUrl(thumbPath) : "";
+            const decided = c.decision !== "pending";
+            const isAccepted = c.decision === "accepted";
+            const info = window.__infoByRef[c.candidate_object_ref] || {};
+            const title = info.object_title_en || info.object_title_nl || info.object_title_fr || "";
+            const years = info.production_year_begin
+              ? info.production_year_end && info.production_year_end !== info.production_year_begin
+                ? `${info.production_year_begin}–${info.production_year_end}`
+                : `${info.production_year_begin}`
+              : "";
+            return `
+              <div class="candidate ${decided ? "decided" : ""} ${isAccepted ? "is-accepted" : ""}" data-candidate-id="${c.id}">
+                <img src="${thumbSrc}" alt="">
+                <div class="candidate-info">
+                  <div class="obj-ref">${c.candidate_object_ref}${years ? ` · ${years}` : ""}${
+                    c.in_exhibition_list ? ` <span class="tag-scoped">in exhibition</span>` : ""
+                  }</div>
+                  ${title ? `<div class="obj-title">${title}</div>` : ""}
+                  <div class="sim">${
+                    c.source === "manual"
+                      ? "manually matched"
+                      : `rank ${c.rank} · ${(c.similarity * 100).toFixed(1)}% similar`
+                  }</div>
+                </div>
+                ${
+                  c.decision === "accepted"
+                    ? `<span class="tag-accepted">Accepted</span>`
+                    : c.decision === "rejected"
+                    ? `<span class="tag-rejected">Rejected</span>`
+                    : `<div class="candidate-actions">
+                         <button class="btn-accept" data-action="accept" data-id="${c.id}" data-region="${region.id}">Accept</button>
+                         <button class="btn-reject" data-action="reject" data-id="${c.id}">Reject</button>
+                       </div>`
+                }
+              </div>`;
+          })
+          .join("");
+
+        return `
+          <div class="region-group" id="region-${region.id}" data-region-id="${region.id}">
+            <div class="region-header">
+              <span>Region #${i + 1}${region.source === "manual" ? " · manual" : ""}${
+                region.detection_confidence != null ? ` · detection ${(region.detection_confidence * 100).toFixed(0)}%` : ""
+              }</span>
+              <span class="region-header-actions">
+                ${candidates.length ? `<button class="reject-all" data-region-reject-all="${region.id}">None match</button>` : ""}
+                <button class="clear-contained" data-region-clear="${region.id}">Clear boxes inside</button>
+                <button class="dismiss-region" data-region-dismiss="${region.id}">Not an object</button>
+              </span>
+            </div>
+            ${
+              candidatesHtml ||
+              (region.source === "manual"
+                ? `<div style="font-size:13px;color:var(--muted);">Awaiting match — run compute_pending_matches.py, then reload</div>`
+                : `<div style="font-size:13px;color:var(--muted);">No candidates found</div>`)
+            }
+            <div class="manual-search">
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Not in the list? Search by object number or title…"
+                data-region-search="${region.id}"
+                autocomplete="off"
+              >
+              <div class="search-results" data-region-results="${region.id}"></div>
+            </div>
+          </div>`;
+      })
+      .join("");
+
+    sidePanel.querySelectorAll(".region-group").forEach((g) =>
+      g.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        selectRegion(Number(g.dataset.regionId));
+      })
+    );
+
+    sidePanel.querySelectorAll("[data-action='accept']").forEach((btn) =>
+      btn.addEventListener("click", () => acceptCandidate(Number(btn.dataset.id), Number(btn.dataset.region)))
+    );
+    sidePanel.querySelectorAll("[data-action='reject']").forEach((btn) =>
+      btn.addEventListener("click", () => rejectCandidate(Number(btn.dataset.id)))
+    );
+    sidePanel.querySelectorAll("[data-region-reject-all]").forEach((btn) =>
+      btn.addEventListener("click", () => rejectAllInRegion(Number(btn.dataset.regionRejectAll)))
+    );
+    sidePanel.querySelectorAll("[data-region-dismiss]").forEach((btn) =>
+      btn.addEventListener("click", () => dismissRegion(Number(btn.dataset.regionDismiss)))
+    );
+    sidePanel.querySelectorAll("[data-region-clear]").forEach((btn) =>
+      btn.addEventListener("click", () => clearContainedBoxes(Number(btn.dataset.regionClear)))
+    );
+
+    sidePanel.querySelectorAll("[data-region-search]").forEach((input) => {
+      let debounceTimer;
+      input.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        const regionId = Number(input.dataset.regionSearch);
+        const term = input.value.trim();
+        debounceTimer = setTimeout(() => runObjectSearch(regionId, term), 300);
+      });
+    });
+  }
+
+  async function acceptCandidate(candidateId, regionId) {
+    const now = new Date().toISOString();
+    await supabase.from("exhibition_photo_region_candidates")
+      .update({ decision: "accepted", decided_at: now })
+      .eq("id", candidateId);
+    await supabase.from("exhibition_photo_region_candidates")
+      .update({ decision: "rejected", decided_at: now })
+      .eq("region_id", regionId)
+      .neq("id", candidateId);
+
+    for (const c of currentCandidatesByRegion[regionId]) {
+      c.decision = c.id === candidateId ? "accepted" : "rejected";
+    }
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+    selectRegion(regionId);
+  }
+
+  async function rejectCandidate(candidateId) {
+    const now = new Date().toISOString();
+    await supabase.from("exhibition_photo_region_candidates")
+      .update({ decision: "rejected", decided_at: now })
+      .eq("id", candidateId);
+
+    for (const list of Object.values(currentCandidatesByRegion)) {
+      const c = list.find((x) => x.id === candidateId);
+      if (c) c.decision = "rejected";
+    }
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+  }
+
+  async function rejectAllInRegion(regionId) {
+    const now = new Date().toISOString();
+    await supabase.from("exhibition_photo_region_candidates")
+      .update({ decision: "rejected", decided_at: now })
+      .eq("region_id", regionId);
+
+    for (const c of currentCandidatesByRegion[regionId] || []) {
+      c.decision = "rejected";
+    }
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const total = currentRegions.length;
+    const reviewed = currentRegions.filter((r) => regionStatus(r.id) !== "pending").length;
+    summaryEl.textContent = `${reviewed} / ${total} regions reviewed`;
+  }
+
+  async function runObjectSearch(regionId, term) {
+    const resultsEl = document.querySelector(`[data-region-results="${regionId}"]`);
+    if (!resultsEl) return;
+
+    if (term.length < 2) {
+      resultsEl.innerHTML = "";
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("dmg_objects_LDES")
+      .select('"objectNumber", object_title_en, object_title_nl')
+      .or(`objectNumber.ilike.%${term}%,object_title_en.ilike.%${term}%,object_title_nl.ilike.%${term}%`)
+      .limit(8);
+
+    if (error) {
+      console.error(error);
+      resultsEl.innerHTML = `<div class="search-result-empty">Search error</div>`;
+      return;
+    }
+
+    if (!data.length) {
+      resultsEl.innerHTML = `<div class="search-result-empty">No matches</div>`;
+      return;
+    }
+
+    resultsEl.innerHTML = data
+      .map((o) => {
+        const title = o.object_title_en || o.object_title_nl || "";
+        return `
+          <div class="search-result-item" data-assign-region="${regionId}" data-assign-object="${o.objectNumber}">
+            <span class="obj-ref">${o.objectNumber}</span>
+            ${title ? `<span class="obj-title">${title}</span>` : ""}
+          </div>`;
+      })
+      .join("");
+
+    resultsEl.querySelectorAll(".search-result-item").forEach((item) =>
+      item.addEventListener("click", () =>
+        assignManualMatch(Number(item.dataset.assignRegion), item.dataset.assignObject)
+      )
+    );
+  }
+
+  async function assignManualMatch(regionId, objectNumber) {
+    const now = new Date().toISOString();
+
+    await supabase.from("exhibition_photo_region_candidates")
+      .update({ decision: "rejected", decided_at: now })
+      .eq("region_id", regionId);
+
+    const { data: inserted } = await supabase
+      .from("exhibition_photo_region_candidates")
+      .insert({
+        region_id: regionId,
+        candidate_object_ref: objectNumber,
+        similarity: null,
+        rank: 0,
+        source: "manual",
+        decision: "accepted",
+        decided_at: now,
+      })
+      .select()
+      .single();
+
+    for (const c of currentCandidatesByRegion[regionId] || []) {
+      c.decision = "rejected";
+    }
+    (currentCandidatesByRegion[regionId] ??= []).push(inserted);
+
+    if (!window.__thumbByRef[objectNumber]) {
+      const { data: thumb } = await supabase
+        .from("object_image_embeddings")
+        .select("storage_path_256")
+        .eq("object_ref", objectNumber)
+        .limit(1)
+        .single();
+      if (thumb) window.__thumbByRef[objectNumber] = thumb.storage_path_256;
+    }
+    if (!window.__infoByRef[objectNumber]) {
+      const { data: info } = await supabase
+        .from("dmg_objects_LDES")
+        .select('"objectNumber", object_title_en, object_title_nl, object_title_fr, production_year_begin, production_year_end')
+        .eq('"objectNumber"', objectNumber)
+        .single();
+      if (info) window.__infoByRef[objectNumber] = info;
+    }
+
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+    selectRegion(regionId);
+  }
+
+  const CONTAINMENT_THRESHOLD = 0.7; // how much of a smaller box's area must sit inside the bigger one to count as "contained"
+
+  function containmentFraction(smallRegion, bigRegion) {
+    const sx0 = smallRegion.bbox_x, sy0 = smallRegion.bbox_y;
+    const sx1 = sx0 + smallRegion.bbox_width, sy1 = sy0 + smallRegion.bbox_height;
+    const bx0 = bigRegion.bbox_x, by0 = bigRegion.bbox_y;
+    const bx1 = bx0 + bigRegion.bbox_width, by1 = by0 + bigRegion.bbox_height;
+
+    const ix0 = Math.max(sx0, bx0), iy0 = Math.max(sy0, by0);
+    const ix1 = Math.min(sx1, bx1), iy1 = Math.min(sy1, by1);
+    if (ix1 <= ix0 || iy1 <= iy0) return 0;
+
+    const intersection = (ix1 - ix0) * (iy1 - iy0);
+    const smallArea = smallRegion.bbox_width * smallRegion.bbox_height;
+    return smallArea > 0 ? intersection / smallArea : 0;
+  }
+
+  async function clearContainedBoxes(regionId) {
+    const bigRegion = currentRegions.find((r) => r.id === regionId);
+    if (!bigRegion) return;
+
+    const contained = currentRegions.filter((r) => {
+      if (r.id === regionId) return false;
+      const rArea = r.bbox_width * r.bbox_height;
+      const bigArea = bigRegion.bbox_width * bigRegion.bbox_height;
+      if (rArea >= bigArea) return false; // only ever clear boxes smaller than the one selected
+      return containmentFraction(r, bigRegion) >= CONTAINMENT_THRESHOLD;
+    });
+
+    if (!contained.length) return;
+    if (!confirm(`Remove ${contained.length} box(es) mostly inside this one?`)) return;
+
+    const ids = contained.map((r) => r.id);
+    await supabase.from("exhibition_photo_regions")
+      .update({ status: "dismissed" })
+      .in("id", ids);
+
+    currentRegions = currentRegions.filter((r) => !ids.includes(r.id));
+    ids.forEach((id) => delete currentCandidatesByRegion[id]);
+
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+  }
+
+  async function dismissRegion(regionId) {
+    await supabase.from("exhibition_photo_regions")
+      .update({ status: "dismissed" })
+      .eq("id", regionId);
+
+    currentRegions = currentRegions.filter((r) => r.id !== regionId);
+    delete currentCandidatesByRegion[regionId];
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+  }
+
+  async function addManualRegion(bboxX, bboxY, bboxWidth, bboxHeight) {
+    const photoId = currentPhotoId;
+    const { data, error } = await supabase
+      .from("exhibition_photo_regions")
+      .insert({
+        photo_id: photoId,
+        bbox_x: bboxX,
+        bbox_y: bboxY,
+        bbox_width: bboxWidth,
+        bbox_height: bboxHeight,
+        detection_confidence: null,
+        source: "manual",
+        status: "active",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    currentRegions.push(data);
+    currentCandidatesByRegion[data.id] = [];
+    renderBoxes();
+    renderSidePanel();
+    updateSummary();
+    selectRegion(data.id);
+  }
+
+  let drawMode = false;
+  let drawStart = null;
+  let drawPreviewEl = null;
+
+  function setDrawMode(on) {
+    drawMode = on;
+    document.getElementById("add-object-btn").classList.toggle("active", on);
+    imageWrap.style.cursor = on ? "crosshair" : "default";
+  }
+
+  imageWrap.addEventListener("mousedown", (e) => {
+    if (!drawMode) return;
+    const rect = imageWrap.getBoundingClientRect();
+    drawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    drawPreviewEl = document.createElement("div");
+    drawPreviewEl.className = "bbox draw-preview";
+    drawPreviewEl.style.left = `${drawStart.x}px`;
+    drawPreviewEl.style.top = `${drawStart.y}px`;
+    imageWrap.appendChild(drawPreviewEl);
+  });
+
+  imageWrap.addEventListener("mousemove", (e) => {
+    if (!drawMode || !drawStart || !drawPreviewEl) return;
+    const rect = imageWrap.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const left = Math.min(drawStart.x, curX);
+    const top = Math.min(drawStart.y, curY);
+    const width = Math.abs(curX - drawStart.x);
+    const height = Math.abs(curY - drawStart.y);
+    drawPreviewEl.style.left = `${left}px`;
+    drawPreviewEl.style.top = `${top}px`;
+    drawPreviewEl.style.width = `${width}px`;
+    drawPreviewEl.style.height = `${height}px`;
+  });
+
+  imageWrap.addEventListener("mouseup", (e) => {
+    if (!drawMode || !drawStart) return;
+    const rect = imageWrap.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const left = Math.min(drawStart.x, curX);
+    const top = Math.min(drawStart.y, curY);
+    const width = Math.abs(curX - drawStart.x);
+    const height = Math.abs(curY - drawStart.y);
+
+    drawPreviewEl?.remove();
+    drawPreviewEl = null;
+    drawStart = null;
+
+    // ignore accidental clicks/tiny drags
+    if (width < 10 || height < 10) return;
+
+    addManualRegion(left / rect.width, top / rect.height, width / rect.width, height / rect.height);
+    setDrawMode(false);
+  });
+
+  document.getElementById("add-object-btn").addEventListener("click", () => setDrawMode(!drawMode));
+
+  loadBrowseView();
+</script>
+</body>
+</html>

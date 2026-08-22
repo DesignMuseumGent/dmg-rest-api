@@ -45,6 +45,7 @@
     "serve": "^14.2.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3",
+    "undici": "^8.7.0",
     "yamljs": "^0.3.0"
   },
   "engines": {

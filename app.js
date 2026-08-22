@@ -9,6 +9,7 @@ import v1Router from "./src/routes/v1/index.js";
 import v2Router from "./src/routes/v2/index.js";
 import pickRouter from './src/routes/pick/index.js';
 import { setupAdmin } from "./src/admin/index.js";
+import reviewRouter from './src/routes/review/index.js';
 
 const app = express();
 
@@ -52,6 +53,7 @@ setupAdmin(app)
 
 //app.use('/v1', v1Router)
 app.use('/v2', v2Router)
-app.use('/pick', pickRouter);
+// app.use('/pick', pickRouter); // no longer used
+app.use('/review', reviewRouter);
 
 export default app;

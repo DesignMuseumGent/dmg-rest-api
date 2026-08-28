@@ -16,6 +16,7 @@ import { requestColors } from './index/colors.js'
 import { requestTypes } from './index/types.js'
 import { requestDCAT } from './dcat.js'
 import { requestNationalities } from './index/nationalities.js'
+import { requestRoles } from './index/roles.js'
 import {requestMaterials} from "./index/materials.js";
 
 import {
@@ -56,6 +57,7 @@ v2Router.use('/id/colors', aggregationLimiter)
 v2Router.use('/id/types', aggregationLimiter)
 v2Router.use('/id/nationalities', aggregationLimiter)
 v2Router.use('/id/materials', aggregationLimiter)
+v2Router.use('/id/roles', aggregationLimiter)
 
 v2Router.use('/id/private/', privateLimiter)
 
@@ -100,6 +102,7 @@ requestColors(v2Router, V2_BASE)
 requestTypes(v2Router, V2_BASE)
 requestNationalities(v2Router, V2_BASE)
 requestMaterials(v2Router, V2_BASE)
+requestRoles(v2Router, V2_BASE)
 
 requestPrivateObjects(v2Router, V2_BASE)
 

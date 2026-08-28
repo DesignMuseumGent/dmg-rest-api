@@ -31,7 +31,15 @@
  */
 export function iiifThumbnail(uri, width = 400) {
     if (typeof uri !== 'string') return null;
-    return uri.replace('/full/full/0/default.jpg', `/full/${width},/0/default.jpg`);
+    // IIIF v3 — new beeldbank server uses /full/max/0/default.jpg
+    if (uri.includes('/full/max/0/default.jpg')) {
+        return uri.replace('/full/max/0/default.jpg', `/full/${width},/0/default.jpg`);
+    }
+    // IIIF v2 — old collectie.gent server
+    if (uri.includes('/full/full/0/default.jpg')) {
+        return uri.replace('/full/full/0/default.jpg', `/full/${width},/0/default.jpg`);
+    }
+    return uri;
 }
 
 /**

@@ -12,9 +12,11 @@ export function requestColors(app, BASE_URI) {
             const [
                 { data: baseData, error: baseError },
                 { data: cssData, error: cssError },
+                { data: swatchData, error: swatchError },
             ] = await Promise.all([
                 supabase.rpc('get_base_color_stats', { only_on_display: onDisplay }),
                 supabase.rpc('get_css_color_stats', { only_on_display: onDisplay }),
+                supabase.rpc('get_color_swatches', { only_on_display: onDisplay }),
             ]);
 
             if (baseError) {
@@ -27,6 +29,33 @@ export function requestColors(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching CSS color stats' });
             }
 
+            // Swatches are supplementary: if the RPC is missing or fails, the
+            // endpoint still serves the same statistics it always has, with
+            // hex omitted rather than 500-ing. Deliberately not fatal.
+            if (swatchError) {
+                console.error('Color swatch error (non-fatal, serving without hex):', swatchError.message);
+            }
+
+            // scope|color -> [{ label, hex, object_count, weight }], rank-ordered.
+            const swatchIndex = new Map();
+            for (const row of swatchData || []) {
+                if (!row?.hex) continue;
+                const key = `${row.scope}|${row.color}`;
+                if (!swatchIndex.has(key)) swatchIndex.set(key, []);
+                swatchIndex.get(key).push({
+                    ...(row.sublabel ? { label: row.sublabel } : {}),
+                    hex: row.hex,
+                    object_count: parseInt(row.object_count),
+                    weight: parseFloat(row.weight),
+                    _rank: parseInt(row.swatch_rank),
+                });
+            }
+            for (const list of swatchIndex.values()) {
+                list.sort((a, b) => a._rank - b._rank);
+                for (const s of list) delete s._rank;
+            }
+            const swatchesFor = (scope, color) => swatchIndex.get(`${scope}|${color}`) ?? [];
+
             const response = {
                 '@context': {
                     crm: 'http://www.cidoc-crm.org/cidoc-crm/',
@@ -37,16 +66,29 @@ export function requestColors(app, BASE_URI) {
                 '@type': 'hydra:Collection',
                 'rdfs:label': 'Color index',
                 'rdfs:comment': 'Color distribution across the Design Museum Gent collection with weighted statistics',
-                base_colors: (baseData || []).map((row) => ({
-                    value: row.color,
-                    object_count: parseInt(row.object_count),
-                    collection_share_pct: parseFloat(row.collection_share_pct),
-                    avg_dominance_pct: parseFloat(row.avg_dominance_pct),
-                    filter: `${BASE_URI}id/objects?color=${row.color}${onDisplay ? '&onDisplay=true' : ''}`,
-                    dominant: `${BASE_URI}id/colors/dominant?color=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
-                })),
+                base_colors: (baseData || []).map((row) => {
+                    // A base bucket spans many distinct tones, so a single hex
+                    // would misrepresent it. `swatches` carries the constituent
+                    // css tones; `hex` is the heaviest of them, for clients that
+                    // only want one square of colour.
+                    const swatches = swatchesFor('base', row.color);
+                    return {
+                        value: row.color,
+                        hex: swatches[0]?.hex ?? null,
+                        swatches,
+                        object_count: parseInt(row.object_count),
+                        collection_share_pct: parseFloat(row.collection_share_pct),
+                        avg_dominance_pct: parseFloat(row.avg_dominance_pct),
+                        filter: `${BASE_URI}id/objects?color=${row.color}${onDisplay ? '&onDisplay=true' : ''}`,
+                        dominant: `${BASE_URI}id/colors/dominant?color=${encodeURIComponent(row.color)}${onDisplay ? '&onDisplay=true' : ''}`,
+                    };
+                }),
                 css_colors: (cssData || []).map((row) => ({
                     value: row.color,
+                    // Weighted centroid of every occurrence of this tone; the
+                    // names are Wikipedia/xkcd colour names, not CSS keywords,
+                    // so the hex has to come from the data.
+                    hex: swatchesFor('css', row.color)[0]?.hex ?? null,
                     object_count: parseInt(row.object_count),
                     collection_share_pct: parseFloat(row.collection_share_pct),
                     avg_dominance_pct: parseFloat(row.avg_dominance_pct),
@@ -119,6 +161,14 @@ export function requestColors(app, BASE_URI) {
                         'rdfs:label': row.object_title_nl,
                         dominance_pct: parseFloat(row.dominance_pct),
                     };
+
+                    // This object's own hex for the queried colour — the actual
+                    // measured tone, not a collection-wide centroid. Only emitted
+                    // if the dominance RPC returns it, so this is a no-op until
+                    // get_objects_by_*_dominance selects a hex column.
+                    if (row.dominant_hex) {
+                        member.hex = row.dominant_hex;
+                    }
 
                     // Direct image links — same shape as /id/object/:ObjectPID.
                     // Adds crm:P138i_has_representation (the canonical CIDOC

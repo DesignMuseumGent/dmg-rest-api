@@ -176,7 +176,7 @@ export function requestObjects(app, BASE_URI) {
             // ─────────────────────────────────────────────────────────────
             let selectFields
             if (!fullRecord) {
-                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, hasParts, isPartOf, object_types, object_materials'
+                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, hasParts, isPartOf, object_types, object_materials,iiif_image_uris'
             } else if (showColors) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             } else {
@@ -190,9 +190,13 @@ export function requestObjects(app, BASE_URI) {
                 q = q.eq('STATUS', 'HEALTHY')
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
+                // PURI must resolve to itself. Redirecting records (merged, renumbered,
+                // withdrawn) stay resolvable at /id/object/:id but are omitted from this
+                // listing, which is what site builders consume.
+                q = q.eq('is_canonical', true)
                 if (onDisplayParam === 'true' || onDisplayParam === '1')        q = q.eq('COLLECTION_PRESENTATION', true)
                 else if (onDisplayParam === 'false' || onDisplayParam === '0')  q = q.eq('COLLECTION_PRESENTATION', false)
-                if (hasImages)                     q = q.not('iiif_manifest', 'is', null)
+                if (hasImages)                     q = q.not('iiif_image_uris', 'is', null)
                 if (hasColors)                     q = q.not('colors', 'is', null)
                 if (hasParts)                      q = q.not('hasParts', 'is', null)
                 if (isPartOf)                      q = q.not('isPartOf', 'is', null)

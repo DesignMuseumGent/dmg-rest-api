@@ -70,14 +70,14 @@ rootRouter.get('/', (req, res, next) => {
      A dedicated 32x32 PNG or an SVG would render more crisply at tab size —
      the pixel mark has fine detail that gets muddy when a large GIF is
      downscaled to 16px — so swap these if you export one. -->
-<link rel="icon" href="/images/Pixel-Logo-41-frames-transparent.gif" type="image/gif">
-<link rel="apple-touch-icon" href="/images/Pixel-Logo-41-frames-transparent.gif">
+<link rel="icon" href="/images/SPLIT_CollectieAPI_Square.webp" type="image/webp">
+<link rel="apple-touch-icon" href="/images/SPLIT_CollectieAPI_Square.webp">
 
 <!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
 <meta property="og:title" content="Design Museum Gent API">
 <meta property="og:description" content="Open access to the Design Museum Gent collection as CIDOC-CRM JSON-LD. Over 8,400 objects with multilingual metadata, IIIF images, extracted colour data, designers linked to Wikidata and Getty, and a full exhibition archive. No authentication, open CORS, stable identifiers.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="/images/Pixel-Logo-41-frames-transparent.gif">
+<meta property="og:image" content="/images/SPLIT_CollectieAPI_Square.webp">
 <meta name="twitter:card" content="summary">
 <link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>

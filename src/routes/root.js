@@ -94,6 +94,8 @@ rootRouter.get('/', (req, res, next) => {
                font-weight:500; font-style:normal; font-display:swap; }
   @font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype');
                font-weight:700; font-style:normal; font-display:swap; }
+  @font-face { font-family:'Heins'; src:url('/fonts/ArmandHeins1-Regular.otf') format('opentype');
+               font-weight:700; font-style:normal; font-display:swap; }
 
   :root {
     color-scheme: light;
@@ -252,6 +254,7 @@ rootRouter.get('/', (req, res, next) => {
   }
 
   h1 {
+    font-family: Heins;
     font-weight: 700;
     /* Stays under the 70pt threshold where p.8 calls for 90% leading. */
     font-size: clamp(2rem, 7vw, 3.25rem);

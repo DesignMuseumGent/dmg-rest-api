@@ -313,7 +313,7 @@ rootRouter.get('/', (req, res, next) => {
 
 <div class="page">
   <main>
-    <h1>Design Museum Gent</h1>
+    <h1>Design Museum Gent API</h1>
     <p class="lede">Linked Open Data — the collection as CIDOC-CRM JSON-LD.</p>
 
     <nav><ul>

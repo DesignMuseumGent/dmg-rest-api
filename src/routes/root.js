@@ -132,18 +132,36 @@ rootRouter.get('/', (req, res, next) => {
     font-size: 1rem;
     /* p.8: body leading is text size + 1pt. At 16px (12pt) that is 13pt. */
     line-height: 1.0833;
-    padding: calc(var(--margin) * 2.5) var(--margin);
+    /* No page padding: .page fills the viewport and each cell pads its own
+       content, so the crosses can sit at the true corners. */
+    padding: 0;
   }
 
-  /* ─── CROPMARK CROSSES (brandbook p.10-13) ──────────────────────────
-     Four crosses minimum for digital (p.12), marking the corners of the
-     subdivision. Fixed to the viewport so they frame the page the way
-     they frame a sheet. Purely decorative — hidden from assistive tech. */
+  /* ─── GRID AND CROPMARKS (brandbook p.10-13) ────────────────────────
+     The werkvlak is the whole viewport, divided into two cells: text left,
+     logo right. The crosses mark the corners of that subdivision — six
+     positions, because the two cells share a vertical edge.
+
+     A single overlay draws all six. Per-element backgrounds cannot do this:
+     each cell would draw its own cross a little way in from the shared
+     edge, giving two crosses where the design wants one.
+
+     Each cross is a positioned element centred on its intersection, so it
+     is never clipped the way a background at a box corner would be.
+
+     --col-split is used twice — once for the grid columns, once for the
+     middle pair of crosses — so the marks always sit exactly on the
+     boundary between the cells. */
+  :root {
+    --col-split: 42%;
+    --pad: var(--margin);     /* how far the outer crosses sit from the edge */
+  }
+
   .marks { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
   .marks i {
     position: absolute;
     width: var(--cross); height: var(--cross);
-    margin: calc(var(--cross) / -2);
+    transform: translate(-50%, -50%);
   }
   .marks i::before, .marks i::after {
     content: ''; position: absolute; background: var(--rule);
@@ -156,12 +174,61 @@ rootRouter.get('/', (req, res, next) => {
     top: 0; left: 50%; height: 100%; width: var(--rule-w);
     transform: translateX(-50%);
   }
-  .marks .tl { top: var(--margin); left: var(--margin); }
-  .marks .tr { top: var(--margin); left: calc(100% - var(--margin)); }
-  .marks .bl { top: calc(100% - var(--margin)); left: var(--margin); }
-  .marks .br { top: calc(100% - var(--margin)); left: calc(100% - var(--margin)); }
+  .marks .tl { top: var(--pad);                left: var(--pad); }
+  .marks .tm { top: var(--pad);                left: var(--col-split); }
+  .marks .tr { top: var(--pad);                left: calc(100% - var(--pad)); }
+  .marks .bl { top: calc(100% - var(--pad));   left: var(--pad); }
+  .marks .bm { top: calc(100% - var(--pad));   left: var(--col-split); }
+  .marks .br { top: calc(100% - var(--pad));   left: calc(100% - var(--pad)); }
 
-  main { position: relative; z-index: 2; max-width: 34rem; }
+  /* ─── LAYOUT ─────────────────────────────────────────────────────────
+     Two cells filling the viewport. Content is inset from the cell edges
+     so it clears the crosses. Single column below 720px, where the logo is
+     dropped rather than stacked — it is decorative and the h1 already
+     carries the name. */
+  .page {
+    position: relative; z-index: 2;
+    display: grid;
+    grid-template-columns: var(--col-split) 1fr;
+    min-height: 100vh;
+    align-items: center;
+  }
+
+  main {
+    padding: calc(var(--pad) * 2) calc(var(--pad) * 1.5);
+    max-width: 34rem;
+  }
+
+  /* ─── PIXEL LOGO ─────────────────────────────────────────────────────
+     The animated variable logo (brandbook p.5 — "een variabel logo"),
+     served from public/images by express.static. Transparent GIF, so it
+     sits on Snow White without a matte.
+
+     Decorative: alt="" and aria-hidden, since the h1 already states the
+     name. A screen reader announcing "pixel logo" here would add nothing.
+
+     REDUCED MOTION: an animated GIF cannot be paused with CSS. The rule
+     further down hides it for anyone who has asked for less motion, which
+     is blunt but honest — the alternative is exporting a single static
+     frame as a PNG and swapping the src. */
+  .logo-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--pad) * 2);
+    height: 100%;
+  }
+
+  .mark-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: calc(100vh - var(--pad) * 5);
+    object-fit: contain;
+    /* The mark is deliberately pixelated — let it stay hard-edged when
+       scaled up instead of being smoothed by the browser. */
+    image-rendering: pixelated;
+  }
 
   h1 {
     font-weight: 700;
@@ -207,28 +274,44 @@ rootRouter.get('/', (req, res, next) => {
     font-size: .875em; color: var(--accent);
   }
 
+  @media (max-width: 720px) {
+    .page { grid-template-columns: 1fr; }
+    .logo-cell { display: none; }
+    /* One cell now, so the middle pair of crosses has no boundary to mark. */
+    .marks .tm, .marks .bm { display: none; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     nav a { transition: none; }
+    /* See the note on .mark-logo: a GIF cannot be paused from CSS. */
+    .logo-cell { display: none; }
   }
 </style></head>
 <body>
-<div class="marks" aria-hidden="true"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+<div class="marks" aria-hidden="true"><i class="tl"></i><i class="tm"></i><i class="tr"></i><i class="bl"></i><i class="bm"></i><i class="br"></i></div>
 
-<main>
-  <h1>Design Museum Gent</h1>
-  <p class="lede">Linked Open Data — the collection as CIDOC-CRM JSON-LD.</p>
+<div class="page">
+  <main>
+    <h1>Design Museum Gent</h1>
+    <p class="lede">Linked Open Data — the collection as CIDOC-CRM JSON-LD.</p>
 
-  <nav><ul>
-    <li><a href="${DCAT_PATH}">DCAT catalog <span class="path">${DCAT_PATH}</span></a></li>
-    <li><a href="https://api.designmuseumgent.be">Documentation <span class="path">api.designmuseumgent.be</span></a></li>
-    <li><a href="https://github.com/DesignMuseumGent/dmg-rest-api">GitHub documentation</a></li>
-    <li><a href="/v2/api-docs">Swagger <span class="path">/v2/api-docs</span></a></li>
-    <li><a href="/v2/id/objects">Objects <span class="path">/v2/id/objects</span></a></li>
-  </ul></nav>
+    <nav><ul>
+      <li><a href="${DCAT_PATH}">DCAT catalog <span class="path">${DCAT_PATH}</span></a></li>
+      <li><a href="https://api.designmuseumgent.be">Documentation <span class="path">api.designmuseumgent.be</span></a></li>
+      <li><a href="https://github.com/DesignMuseumGent/dmg-rest-api">GitHub documentation</a></li>
+      <li><a href="/v2/api-docs">Swagger <span class="path">/v2/api-docs</span></a></li>
+      <li><a href="/v2/id/objects">Objects <span class="path">/v2/id/objects</span></a></li>
+    </ul></nav>
 
-  <p class="note">This URI content-negotiates: request it with
-  <code>Accept: application/ld+json</code> to be redirected to the catalog.</p>
-</main>
+    <p class="note">This URI content-negotiates: request it with
+    <code>Accept: application/ld+json</code> to be redirected to the catalog.</p>
+  </main>
+
+  <div class="logo-cell">
+    <img class="mark-logo" src="/images/Pixel-Logo-41-frames-transparent.gif"
+         alt="" aria-hidden="true" loading="lazy" decoding="async">
+  </div>
+</div>
 </body></html>`)
 })
 

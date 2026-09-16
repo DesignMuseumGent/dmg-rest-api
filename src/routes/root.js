@@ -372,6 +372,12 @@ rootRouter.get('/', (req, res, next) => {
   }
   nav a:hover .path, nav a:focus-visible .path { color: var(--accent); }
 
+    .pair a {
+        text-decoration: none; color: inherit;
+    }
+    
+    .pair a:hover, .pair a:focus-visible { color: var(--accent); }
+
   .note {
     font-weight: 300; font-size: .9375rem; line-height: 1.25;
     color: var(--lawful-gray); max-width: 30rem;
@@ -430,12 +436,41 @@ rootRouter.get('/', (req, res, next) => {
 <section class="stats" aria-labelledby="stats-heading">
   <h1 id="stats-heading">The API in numbers</h1>
   <dl>
-    <div class="pair"><dd data-stat="objects"    data-pending>—</dd><dt>Objects</dt></div>
-    <div class="pair"><dd data-stat="images"     data-pending>—</dd><dt>With images</dt></div>
-    <div class="pair"><dd data-stat="onDisplay"  data-pending>—</dd><dt>On display</dt></div>
-    <div class="pair"><dd data-stat="agents"     data-pending>—</dd><dt>Designers &amp; makers</dt></div>
-    <div class="pair"><dd data-stat="exhibitions" data-pending>—</dd><dt>Exhibitions</dt></div>
-    <div class="pair"><dd data-stat="concepts"   data-pending>—</dd><dt>Concepts</dt></div>
+    <div class="pair">
+        <a href="/v2/id/objects?itemsPerPage=1">
+            <dd data-stat="objects"    data-pending>—</dd>
+        </a>
+        <dt>Objects</dt>
+    </div>
+    <div class="pair">
+        <a href="/v2/id/objects?itemsPerPage=10&hasImages=true">
+            <dd data-stat="images"     data-pending>—</dd>
+        </a>
+        <dt>With images</dt>
+    </div>
+    <div class="pair">
+        <a href="/v2/id/objects?itemsPerPage=10&onDisplay=true">
+            <dd data-stat="onDisplay"  data-pending>—</dd>
+        </a>
+        <dt>On display</dt>
+    </div>
+    <div class="pair">
+        <a href="/v2/id/agents?itemsPerPage=10">
+            <dd data-stat="agents"     data-pending>—</dd>
+        </a>
+        <dt>Designers &amp; makers</dt>
+    </div>
+    <div class="pair">
+        <a href="/v2/id/exhibitions?itemsPerPage=10">
+            <dd data-stat="exhibitions" data-pending>—</dd>
+        </a>
+        <dt>Exhibitions</dt>
+    </div>
+    <div class="pair">
+        <a href="/v2/id/concepts?itemsPerPage=10">
+            <dd data-stat="concepts"   data-pending>—</dd>
+        </a>
+        <dt>Concepts</dt></div>
   </dl>
 </section>
 

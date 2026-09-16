@@ -75,7 +75,7 @@ rootRouter.get('/', (req, res, next) => {
 
 <!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
 <meta property="og:title" content="Design Museum Gent API">
-<meta property="og:description" content="When the founders of the museum wrote these words in the invitation to the founding meeting in 1903, they were probably thinking of pencil and paper. Yet their vision of openness, exchange and inspiration still defines the museum today. We continue that vision in a digital context. We want our collection to be not only physically accessible, but also a creative and dynamic digital resource for everyone. That is exactly where our Collection API comes in.">
+<meta property="og:description" content="Since 1903 the museum has invited everyone to come and draw, study, copy and remake what is on display. The Collection API continues that invitation: over 8,400 objects as CIDOC-CRM JSON-LD, with IIIF images, colour data and linked designers. Open to everyone, no key required.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/images/SPLIT_CollectieAPI_Square.webp">
 <meta name="twitter:card" content="summary">
@@ -254,7 +254,6 @@ rootRouter.get('/', (req, res, next) => {
   }
 
   h1 {
-    font-family: Heins;
     font-weight: 700;
     /* Stays under the 70pt threshold where p.8 calls for 90% leading. */
     font-size: clamp(2rem, 7vw, 3.25rem);
@@ -265,6 +264,7 @@ rootRouter.get('/', (req, res, next) => {
 
   /* p.8: keep lines under ~11 words — hence the narrow measure on main. */
   .lede {
+    font-family: Heins;
     font-weight: 300;
     font-size: 1.125rem;
     line-height: 1.15;
@@ -317,7 +317,7 @@ rootRouter.get('/', (req, res, next) => {
 <div class="page">
   <main>
     <h1>Design Museum Gent API</h1>
-    <p class="lede">Linked Open Data — the collection as CIDOC-CRM JSON-LD.</p>
+    <p class="lede">The museum was founded in 1903 to be open to anyone who wanted to draw, study, copy and remake what it held. This API is that invitation in a digital form.</p>
 
     <nav><ul>
       <li><a href="${DCAT_PATH}">DCAT catalog <span class="path">${DCAT_PATH}</span></a></li>

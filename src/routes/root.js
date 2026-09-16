@@ -74,8 +74,8 @@ rootRouter.get('/', (req, res, next) => {
 <link rel="apple-touch-icon" href="/images/Pixel-Logo-41-frames-transparent.gif">
 
 <!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
-<meta property="og:title" content="Design Museum Gent — Linked Open Data">
-<meta property="og:description" content="The collection as CIDOC-CRM JSON-LD.">
+<meta property="og:title" content="Design Museum Gent API">
+<meta property="og:description" content="Open access to the Design Museum Gent collection as CIDOC-CRM JSON-LD. Over 8,400 objects with multilingual metadata, IIIF images, extracted colour data, designers linked to Wikidata and Getty, and a full exhibition archive. No authentication, open CORS, stable identifiers.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/images/Pixel-Logo-41-frames-transparent.gif">
 <meta name="twitter:card" content="summary">

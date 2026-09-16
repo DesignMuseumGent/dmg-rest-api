@@ -70,14 +70,14 @@ rootRouter.get('/', (req, res, next) => {
      A dedicated 32x32 PNG or an SVG would render more crisply at tab size —
      the pixel mark has fine detail that gets muddy when a large GIF is
      downscaled to 16px — so swap these if you export one. -->
-<link rel="icon" href="/images/SPLIT_CollectieAPI_Square.webp" type="image/webp">
-<link rel="apple-touch-icon" href="/images/SPLIT_CollectieAPI_Square.webp">
+<link rel="icon" href="/images/Pixel-Logo-41-frames-transparent.gif" type="image/gif">
+<link rel="apple-touch-icon" href="/images/Pixel-Logo-41-frames-transparent.gif">
 
 <!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
 <meta property="og:title" content="Design Museum Gent API">
 <meta property="og:description" content="Since 1903 the museum has invited everyone to come and draw, study, copy and remake what is on display. The Collection API continues that invitation: over 8,400 objects as CIDOC-CRM JSON-LD, with IIIF images, colour data and linked designers. Open to everyone, no key required.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="/images/SPLIT_CollectieAPI_Square.webp">
+<meta property="og:image" content="/images/Pixel-Logo-41-frames-transparent.gif">
 <meta name="twitter:card" content="summary">
 <link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>
@@ -180,7 +180,10 @@ rootRouter.get('/', (req, res, next) => {
     --pad: var(--margin);     /* how far the outer crosses sit from the edge */
   }
 
-  .marks { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+  /* Absolute, not fixed: the marks belong to the hero section and must
+     scroll away with it, otherwise they float over the dashboard below. */
+  .hero { position: relative; min-height: 100vh; }
+  .marks { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
   .marks i {
     position: absolute;
     width: var(--cross); height: var(--cross);
@@ -216,6 +219,87 @@ rootRouter.get('/', (req, res, next) => {
     min-height: 100vh;
     align-items: center;
   }
+
+  /* ─── DASHBOARD ──────────────────────────────────────────────────────
+     Live counts from the API itself. Fetched client-side: this page is
+     served by the same process as the API, so fetching server-side would
+     have it calling itself and blocking the response.
+
+     Its own cropmarks, drawn as eight gradients — a horizontal and a
+     vertical band at each corner — because an element has only two
+     pseudo-elements. The inset is half the arm length so each cross stays
+     whole; backgrounds do not paint outside the padding box, so a cross
+     centred on the corner would be clipped to a quarter.
+
+     Padding must stay at least var(--pad) on every side or the arms sit on
+     the content. */
+  .stats {
+    /* Full bleed, no horizontal margin: the crosses then sit var(--pad)
+       from the viewport edge, exactly where the hero's outer crosses sit,
+       so the two blocks read as one grid rather than two. */
+    margin: 0;
+    padding: calc(var(--pad) * 2.5) calc(var(--pad) * 1.5);
+    background-image:
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark));
+    background-size:
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross);
+    background-position:
+      left  0 top    calc(var(--pad) - var(--rule-w) / 2),
+      left  calc(var(--pad) - var(--rule-w) / 2) top 0,
+      right 0 top    calc(var(--pad) - var(--rule-w) / 2),
+      right calc(var(--pad) - var(--rule-w) / 2) top 0,
+      left  0 bottom calc(var(--pad) - var(--rule-w) / 2),
+      left  calc(var(--pad) - var(--rule-w) / 2) bottom 0,
+      right 0 bottom calc(var(--pad) - var(--rule-w) / 2),
+      right calc(var(--pad) - var(--rule-w) / 2) bottom 0;
+    background-repeat: no-repeat;
+  }
+
+  .stats h2 {
+    font-family: Heins;
+    font-weight: 500;
+    font-size: .8125rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--lawful-gray);
+    margin: 0 0 calc(var(--pad) * 2.5);
+  }
+
+  .stats dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: calc(var(--pad) * 1.5) var(--pad);
+    margin: 0;
+  }
+
+  .stats dt {
+    font-family: Heins;
+    font-weight: 400;
+    font-size: .9375rem;
+    color: var(--lawful-gray);
+    order: 2;                      /* label below the figure */
+  }
+
+  .stats dd {
+    margin: 0 0 .15rem;
+    font-weight: 700;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    order: 1;
+  }
+
+  .stats .pair { display: flex; flex-direction: column; }
+
+  /* Placeholder until the fetch resolves, and the resting state if it
+     fails — the page must never look broken because a count is missing. */
+  .stats dd[data-pending] { color: var(--shy-gray); }
 
   main {
     padding: calc(var(--pad) * 2) calc(var(--pad) * 1.5);
@@ -303,6 +387,8 @@ rootRouter.get('/', (req, res, next) => {
     .logo-cell { display: none; }
     /* One cell now, so the middle pair of crosses has no boundary to mark. */
     .marks .tm, .marks .bm { display: none; }
+    /* Too narrow for the marks to read as anything but clutter. */
+    .stats { background-image: none; padding: 2rem 1.5rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -312,12 +398,15 @@ rootRouter.get('/', (req, res, next) => {
   }
 </style></head>
 <body>
+<section class="hero">
 <div class="marks" aria-hidden="true"><i class="tl"></i><i class="tm"></i><i class="tr"></i><i class="bl"></i><i class="bm"></i><i class="br"></i></div>
 
 <div class="page">
   <main>
-    <h1>Design Museum Gent API</h1>
-    <p class="lede">The museum was founded in 1903 to be open to anyone who wanted to draw, study, copy and remake what it held. This API is that invitation in a digital form.</p>
+    <h1>Design Museum Gent</h1>
+    <p class="lede">The museum was founded in 1903 to be open to anyone who
+    wanted to draw, study, copy and remake what it held. This API is that
+    invitation in a digital form.</p>
 
     <nav><ul>
       <li><a href="${DCAT_PATH}">DCAT catalog <span class="path">${DCAT_PATH}</span></a></li>
@@ -336,6 +425,53 @@ rootRouter.get('/', (req, res, next) => {
          alt="" aria-hidden="true" loading="lazy" decoding="async">
   </div>
 </div>
+</section>
+
+<section class="stats" aria-labelledby="stats-heading">
+  <h1 id="stats-heading">The API in numbers</h1>
+  <dl>
+    <div class="pair"><dd data-stat="objects"    data-pending>—</dd><dt>Objects</dt></div>
+    <div class="pair"><dd data-stat="images"     data-pending>—</dd><dt>With images</dt></div>
+    <div class="pair"><dd data-stat="onDisplay"  data-pending>—</dd><dt>On display</dt></div>
+    <div class="pair"><dd data-stat="agents"     data-pending>—</dd><dt>Designers &amp; makers</dt></div>
+    <div class="pair"><dd data-stat="exhibitions" data-pending>—</dd><dt>Exhibitions</dt></div>
+    <div class="pair"><dd data-stat="concepts"   data-pending>—</dd><dt>Concepts</dt></div>
+  </dl>
+</section>
+
+<script>
+// Live counts, read from hydra:totalItems. itemsPerPage=1 keeps each
+// response to a single member — we only want the total, not the data.
+//
+// Every count is fetched independently and failures are swallowed per
+// stat: one endpoint being slow or down leaves an em dash in that slot
+// rather than emptying the whole dashboard.
+(function () {
+  var stats = {
+    objects:     '/v2/id/objects?itemsPerPage=1',
+    images:      '/v2/id/objects?itemsPerPage=1&hasImages=true',
+    onDisplay:   '/v2/id/objects?itemsPerPage=1&onDisplay=true',
+    agents:      '/v2/id/agents?itemsPerPage=1',
+    exhibitions: '/v2/id/exhibitions?itemsPerPage=1',
+    concepts:    '/v2/id/concepts?itemsPerPage=1'
+  };
+
+  Object.keys(stats).forEach(function (key) {
+    var el = document.querySelector('[data-stat="' + key + '"]');
+    if (!el) return;
+
+    fetch(stats[key], { headers: { Accept: 'application/ld+json' } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        var n = d['hydra:totalItems'];
+        if (typeof n !== 'number') return Promise.reject('no total');
+        el.textContent = n.toLocaleString('en-GB');
+        el.removeAttribute('data-pending');
+      })
+      .catch(function () { /* leave the em dash in place */ });
+  });
+})();
+</script>
 </body></html>`)
 })
 

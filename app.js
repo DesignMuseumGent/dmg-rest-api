@@ -1,17 +1,21 @@
 import express from "express";
-import YAML from "yamljs";
-import swaggerUI from "swagger-ui-express";
 import cors from "cors";
 import helmet from "helmet";
 import session from "express-session";
 import fileUpload from 'express-fileupload'
-import v1Router from "./src/routes/v1/index.js";
 import v2Router from "./src/routes/v2/index.js";
-import pickRouter from './src/routes/pick/index.js';
+import rootRouter from './src/routes/root.js';
 import { setupAdmin } from "./src/admin/index.js";
 import reviewRouter from './src/routes/review/index.js';
 
 const app = express();
+
+// ---------------------------------------------------------------------------
+// SECURITY / PROXY
+// Must come first: trust proxy affects req.protocol and req.ip for everything
+// downstream, and helmet's headers should apply to every response including
+// the root landing page.
+// ---------------------------------------------------------------------------
 
 app.set('trust proxy', 1);
 
@@ -26,6 +30,10 @@ app.use(cors({
     credentials: false,
     optionsSuccessStatus: 204
 }))
+
+// ---------------------------------------------------------------------------
+// BODY PARSING
+// ---------------------------------------------------------------------------
 
 app.use(fileUpload({
     limits: { fileSize: 20 * 1024 * 1024 },
@@ -47,7 +55,20 @@ app.use(session({
     }
 }))
 
+// ---------------------------------------------------------------------------
+// ROOT — content negotiation
+// Must precede express.static: otherwise public/index.html answers '/' before
+// the Accept header is ever inspected, and RDF clients get HTML.
+// rootRouter calls next() for HTML requests when public/index.html exists,
+// so static still serves the real landing page.
+// ---------------------------------------------------------------------------
+
+app.use(rootRouter)
 app.use(express.static('public'))
+
+// ---------------------------------------------------------------------------
+// ROUTES
+// ---------------------------------------------------------------------------
 
 setupAdmin(app)
 

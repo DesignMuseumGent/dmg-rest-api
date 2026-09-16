@@ -73,12 +73,32 @@ rootRouter.get('/', (req, res, next) => {
 <link rel="icon" href="/images/Pixel-Logo-41-frames-transparent.gif" type="image/gif">
 <link rel="apple-touch-icon" href="/images/Pixel-Logo-41-frames-transparent.gif">
 
-<!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
+<!-- Search snippet. Separate from og:description: engines prefer an explicit
+     meta description and fall back to Open Graph only when it is absent. -->
+<meta name="description" content="Open access to the Design Museum Gent collection as CIDOC-CRM JSON-LD — objects, designers, exhibitions and concepts. No authentication, open CORS, stable identifiers.">
+
+<!-- Link previews in Slack, Teams, Discord, Mastodon, iMessage.
+     Description kept near 155 characters: desktop cards show ~300, but
+     mobile truncates around 125-160, so this fills the box without cutting. -->
+<meta property="og:site_name" content="Design Museum Gent">
 <meta property="og:title" content="Design Museum Gent API">
-<meta property="og:description" content="Since 1903 the museum has invited everyone to come and draw, study, copy and remake what is on display. The Collection API continues that invitation: over 8,400 objects as CIDOC-CRM JSON-LD, with IIIF images, colour data and linked designers. Open to everyone, no key required.">
+<meta property="og:description" content="Since 1903 the museum has invited everyone to draw, study and copy what is on display. The collection API continues that invitation — open to all, no key.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="/images/Pixel-Logo-41-frames-transparent.gif">
-<meta name="twitter:card" content="summary">
+<meta property="og:url" content="https://data.designmuseumgent.be/">
+<meta property="og:locale" content="en_GB">
+
+<!-- NOTE ON RATIO: this asset is square (1:1). Most platforms crop or
+     letterbox to 1.91:1 (1200x630), so the sides will be trimmed. If that
+     loses anything important, ask the Studio for a 1200x630 version with the
+     title set in Museum Bold — a card carrying a headline is also markedly
+     more clickable than a bare mark. Absolute URL: some crawlers do not
+     resolve relative paths. -->
+<meta property="og:image" content="https://data.designmuseumgent.be/images/SPLIT_CollectieAPI_Square.webp">
+<meta property="og:image:type" content="image/webp">
+<meta property="og:image:alt" content="Design Museum Gent API — the collection as CIDOC-CRM JSON-LD">
+
+<meta name="twitter:card" content="summary_large_image">
+
 <link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>
 <style>
@@ -94,8 +114,11 @@ rootRouter.get('/', (req, res, next) => {
                font-weight:500; font-style:normal; font-display:swap; }
   @font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype');
                font-weight:700; font-style:normal; font-display:swap; }
+  /* Declared at 400 — the file is a single regular weight. Declaring it as
+     700 while asking for 300 or 400 elsewhere makes the browser synthesise
+     those weights, which distorts the letterforms. */
   @font-face { font-family:'Heins'; src:url('/fonts/ArmandHeins1-Regular.otf') format('opentype');
-               font-weight:700; font-style:normal; font-display:swap; }
+               font-weight:400; font-style:normal; font-display:swap; }
 
   :root {
     color-scheme: light;
@@ -262,8 +285,8 @@ rootRouter.get('/', (req, res, next) => {
   }
 
   .stats h2 {
-    font-family: Heins;
-    font-weight: 500;
+    font-family: 'Heins', 'Museum', Arial, sans-serif;
+    font-weight: 400;
     font-size: .8125rem;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -279,7 +302,7 @@ rootRouter.get('/', (req, res, next) => {
   }
 
   .stats dt {
-    font-family: Heins;
+    font-family: 'Heins', 'Museum', Arial, sans-serif;
     font-weight: 400;
     font-size: .9375rem;
     color: var(--lawful-gray);
@@ -297,9 +320,19 @@ rootRouter.get('/', (req, res, next) => {
 
   .stats .pair { display: flex; flex-direction: column; }
 
+  /* The anchor sits INSIDE the dd. A <dd> must be a direct child of <dl>
+     or of a <div> within it — wrapping it in an <a> is invalid and the
+     browser hoists the anchor out, breaking both the link and the layout. */
+  .stats dd a {
+    text-decoration: none;
+    color: inherit;
+    transition: color .15s ease;
+  }
+  .stats dd a:hover, .stats dd a:focus-visible { color: var(--accent); }
+
   /* Placeholder until the fetch resolves, and the resting state if it
      fails — the page must never look broken because a count is missing. */
-  .stats dd[data-pending] { color: var(--shy-gray); }
+  .stats [data-stat][data-pending] { color: var(--shy-gray); }
 
   main {
     padding: calc(var(--pad) * 2) calc(var(--pad) * 1.5);
@@ -348,8 +381,8 @@ rootRouter.get('/', (req, res, next) => {
 
   /* p.8: keep lines under ~11 words — hence the narrow measure on main. */
   .lede {
-    font-family: Heins;
-    font-weight: 300;
+    font-family: 'Heins', 'Museum', Arial, sans-serif;
+    font-weight: 400;
     font-size: 1.125rem;
     line-height: 1.15;
     margin: 0 0 calc(var(--margin) * 2);
@@ -372,12 +405,6 @@ rootRouter.get('/', (req, res, next) => {
   }
   nav a:hover .path, nav a:focus-visible .path { color: var(--accent); }
 
-    .pair a {
-        text-decoration: none; color: inherit;
-    }
-    
-    .pair a:hover, .pair a:focus-visible { color: var(--accent); }
-
   .note {
     font-weight: 300; font-size: .9375rem; line-height: 1.25;
     color: var(--lawful-gray); max-width: 30rem;
@@ -399,6 +426,7 @@ rootRouter.get('/', (req, res, next) => {
 
   @media (prefers-reduced-motion: reduce) {
     nav a { transition: none; }
+    .stats dd a { transition: none; }
     /* See the note on .mark-logo: a GIF cannot be paused from CSS. */
     .logo-cell { display: none; }
   }
@@ -433,50 +461,43 @@ rootRouter.get('/', (req, res, next) => {
 </div>
 </section>
 
+<!-- h2, not h1: the page already has one in the hero, and a second would
+     flatten the document outline for screen readers and search engines. -->
 <section class="stats" aria-labelledby="stats-heading">
-  <h1 id="stats-heading">The API in numbers</h1>
+  <h2 id="stats-heading">The API in numbers</h2>
   <dl>
     <div class="pair">
-        <a href="/v2/id/objects?itemsPerPage=1">
-            <dd data-stat="objects"    data-pending>—</dd>
-        </a>
-        <dt>Objects</dt>
+      <dd><a data-stat="objects" data-pending href="/v2/id/objects?itemsPerPage=10">—</a></dd>
+      <dt>Objects</dt>
     </div>
     <div class="pair">
-        <a href="/v2/id/objects?itemsPerPage=10&hasImages=true">
-            <dd data-stat="images"     data-pending>—</dd>
-        </a>
-        <dt>With images</dt>
+      <dd><a data-stat="images" data-pending href="/v2/id/objects?itemsPerPage=10&amp;hasImages=true">—</a></dd>
+      <dt>With images</dt>
     </div>
     <div class="pair">
-        <a href="/v2/id/objects?itemsPerPage=10&onDisplay=true">
-            <dd data-stat="onDisplay"  data-pending>—</dd>
-        </a>
-        <dt>On display</dt>
+      <dd><a data-stat="onDisplay" data-pending href="/v2/id/objects?itemsPerPage=10&amp;onDisplay=true">—</a></dd>
+      <dt>On display</dt>
     </div>
     <div class="pair">
-        <a href="/v2/id/agents?itemsPerPage=10">
-            <dd data-stat="agents"     data-pending>—</dd>
-        </a>
-        <dt>Designers &amp; makers</dt>
+      <dd><a data-stat="agents" data-pending href="/v2/id/agents?itemsPerPage=10">—</a></dd>
+      <dt>Designers &amp; makers</dt>
     </div>
     <div class="pair">
-        <a href="/v2/id/exhibitions?itemsPerPage=10">
-            <dd data-stat="exhibitions" data-pending>—</dd>
-        </a>
-        <dt>Exhibitions</dt>
+      <dd><a data-stat="exhibitions" data-pending href="/v2/id/exhibitions?itemsPerPage=10">—</a></dd>
+      <dt>Exhibitions</dt>
     </div>
     <div class="pair">
-        <a href="/v2/id/concepts?itemsPerPage=10">
-            <dd data-stat="concepts"   data-pending>—</dd>
-        </a>
-        <dt>Concepts</dt></div>
+      <dd><a data-stat="concepts" data-pending href="/v2/id/concepts?itemsPerPage=10">—</a></dd>
+      <dt>Concepts</dt>
+    </div>
   </dl>
 </section>
 
 <script>
 // Live counts, read from hydra:totalItems. itemsPerPage=1 keeps each
 // response to a single member — we only want the total, not the data.
+// (The links themselves use itemsPerPage=10, which is what a human
+// clicking through wants to see.)
 //
 // Every count is fetched independently and failures are swallowed per
 // stat: one endpoint being slow or down leaves an em dash in that slot

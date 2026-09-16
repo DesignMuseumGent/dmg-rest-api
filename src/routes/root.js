@@ -120,7 +120,13 @@ rootRouter.get('/', (req, res, next) => {
     --ink:    var(--reliable-black);
     --paper:  var(--snow-white);
     --accent: var(--magic-purple);
+    /* Hairline rules under the nav links — kept light so they read as
+       structure rather than as content. */
     --rule:   var(--shy-gray);
+    /* Cropmarks in Reliable Black: the brandbook has the grid in black or
+       white depending on the effect wanted (p.10), and black gives them the
+       presence of a real registration mark rather than a faint guide. */
+    --mark:   var(--reliable-black);
 
     /* ─── GRID (brandbook p.10) ────────────────────────────────────────
        Margin is the short side of the sheet times a factor; the cross arm
@@ -179,7 +185,7 @@ rootRouter.get('/', (req, res, next) => {
     transform: translate(-50%, -50%);
   }
   .marks i::before, .marks i::after {
-    content: ''; position: absolute; background: var(--rule);
+    content: ''; position: absolute; background: var(--mark);
   }
   .marks i::before {                     /* horizontal arm */
     left: 0; top: 50%; width: 100%; height: var(--rule-w);

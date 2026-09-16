@@ -75,7 +75,7 @@ rootRouter.get('/', (req, res, next) => {
 
 <!-- Link previews in Slack, Teams, Mastodon, iMessage. -->
 <meta property="og:title" content="Design Museum Gent API">
-<meta property="og:description" content="Open access to the Design Museum Gent collection as CIDOC-CRM JSON-LD. Over 8,400 objects with multilingual metadata, IIIF images, extracted colour data, designers linked to Wikidata and Getty, and a full exhibition archive. No authentication, open CORS, stable identifiers.">
+<meta property="og:description" content="When the founders of the museum wrote these words in the invitation to the founding meeting in 1903, they were probably thinking of pencil and paper. Yet their vision of openness, exchange and inspiration still defines the museum today. We continue that vision in a digital context. We want our collection to be not only physically accessible, but also a creative and dynamic digital resource for everyone. That is exactly where our Collection API comes in.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/images/SPLIT_CollectieAPI_Square.webp">
 <meta name="twitter:card" content="summary">

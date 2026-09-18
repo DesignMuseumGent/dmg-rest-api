@@ -7,6 +7,71 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+## [v2.6.0] — 2026-09-18
+
+### Added
+
+- `GET /v2/id/production` — new production density endpoint. Returns, per bucket of years, how much of the published collection was being made in that period
+  - **Weighted, not a histogram.** Only about a quarter of dated objects carry an exact year; the rest are spans, 362 of them over a century wide. Each object contributes a total weight of exactly 1, spread evenly across the years of its span, so precisely dated objects concentrate and vaguely dated ones spread thin. Total area equals the number of dated objects, making each bucket's `weight` a genuine share of the collection
+  - Four measures per bucket: `weight` (the distributed measure), `object_count` (spans merely touching the bucket — sums to far more than the collection and is not a share of anything), `exact_count` (objects dated to a single year) and `spread_factor` (`object_count / weight`, a measure of how vaguely a period is dated)
+  - Parameters: `?bucket=` (5–100 years, default 10), `?yearFrom=`, `?yearTo=`, `?onDisplay=`, `?q=`
+  - Each bucket carries a ready-to-use `filter` URL listing its objects
+  - Backed by new `get_production_density()` RPC
+
+- `hex` on every entry of `GET /v2/id/colors` — a renderable hex value for each base colour and named tone
+  - Computed as a weighted centroid of every occurrence of that tone, weighted by how much of each image the colour covered
+  - Averaged in **linear light** rather than on gamma-encoded sRGB, which avoids the darkening and desaturation that channel-wise hex averaging produces
+  - Necessary because the names in `css_colors` are from the extended Wikipedia/xkcd lists, not CSS keywords — `Davy's grey`, `Grullo`, `Tuscan tan` cannot be passed to a stylesheet
+
+- `swatches` on `base_colors` — the constituent named tones that make up each base colour, heaviest first, each with its own hex, object count and weight
+  - A base colour is a bucket, not a tone: `orange` spans `#5a3f29` to `#b79585`, so a single averaged colour lands on an unrepresentative muddy brown
+
+- `?minCount=` on `GET /v2/id/colors` — minimum number of objects a colour must appear on to be listed. Default `1` (no-op)
+- `?swatchesPerBase=` on `GET /v2/id/colors` — how many constituent tones each base colour returns. Default `6`, max `100`
+
+- Landing page at `https://data.designmuseumgent.be/` with content negotiation
+  - `Accept: text/html` returns a human-readable page; RDF types (`application/ld+json`, `application/rdf+xml`, `text/turtle`, …) return `303 See Other` to the DCAT catalog at `/v2/`
+  - The catalog keeps one canonical URI — the root points at it rather than becoming a second place it lives
+  - `Vary: Accept` on every response
+
+### Fixed
+
+- **Production dates were NULL on every object.** `production_year_begin` and `production_year_end` were empty on all 10,238 healthy records, which silently disabled `?date=`, `?dateFrom=`, `?dateTo=` and `sortBy=dateBegin` / `dateEnd` — all four were documented and all four returned nothing. Two separate faults in the extraction:
+  - `crm:P108i_was_produced_by` and `crm:P94i_was_created_by` are arrays; using `->` with a text key on an array returns NULL on every row
+  - `crm:P82a_begin_of_the_begin` is an object (`{"@type": "xsd:gYear", "@value": "1898"}`), so `->>` serialised the whole object rather than reading the year
+  - Also corrected the digit handling: `"1858-03-25"` was becoming `18580325` rather than `1858`
+  - Coverage after the fix: 9,809 of 10,238 healthy objects carry a usable span
+
+- **French concept search returned nothing.** `?conceptSearch=chaise` returned 0 results while `chair` and `stoel` returned ~900 each. The thesaurus vector was built with the French stemmer (`chaise` → `chais`) while the endpoint queries with the `simple` config (`chaise`), so the two never met. Dutch and English worked only by luck, for words their stemmers leave unchanged
+  - Fixed by adding unstemmed (`simple`) copies alongside the stemmed vectors on both `dmg_thesaurus_LDES` and `dmg_objects_LDES`
+  - The same fault affected `?q=` against English and French titles, which are indexed with their own stemmers but queried with `dutch`
+  - Note: this restores exact-word matching in all three languages but not plurals — `chaises` still will not find `chaise`
+
+- Records whose persistent URI redirects elsewhere are now excluded from `GET /v2/id/objects`
+  - A record that was merged, renumbered or withdrawn stays fully resolvable at `/v2/id/object/{PID}` — returning `301` or `410` — but no longer appears in the collection listing
+  - Backed by a new generated `is_canonical` column comparing `PURI` against `RESOLVES_TO`
+  - Affects 58 objects that were healthy but redirecting
+
+- `MASTER_RESYNC` no longer aborts on a single malformed record. A set-returning function in a `FROM` list is evaluated **before** the `WHERE` clause filters anything, so `jsonb_typeof(...) = 'array'` in a WHERE never protected `jsonb_array_elements(...)` beside it. One object-shaped record was enough to stop the entire table update. Type checks moved inside the function arguments throughout
+
+### Changed
+
+- Production and creation dates are now combined rather than prioritised. `production_year_begin` takes the earliest begin and `production_year_end` the latest end across **both** `crm:P108i_was_produced_by` and `crm:P94i_was_created_by`. An object designed in 1898 and produced in 1902 now spans 1898–1902 rather than reporting 1902 alone
+  - No consumer has seen the previous behaviour, since the columns were always NULL
+
+### Documentation
+
+- New reference page for `/v2/id/production`, including why the weighting exists and how to read `spread_factor`
+- `?onDisplay=` corrected: it is **tri-state**, not boolean. Omitting it returns all objects; `onDisplay=false` actively selects objects *not* on display, which is a different and much smaller set
+- `css_colors` values documented as extended Wikipedia/xkcd names rather than CSS keywords
+- Base colour list corrected to **twelve** categories — `beige` exists in the data and was missing from the documented list of eleven
+- Scope stated explicitly across the documentation: these endpoints describe the objects published through the API — around ten thousand of the twenty-four thousand the museum holds. Which objects have been published is itself a decision that shapes every figure returned
+
+### Notes
+
+- All changes are additive within v2. No existing field has been removed or renamed, and `production_year_*` are internal columns that never appeared in any response — the JSON-LD structure is unchanged
+- The date filters change behaviour from "returns nothing" to "returns results", which cannot break a consumer that was relying on the documented behaviour
+
 ## [v2.5.4] — 2026-06-05
 
 ### Added 

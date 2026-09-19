@@ -4,6 +4,7 @@ import helmet from "helmet";
 import session from "express-session";
 import fileUpload from 'express-fileupload'
 import v2Router from "./src/routes/v2/index.js";
+import v1Retired from './src/routes/v1/retired.js'
 import rootRouter from './src/routes/root.js';
 import { setupAdmin } from "./src/admin/index.js";
 import reviewRouter from './src/routes/review/index.js';
@@ -71,6 +72,9 @@ app.use(express.static('public'))
 // ---------------------------------------------------------------------------
 
 setupAdmin(app)
+
+
+app.use('/v1', v1Retired)
 
 //app.use('/v1', v1Router)
 app.use('/v2', v2Router)

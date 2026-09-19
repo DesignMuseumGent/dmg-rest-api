@@ -20,7 +20,7 @@ export function requestProduction(app, BASE_URI) {
             const onDisplay = req.query.onDisplay === 'true'
             const q = req.query.q?.trim() || null
 
-            const { data, error } = await supabase.rpc('get_production_density', {
+            const { data, error } = await supabase.rpc('get_time_index', {
                 bucket_size: bucket,
                 year_from: yearFrom,
                 year_to: yearTo,
@@ -29,12 +29,22 @@ export function requestProduction(app, BASE_URI) {
             })
 
             if (error) {
-                console.error('Production density error:', error.message)
-                return res.status(500).json({ error: 'Error fetching production density' })
+                console.error('Time index error:', error.message)
+                return res.status(500).json({ error: 'Error fetching time index' })
             }
 
-            const rows = data || []
-            const totalWeight = rows.reduce((sum, r) => sum + parseFloat(r.weight), 0)
+            // generate_series includes its endpoint, so the last bucket is an
+            // empty one at year_to. Drop trailing empties rather than drawing
+            // a zero column at the axis edge.
+            let rows = data || []
+            while (rows.length &&
+            parseFloat(rows[rows.length - 1].production_weight) === 0 &&
+            parseInt(rows[rows.length - 1].acquired) === 0) {
+                rows = rows.slice(0, -1)
+            }
+
+            const totalWeight = rows.reduce((sum, r) => sum + parseFloat(r.production_weight), 0)
+            const totalAcquired = rows.reduce((sum, r) => sum + parseInt(r.acquired), 0)
 
             const query = [
                 bucket !== 10 ? `bucket=${bucket}` : null,
@@ -52,12 +62,14 @@ export function requestProduction(app, BASE_URI) {
                 },
                 '@id': `${BASE_URI}id/production${query ? `?${query}` : ''}`,
                 '@type': 'hydra:Collection',
-                'rdfs:label': 'Production density',
+                'rdfs:label': 'Time index',
                 'rdfs:comment':
-                    'How much of the published collection was in production in each period. ' +
-                    'Each object contributes a total weight of 1, spread evenly across the years ' +
-                    'of its production span, so precisely dated objects concentrate and vaguely ' +
-                    'dated ones spread thin. Covers only objects published through this API.',
+                    'Two measures of time on the same periods. Production: how much of the ' +
+                    'published collection was being made then, with each object contributing a ' +
+                    'total weight of 1 spread across the years of its span. Acquisition: how ' +
+                    'many objects entered the collection then, as a plain count. The two answer ' +
+                    'different questions — when the objects were made, and when the collection ' +
+                    'grew. Covers only objects published through this API.',
 
                 bucket_size: bucket,
                 year_from: yearFrom,
@@ -65,10 +77,14 @@ export function requestProduction(app, BASE_URI) {
                 // Sums to the number of dated objects whose spans fall inside
                 // the range — so a bucket's weight is a genuine share of it.
                 total_weight: Math.round(totalWeight * 1000) / 1000,
+                // Objects with a recorded acquisition year inside the range.
+                // 7,481 of 10,238 healthy objects carry one.
+                total_acquired: totalAcquired,
 
                 buckets: rows.map((row) => {
-                    const weight = parseFloat(row.weight)
-                    const touching = parseInt(row.object_count)
+                    const weight = parseFloat(row.production_weight)
+                    const touching = parseInt(row.production_touch)
+                    const acquired = parseInt(row.acquired)
                     return {
                         year: parseInt(row.bucket_start),
                         // The honest measure: share of the collection dated here.
@@ -82,7 +98,17 @@ export function requestProduction(app, BASE_URI) {
                         // not a share of anything.
                         object_count: touching,
                         // Dated to a single year. Needs no interpretation.
-                        exact_count: parseInt(row.exact_count),
+                        exact_count: parseInt(row.production_exact),
+
+                        // Acquisition is a POINT, not a span: the museum took
+                        // the object on one day, so this is a plain count with
+                        // no weighting. It shares the axis with `weight` only
+                        // because one unit of weight is one object — they are
+                        // not the same quantity.
+                        acquired,
+                        acquired_pct: totalAcquired
+                            ? Math.round((acquired / totalAcquired) * 10000) / 100
+                            : 0,
                         // How vaguely this period is dated: 1 means every
                         // object here is pinned to a year, 9 means the average
                         // object spans nine buckets.

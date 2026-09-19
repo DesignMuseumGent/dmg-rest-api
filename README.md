@@ -1,20 +1,17 @@
 # DESIGN MUSEUM GENT — REST API
 
-> [!WARNING]
-> **v1 of this API is deprecated** and will be sunset on **31 December 2026**.
-> Please migrate to [v2](https://data.designmuseumgent.be/v2/).
-> See the [migration guide](https://data.designmuseumgent.be/v2/migration) for breaking changes.
-
 This **REST API** exposes **linked data** related to [Design Museum Gent](https://data.designmuseumgent.be). It provides access to collection objects, agents, exhibitions and thesaurus concepts as **CIDOC-CRM compliant JSON-LD**. The data is harvested from the [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government).
 
-📖 **Full documentation**: [data.designmuseumgent.be](https://data.designmuseumgent.be)
-🔧 **Swagger UI**: [data.designmuseumgent.be/api-docs](https://data.designmuseumgent.be/api-docs)
+**Full documentation**: [api.designmuseumgent.be](https://api.designmuseumgent.be)
+**Swagger UI**: [data.designmuseumgent.be/v2/api-docs](https://data.designmuseumgent.be/v2/api-docs)
+**Changelog**: [CHANGELOG.md](CHANGELOG.md)
+
+> [!NOTE]
+> **Scope.** The API serves the objects that have been **published** through it — around ten thousand of the twenty-four thousand the museum holds. Which objects have been published, and in what order, is a decision made by people, and it shapes every count and statistic these endpoints return. This matters most for the index endpoints: a figure such as "grey accounts for half the collection palette" describes the published catalogue, not the collection.
 
 ---
 
-## v2 (current)
-
-### Collections
+## Collections
 
 | Endpoint | URI | Description |
 |---|---|---|
@@ -26,7 +23,10 @@ This **REST API** exposes **linked data** related to [Design Museum Gent](https:
 
 All collection endpoints support `?fullRecord=true` for bulk harvesting, `?modifiedSince=YYYY-MM-DD` for incremental updates, `?q=` for full text search, and use **Hydra Core Vocabulary** for pagination with `Link` headers.
 
-### Single entities
+> [!IMPORTANT]
+> Records whose persistent URI redirects elsewhere — merged, renumbered or withdrawn — are excluded from the collection listings. They remain individually resolvable at `/v2/id/object/{PID}`, returning `301` or `410`. If you maintain a mirror, reconcile against a full pass periodically: `?modifiedSince=` cannot tell you that a record has *left* the collection.
+
+## Single entities
 
 | Endpoint | URI | Description |
 |---|---|---|
@@ -37,38 +37,71 @@ All collection endpoints support `?fullRecord=true` for bulk harvesting, `?modif
 
 All single entity endpoints support `HEAD` requests for lightweight existence checks and cache validation.
 
-### Discovery & index endpoints
+## Index endpoints
+
+These describe the collection rather than return records from it — what values exist, and in what proportion.
 
 | Endpoint | URI | Description |
 |---|---|---|
-| Colors | `GET /v2/id/colors` | Color index with weighted collection statistics |
-| Colors — dominant | `GET /v2/id/colors/dominant` | Objects sorted by color dominance |
+| Colours | `GET /v2/id/colors` | Colour index with weighted statistics and hex values |
+| Colours — dominant | `GET /v2/id/colors/dominant` | Objects sorted by colour dominance |
+| Production | `GET /v2/id/production` | When the collection's objects were made, and when it acquired them |
 | Types | `GET /v2/id/types` | Object type index with counts |
 | Materials | `GET /v2/id/materials` | Material index with counts |
 | Nationalities | `GET /v2/id/nationalities` | Nationality index with counts |
 | Roles | `GET /v2/id/roles` | Agent role index with counts |
 | DCAT | `GET /v2/` | Machine-readable data catalog |
 
-### Query parameters
+> [!NOTE]
+> Index endpoints are rate limited to **20 requests per minute** — far tighter than the collections, because each call aggregates across the whole collection. Cache their responses: the underlying figures change only when the collection is re-harvested.
+
+## Query parameters
+
+### Objects
+
+| Parameter | Description |
+|---|---|
+| `?fullRecord=true` | Return full CIDOC-CRM records |
+| `?modifiedSince=YYYY-MM-DD` | Incremental harvest |
+| `?q=` | Full text search on titles, descriptions and object number |
+| `?concept=` | Filter by thesaurus concept PID or URI, expanded to narrower concepts |
+| `?conceptSearch=` | Search the thesaurus by label (NL/EN/FR) and filter by matching concepts |
+| `?agent=` | Filter by agent PID or URI — designer or producer |
+| `?date=YYYY/YYYY` | Filter by production span, overlap logic |
+| `?dateFrom=`, `?dateTo=` | Same, as open-ended bounds |
+| `?type=`, `?material=` | Filter by type or material label. Comma-separated for AND |
+| `?color=`, `?cssColor=` | Filter by base colour or named tone |
+| `?colors=true` | Include colour data (requires `fullRecord=true`) |
+| `?hasImages=true` | Only objects with a IIIF manifest |
+| `?hasColors=true` | Only objects processed by the colour tagger |
+| `?hasParts=true` | Only koepelrecords |
+| `?isPartOf=true` | Only set members |
+| `?koepels=exclude` | Hide koepelrecords |
+| `?language=NLD\|FRA\|ENG` | Only objects with a title in that language |
+| `?onDisplay=` | **Tri-state.** Omit for all objects, `true` for on display, `false` for *not* on display |
+| `?sortBy=`, `?sortOrder=` | `objectNumber`, `modified`, `titleNL/FR/EN`, `dateBegin`, `dateEnd` |
+
+### Agents
+
+| Parameter | Description |
+|---|---|
+| `?q=` | Full text search on name and agent ID |
+| `?nationality=` | Filter by nationality |
+| `?role=` | Filter by role (designer, producer) |
+| `?type=` | `individual`, `organisation` or `unknown` |
+
+### Index endpoints
 
 | Parameter | Applies to | Description |
 |---|---|---|
-| `?fullRecord=true` | all collections | Return full CIDOC-CRM records |
-| `?modifiedSince=YYYY-MM-DD` | all collections | Incremental harvest |
-| `?q=` | objects, agents, concepts | Full text search |
-| `?hasImages=true` | objects | Only objects with a IIIF manifest |
-| `?color=` | objects | Filter by base color |
-| `?cssColor=` | objects | Filter by CSS color name |
-| `?colors=true` | objects (fullRecord) | Include color data |
-| `?type=` | objects | Filter by object type |
-| `?material=` | objects | Filter by material |
-| `?hasParts=true` | objects | Only koepelrecords |
-| `?isPartOf=true` | objects | Only components |
-| `?onDisplay=true` | objects, types, materials, colors | Only objects in collection presentation |
-| `?nationality=` | agents | Filter by nationality |
-| `?role=` | agents | Filter by role (designer, producer) |
+| `?onDisplay=true` | colors, production, types, materials | Restrict to objects in the collection presentation |
+| `?minCount=` | colors | Minimum objects a colour must appear on to be listed |
+| `?swatchesPerBase=` | colors | How many constituent tones each base colour returns |
+| `?bucket=` | production | Bucket size in years (5–100, default 10) |
+| `?yearFrom=`, `?yearTo=` | production | Axis range |
+| `?q=` | production | Narrow both measures to a search |
 
-### Quick start
+## Quick start
 
 ```bash
 # fetch a single object
@@ -83,11 +116,23 @@ curl "https://data.designmuseumgent.be/v2/id/objects?page=1&itemsPerPage=50&full
 # full text search
 curl "https://data.designmuseumgent.be/v2/id/objects?q=roze+glas&hasImages=true"
 
-# filter by color and type
+# search the thesaurus in any of three languages
+curl "https://data.designmuseumgent.be/v2/id/objects?conceptSearch=chaise"
+
+# filter by colour and type
 curl "https://data.designmuseumgent.be/v2/id/objects?color=pink&type=vaas&hasImages=true"
+
+# filter by production period
+curl "https://data.designmuseumgent.be/v2/id/objects?date=1950/1969&hasImages=true"
 
 # objects currently on display
 curl "https://data.designmuseumgent.be/v2/id/objects?onDisplay=true&fullRecord=true"
+
+# the collection's palette, with renderable hex values
+curl "https://data.designmuseumgent.be/v2/id/colors"
+
+# when the collection was made, and when it was collected
+curl "https://data.designmuseumgent.be/v2/id/production?bucket=10&yearFrom=1600"
 ```
 
 ```javascript
@@ -110,7 +155,22 @@ async function harvest(url) {
 harvest('https://data.designmuseumgent.be/v2/id/objects?fullRecord=true&itemsPerPage=50')
 ```
 
-### What's new in v2
+---
+
+## v1 has been retired
+
+v1 no longer serves requests. Its URIs return HTTP **`410 Gone`** rather than `404`, with headers pointing at the successor:
+
+```http
+HTTP/1.1 410 Gone
+Deprecation: true
+Sunset: Wed, 01 Jul 2026 00:00:00 GMT
+Link: <https://data.designmuseumgent.be/v2/>; rel="successor-version"
+```
+
+`410` rather than `404` is deliberate: these URIs existed and were published, so the honest answer is that the resource is deliberately gone, not that it never existed.
+
+### What changed in v2
 
 | | v1 | v2 |
 |---|---|---|
@@ -119,78 +179,36 @@ harvest('https://data.designmuseumgent.be/v2/id/objects?fullRecord=true&itemsPer
 | **Multilingual** | single language fields | `crm:E41_Appellation` per language |
 | **Nationality** | plain string | EU Publications Office URI |
 | **Biographies** | `crm:P3_has_note` | `crm:E33_Linguistic_Object` + CC BY-SA |
-| **Color data** | separate endpoints | `crm:E36_Visual_Item` inline |
+| **Colour data** | separate endpoints | `crm:E36_Visual_Item` inline |
+| **Colour API** | `/v1/color-api/{color}` | `?color=` / `?cssColor=` filters, plus `/v2/id/colors` |
 | **Full text search** | — | `?q=` on objects, agents, concepts |
-| **Color filters** | — | `?color=`, `?cssColor=` |
-| **Color index** | — | `/v2/id/colors` with weighted stats |
-| **Type / material filters** | — | `?type=`, `?material=` |
+| **Concept search** | — | `?concept=`, `?conceptSearch=` with hierarchy expansion |
+| **Date filters** | — | `?date=`, `?dateFrom=`, `?dateTo=` |
+| **Index endpoints** | — | colours, production, types, materials, nationalities, roles |
 | **Incremental harvest** | — | `?modifiedSince=` |
 | **Pagination headers** | — | RFC 8288 `Link` header |
 | **HEAD requests** | — | Lightweight existence checks |
+| **ARK routes** | `/v1/id/ark:/29417/…` | Not carried over |
 | **Base URI** | `/v1/` | `/v2/` |
-
----
-
-## ~~v1~~ (deprecated — migrate to [v2](https://data.designmuseumgent.be/v2/))
-
-> [!CAUTION]
-> v1 is deprecated and will be shut down on **31 December 2026**. The documentation below is archived for reference only. All new integrations should use v2. See the [migration guide](https://data.designmuseumgent.be/v2/migration) for breaking changes.
-
-### Data catalogues
-
-Top level **data catalogues** (DCAT) using the [OSLO standard](https://joinup.ec.europa.eu/collection/oslo-open-standards-local-administrations-flanders):
-
-> https://data.designmuseumgent.be/v1
-
-Collections:
-- **objects** (published): https://data.designmuseumgent.be/v1/id/objects
-- **objects** (private): https://data.designmuseumgent.be/v1/id/private-objects
-- **exhibitions**: https://data.designmuseumgent.be/v1/id/exhibitions
-- **billboard series**: https://data.designmuseumgent.be/v1/id/exhibitions/billboardseries
-- **exhibition texts**: https://data.designmuseumgent.be/v1/id/texts
-- **agents**: https://data.designmuseumgent.be/v1/id/agents
-- **concepts**: https://data.designmuseumgent.be/v1/id/concepts
-
-### Single entities
-https://data.designmuseumgent.be/v1/id/{type}/{referencenumber}
-
-- **agent**: https://data.designmuseumgent.be/v1/id/agent/DMG-A-00523
-- **object**: https://data.designmuseumgent.be/v1/id/object/3471.json
-- **exhibition**: https://data.designmuseumgent.be/v1/id/exhibition/TE_1993-009
-- **archive**: https://data.designmuseumgent.be/v1/id/archive/TE_2003-010_Affiche
-- **concept**: https://data.designmuseumgent.be/v1/id/concept/530006321
-
-ARK-compliant alternative routes are also available:
-https://data.designmuseumgent.be/v1/id/ark:/29417/{type}/{referencenumber}
-
-### Curated collections
-
-#### Color API
-```
-GET /v1/color-api/{color}
-GET /v1/color-api/{color}?image=true
-```
-Example: https://data.designmuseumgent.be/v1/color-api/vanilla?image=true
-
-Full color list: https://data.designmuseumgent.be/v1/colors/
 
 ---
 
 ## Standards
 
-- [CIDOC-CRM](http://www.cidoc-crm.org/) — core data model (v2)
-- [OSLO](https://joinup.ec.europa.eu/collection/oslo-open-standards-local-administrations-flanders) — Flemish government standard (v1)
+- [CIDOC-CRM](http://www.cidoc-crm.org/) — core data model
 - [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government) — persistent identifiers
 - [Hydra Core Vocabulary](http://www.w3.org/ns/hydra/core#) — pagination
 - [PROV-O](https://www.w3.org/TR/prov-o/) — provenance
+- [SKOS](https://www.w3.org/TR/skos-reference/) — thesaurus labels and hierarchy
 - [Getty vocabularies](http://vocab.getty.edu/) — AAT, ULAN, TGN
 - [EU Publications Office](https://publications.europa.eu/resource/authority/) — language, country, gender authorities
 - [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) — `Link` header pagination
+- [IIIF](https://iiif.io/) — image delivery
 
 ## Support
 
-- 📖 [Documentation](https://data.designmuseumgent.be)
-- 🔧 [Swagger UI](https://data.designmuseumgent.be/api-docs)
+- 📖 [Documentation](https://api.designmuseumgent.be)
+- 🔧 [Swagger UI](https://data.designmuseumgent.be/v2/api-docs)
 - 🐛 [GitHub Issues](https://github.com/DesignMuseumGent/dmg-rest-api/issues)
 - 📧 [olivier.vandhuynslager@stad.gent](mailto:olivier.vandhuynslager@stad.gent)
 

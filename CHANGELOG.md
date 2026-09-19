@@ -11,12 +11,16 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 ### Added
 
-- `GET /v2/id/production` — new production density endpoint. Returns, per bucket of years, how much of the published collection was being made in that period
+- `GET /v2/id/production` — new time index endpoint. Returns two measures of time per bucket of years: how much of the published collection was being made then, and how many objects entered the collection then
   - **Weighted, not a histogram.** Only about a quarter of dated objects carry an exact year; the rest are spans, 362 of them over a century wide. Each object contributes a total weight of exactly 1, spread evenly across the years of its span, so precisely dated objects concentrate and vaguely dated ones spread thin. Total area equals the number of dated objects, making each bucket's `weight` a genuine share of the collection
   - Four measures per bucket: `weight` (the distributed measure), `object_count` (spans merely touching the bucket — sums to far more than the collection and is not a share of anything), `exact_count` (objects dated to a single year) and `spread_factor` (`object_count / weight`, a measure of how vaguely a period is dated)
+  - **Acquisition is counted, not weighted.** An acquisition date is a point — the museum took the object on one day — so `acquired` is a plain count. It is deliberately spiky: collections grow in events, and 173 objects share a single acquisition date of 1990-02-16. It begins in 1904, a year after the museum was founded
+  - Coverage: 9,809 of 10,238 published objects carry a production span; 7,481 carry an acquisition year
   - Parameters: `?bucket=` (5–100 years, default 10), `?yearFrom=`, `?yearTo=`, `?onDisplay=`, `?q=`
-  - Each bucket carries a ready-to-use `filter` URL listing its objects
-  - Backed by new `get_production_density()` RPC
+  - Each bucket carries a ready-to-use `filter` URL listing the objects **produced** in that period. There is no equivalent filter for acquisition year, so `acquired` cannot currently be clicked through
+  - Backed by new `acquisition_year` column and `get_time_index()` RPC
+
+- `acquisition_year` column on `dmg_objects_LDES`, extracted from `crm:P24i_changed_ownership_through` → `crm:P4_has_time-span`. Internal — it does not appear in any response; acquisition dates continue to be served from the JSON-LD as before
 
 - `hex` on every entry of `GET /v2/id/colors` — a renderable hex value for each base colour and named tone
   - Computed as a weighted centroid of every occurrence of that tone, weighted by how much of each image the colour covered
@@ -71,38 +75,6 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 - All changes are additive within v2. No existing field has been removed or renamed, and `production_year_*` are internal columns that never appeared in any response — the JSON-LD structure is unchanged
 - The date filters change behaviour from "returns nothing" to "returns results", which cannot break a consumer that was relying on the documented behaviour
-
-## [v2.5.4] — 2026-06-05
-
-### Added 
-
-- Agent type classification — agents are now classified as `individual` (person) or `organisation` and this is reflected in the CIDOC-CRM `@type` field on all agent records and collection stubs
-  - `crm:E21_Person` — individual persons
-  - `crm:E74_Group` — organisations, studios, collectives and companies
-  - `crm:E39_Actor` — agents not yet classified (fallback, unchanged from previous behaviour)
-  - Classification sourced from two methods: registrar system export (`naam.soort` field: `persoon` / `instelling`) as primary source, Wikidata `instance of` (`P31`) as fallback for agents with a Wikidata `owl:sameAs` link
-  - Stored in new `agent_type` column on `dmg_personen_LDES` with CHECK constraint (`individual`, `organisation`, `unknown`)
-
-- `?type=` filter on `GET /v2/id/agents` — filter agents by classification
-  - Accepted values: `individual`, `organisation`, `unknown`
-  - Example: `GET /v2/id/agents?type=individual`
-  - Example: `GET /v2/id/agents?type=organisation&nationality=België&role=designer`
-  - Example: `GET /v2/id/agents?type=unknown` — useful for finding agents that still need manual review
-  - Filter is preserved in all Hydra pagination links
-
-### Fixed
-
-- Physical parts (`fysiekeOnderdelen`) with named components, materials and per-part dimensions are now correctly preserved on object records — `crm:P46_has_component` with `/part/N` URIs is no longer overwritten at serve time
-- Koepelrecord set members are now exposed as `crm:P106_is_composed_of` instead of `crm:P46_has_component`, correctly separating two semantically distinct relationships that were previously conflated
-
-### Changed
-- Agent type `@type` is now reflected in lightweight stubs on `GET /v2/id/agents` — clients can determine whether an agent is a person or organisation without fetching the full record
-- `crm:P46_has_component` now exclusively expresses **physical parts** of the object itself (fysiekeOnderdelen) — named components with their own materials and dimensions, sourced directly from `json_ld_v2`
-- `crm:P106_is_composed_of` is the new property for **set composition** on koepelrecords — lists the member objects (e.g. individual pieces in a cutlery service or series) as resolvable DMG URIs
-- `crm:P46i_forms_part_of` continues to express set membership on member objects, pointing to their parent koepelrecord
-- Both `requestObject.js` and `requestObjects.js` (`buildMember`) apply the same property mapping consistently — `?fullRecord=true` responses now match single object endpoint responses exactly for all component and set fields
-- `objectClient.js` updated to write `crm:P106_is_composed_of` for `bestaatUit` (set members) instead of merging into `crm:P46_has_component`
-
 ## [v2.5.3] — 2026-06-05
 
 ### Added

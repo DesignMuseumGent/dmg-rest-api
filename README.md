@@ -2,9 +2,9 @@
 
 This **REST API** exposes **linked data** related to [Design Museum Gent](https://data.designmuseumgent.be). It provides access to collection objects, agents, exhibitions and thesaurus concepts as **CIDOC-CRM compliant JSON-LD**. The data is harvested from the [Linked Data Event Streams](https://apidg.gent.be/opendata/adlib2eventstream/v1/) and all URIs are compliant with the [Flemish URI standard](https://joinup.ec.europa.eu/collection/semic-support-centre/document/uri-standard-guidelines-flemish-government).
 
-**Full documentation**: [api.designmuseumgent.be](https://api.designmuseumgent.be)
-**Swagger UI**: [data.designmuseumgent.be/v2/api-docs](https://data.designmuseumgent.be/v2/api-docs)
-**Changelog**: [CHANGELOG.md](CHANGELOG.md)
+📖 **Full documentation**: [api.designmuseumgent.be](https://api.designmuseumgent.be)
+🔧 **Swagger UI**: [data.designmuseumgent.be/v2/api-docs](https://data.designmuseumgent.be/v2/api-docs)
+📋 **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 > [!NOTE]
 > **Scope.** The API serves the objects that have been **published** through it — around ten thousand of the twenty-four thousand the museum holds. Which objects have been published, and in what order, is a decision made by people, and it shapes every count and statistic these endpoints return. This matters most for the index endpoints: a figure such as "grey accounts for half the collection palette" describes the published catalogue, not the collection.
@@ -31,6 +31,7 @@ All collection endpoints support `?fullRecord=true` for bulk harvesting, `?modif
 | Endpoint | URI | Description |
 |---|---|---|
 | Object | `GET /v2/id/object/{PID}` | Single collection object |
+| Object — similar | `GET /v2/id/object/{PID}/similar` | Objects whose photographs resemble this one |
 | Agent | `GET /v2/id/agent/{PID}` | Single agent record |
 | Exhibition | `GET /v2/id/exhibition/{PID}` | Single exhibition record |
 | Concept | `GET /v2/id/concept/{PID}` | Single thesaurus concept |
@@ -54,6 +55,21 @@ These describe the collection rather than return records from it — what values
 
 > [!NOTE]
 > Index endpoints are rate limited to **20 requests per minute** — far tighter than the collections, because each call aggregates across the whole collection. Cache their responses: the underlying figures change only when the collection is re-harvested.
+
+### Resemblance — an index nobody wrote
+
+```bash
+curl 'https://data.designmuseumgent.be/v2/id/object/1975-0061/similar'
+```
+
+Every photograph is encoded as a 768-dimension vector by CLIP (`ViT-L-14-openai`), a model trained on images paired with the text found near them online. `/similar` returns the objects whose photographs sit nearest.
+
+**The model has never seen this collection.** It was never told what a decorative tile is and has no access to any record. It compares pictures. `1975-0061` is a tile painted with a sea creature; its nearest neighbours are all decorative tiles and almost all depict sea creatures, across different designs and centuries, at similarities of 0.92–0.95. No cataloguer ever recorded "sea creature" as a category.
+
+> [!WARNING]
+> CLIP carries the associations of the corpus it was trained on, including its blind spots and its clichés. It will group objects for reasons that have nothing to do with design history — a shared backdrop, a similar crop, a photographic convention. `similarity` measures two photographs, not two objects.
+>
+> Coverage is **7,307 of 10,238 published objects**. For the rest the endpoint returns an empty collection with `200` — the object exists, the question is simply unanswerable for it.
 
 ## Query parameters
 
@@ -100,6 +116,8 @@ These describe the collection rather than return records from it — what values
 | `?bucket=` | production | Bucket size in years (5–100, default 10) |
 | `?yearFrom=`, `?yearTo=` | production | Axis range |
 | `?q=` | production | Narrow both measures to a search |
+| `?limit=` | similar | Objects to return (1–50, default 12) |
+| `?minSimilarity=` | similar | Only return objects at or above this similarity (0–1) |
 
 ## Quick start
 
@@ -133,6 +151,9 @@ curl "https://data.designmuseumgent.be/v2/id/colors"
 
 # when the collection was made, and when it was collected
 curl "https://data.designmuseumgent.be/v2/id/production?bucket=10&yearFrom=1600"
+
+# objects that resemble this one, from the photographs alone
+curl "https://data.designmuseumgent.be/v2/id/object/1975-0061/similar"
 ```
 
 ```javascript
@@ -185,6 +206,7 @@ Link: <https://data.designmuseumgent.be/v2/>; rel="successor-version"
 | **Concept search** | — | `?concept=`, `?conceptSearch=` with hierarchy expansion |
 | **Date filters** | — | `?date=`, `?dateFrom=`, `?dateTo=` |
 | **Index endpoints** | — | colours, production, types, materials, nationalities, roles |
+| **Visual similarity** | — | `/similar` on any object, from CLIP image embeddings |
 | **Incremental harvest** | — | `?modifiedSince=` |
 | **Pagination headers** | — | RFC 8288 `Link` header |
 | **HEAD requests** | — | Lightweight existence checks |
@@ -204,6 +226,7 @@ Link: <https://data.designmuseumgent.be/v2/>; rel="successor-version"
 - [EU Publications Office](https://publications.europa.eu/resource/authority/) — language, country, gender authorities
 - [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) — `Link` header pagination
 - [IIIF](https://iiif.io/) — image delivery
+- [CLIP](https://openai.com/research/clip) (`ViT-L-14-openai`) — image embeddings behind `/similar`
 
 ## Support
 

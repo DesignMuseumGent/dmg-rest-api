@@ -7,6 +7,50 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 - **MINOR** — new features, backwards compatible
 - **PATCH** — bug fixes, backwards compatible
 
+
+## [v2.7.0] — 2026-09-19
+
+### Added
+
+- `GET /v2/id/object/{PID}/similar` — objects whose photographs sit nearest to a given object's in embedding space
+  - Backed by 12,325 CLIP image embeddings (`ViT-L-14-openai`, 768 dimensions, L2-normalised) covering 7,307 published objects
+  - **Nothing here is catalogued.** The model was never shown this collection and has no access to any record — it compares pictures. The twelve nearest objects to `1975-0061`, a tile painted with a sea creature, are all decorative tiles and almost all depict sea creatures, across different designs and centuries, at similarities of 0.92–0.95. No cataloguer recorded "sea creature" as a category
+  - Parameters: `?limit=` (1–50, default 12), `?minSimilarity=` (0–1, default 0)
+  - Each member carries `similarity` alongside the usual images and manifest reference
+  - Backed by new `get_similar_objects()` RPC (migration 014)
+
+- `palette` on `GET /v2/id/colors/dominant` members — every colour measured in the object, not only the one queried
+  - Up to ten entries with `hex`, `css`, `base` and `percentage`, ordered by share
+  - Read from the **first image only**, because the thumbnail served alongside is the first image; a palette averaged across every view would describe a different picture
+  - Backed by the `colors` column now returned from the dominance RPCs (migration 013)
+
+- `?minCount=` and `?swatchesPerBase=` are now actually applied on `GET /v2/id/colors`. Both were documented in v2.6.0 but never read by the handler, so `?swatchesPerBase=40` silently returned the default six
+
+### Fixed
+
+- **Thumbnails were broken for every image on `beeldbank-temp.stad.gent`.** Thumbnail URLs were built by rewriting the size segment to `400,`, which that server rejects with `400 Invalid size requested` — it declares `"profile": "level0"` and accepts only a fixed set of named sizes. Thumbnails there now use `thm`
+  - Note this makes `thumbnail` **200px wide on that host** and 400px on `api.collectie.gent`. Anything sizing a grid on the assumption of 400px will get softer images for the former
+  - Full-resolution URLs were never affected
+  - The rewrite now operates on path position rather than matching known suffixes, so images with a non-default rotation, quality or format get a thumbnail too — previously they silently got none
+
+- Malformed `@id` on `GET /v2/id/colors/dominant` members: the URI was built as `${BASE_URI}/id/object/…` where `BASE_URI` already ends in a slash, emitting `/v2//id/object/1999-0068`
+
+- `GET /v2/id/colors/dominant` now excludes unhealthy and non-canonical records. It was the last collection endpoint that did not, so withdrawn objects and records whose URI redirects elsewhere could appear in results
+
+### Changed
+
+- Expect the dominant colour results to shift slightly with the health and canonicity filters applied. Nothing that disappears was correct to show
+
+### Documentation
+
+- New reference page for `/v2/id/object/{PID}/similar`, including what CLIP measures, what it cannot know, and how to walk a thread without getting stuck between mutual nearest neighbours
+- `thumbnail` described as a small derivative whose width varies by image server, rather than as 400px
+
+### Notes
+
+- All changes are additive within v2. No field removed or renamed
+- Three in ten published objects have no image embedding. `/similar` returns an empty collection with `200` for those — the object exists, the question is simply unanswerable for it
+
 ## [v2.6.0] — 2026-09-18
 
 ### Added

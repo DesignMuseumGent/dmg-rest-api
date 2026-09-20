@@ -20,13 +20,34 @@ export function requestProduction(app, BASE_URI) {
             const onDisplay = req.query.onDisplay === 'true'
             const q = req.query.q?.trim() || null
 
-            const { data, error } = await supabase.rpc('get_time_index', {
-                bucket_size: bucket,
-                year_from: yearFrom,
-                year_to: yearTo,
-                only_on_display: onDisplay,
-                search_query: q,
-            })
+            const [
+                { data, error },
+                { data: lagData, error: lagError },
+            ] = await Promise.all([
+                supabase.rpc('get_time_index', {
+                    bucket_size: bucket,
+                    year_from: yearFrom,
+                    year_to: yearTo,
+                    only_on_display: onDisplay,
+                    search_query: q,
+                }),
+                // Acquisition lag is keyed by ACQUISITION decade, not
+                // production decade, so it cannot share the buckets above —
+                // it is a separate array with its own x axis. Bounded at 1900
+                // because the museum opened in 1903 and nothing precedes it.
+                supabase.rpc('get_acquisition_lag', {
+                    bucket_size: bucket,
+                    year_from: Math.max(yearFrom, 1900),
+                    year_to: yearTo,
+                    only_on_display: onDisplay,
+                }),
+            ])
+
+            // Supplementary: if this RPC is missing the endpoint still serves
+            // the production and acquisition series it always has.
+            if (lagError) {
+                console.error('Acquisition lag error (non-fatal):', lagError.message)
+            }
 
             if (error) {
                 console.error('Time index error:', error.message)
@@ -69,7 +90,9 @@ export function requestProduction(app, BASE_URI) {
                     'total weight of 1 spread across the years of its span. Acquisition: how ' +
                     'many objects entered the collection then, as a plain count. The two answer ' +
                     'different questions — when the objects were made, and when the collection ' +
-                    'grew. Covers only objects published through this API.',
+                    'grew. lag_by_acquisition_decade adds a third: how old objects were when ' +
+                    'they were acquired, keyed by acquisition decade rather than production ' +
+                    'decade. Covers only objects published through this API.',
 
                 bucket_size: bucket,
                 year_from: yearFrom,
@@ -80,6 +103,38 @@ export function requestProduction(app, BASE_URI) {
                 // Objects with a recorded acquisition year inside the range.
                 // 7,481 of 10,238 healthy objects carry one.
                 total_acquired: totalAcquired,
+
+                // How old objects were when the museum took them in, by
+                // ACQUISITION decade. A different x axis from `buckets`
+                // above, which is keyed by production decade — the two must
+                // not be plotted against one another.
+                lag_by_acquisition_decade: (lagData || []).map((row) => {
+                    const objects = parseInt(row.objects)
+                    const uncertain = parseInt(row.uncertain)
+                    return {
+                        year: parseInt(row.bucket_start),
+                        objects,
+                        // Mutually exclusive bands, summing to `objects`.
+                        // Assigned on the MIDPOINT of each object's possible
+                        // age range — an estimate, not a measurement.
+                        contemporary: parseInt(row.contemporary),  // <= 5 years old
+                        recent: parseInt(row.recent),              // 6-25
+                        historical: parseInt(row.historical),      // 26-100
+                        distant: parseInt(row.distant),            // over a century
+                        // Objects whose production span exceeds 25 years, so
+                        // their band is a guess. Overlaps the bands above —
+                        // it is a confidence measure, not a fifth category.
+                        uncertain,
+                        uncertain_pct: objects
+                            ? Math.round((uncertain / objects) * 1000) / 10
+                            : 0,
+                        // The lag genuinely is a range. Where these two are
+                        // close the decade is well dated; where they diverge,
+                        // the honest answer is that it is not known.
+                        median_min_lag: parseFloat(row.median_min_lag),
+                        median_max_lag: parseFloat(row.median_max_lag),
+                    }
+                }),
 
                 buckets: rows.map((row) => {
                     const weight = parseFloat(row.production_weight)

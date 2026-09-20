@@ -19,6 +19,7 @@ import { requestNationalities } from './index/nationalities.js'
 import { requestRoles } from './index/roles.js'
 import {requestMaterials} from "./index/materials.js";
 import {requestProduction} from "./index/production.js";
+import {requestSimilar} from "./index/similar.js";
 
 import {
     publicLimiter,
@@ -60,6 +61,7 @@ v2Router.use('/id/nationalities', aggregationLimiter)
 v2Router.use('/id/materials', aggregationLimiter)
 v2Router.use('/id/roles', aggregationLimiter)
 v2Router.use('/id/production', aggregationLimiter)
+v2Router.use('/id/similar', aggregationLimiter)
 
 v2Router.use('/id/private/', privateLimiter)
 
@@ -106,6 +108,7 @@ requestNationalities(v2Router, V2_BASE)
 requestMaterials(v2Router, V2_BASE)
 requestRoles(v2Router, V2_BASE)
 requestProduction(v2Router, V2_BASE)
+requestSimilar(v2Router, V2_BASE)
 
 requestPrivateObjects(v2Router, V2_BASE)
 

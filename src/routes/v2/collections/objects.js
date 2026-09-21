@@ -176,7 +176,7 @@ export function requestObjects(app, BASE_URI) {
             // ─────────────────────────────────────────────────────────────
             let selectFields
             if (!fullRecord) {
-                selectFields = 'objectNumber, object_title_nl, iiif_manifest, RESOLVES_TO, hasParts, isPartOf, object_types, object_materials,iiif_image_uris'
+                selectFields = 'objectNumber, object_title_nl, object_title_fr, object_title_en, iiif_manifest, RESOLVES_TO, hasParts, isPartOf, object_types, object_materials,iiif_image_uris'
             } else if (showColors) {
                 selectFields = 'objectNumber, json_ld_v2, object_title_nl, object_title_fr, object_title_en, object_description_nl, object_description_fr, object_description_en, colors, HEX_values, color_names, iiif_image_uris, RESOLVES_TO, COLLECTION_PRESENTATION, isPartOf, hasParts'
             } else {
@@ -297,7 +297,7 @@ export function requestObjects(app, BASE_URI) {
                 if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
                 if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
-                const members = sliced.map(row => buildMember(row, fullRecord, showColors, BASE_URI))
+                const members = sliced.map(row => buildMember(row, fullRecord, showColors, BASE_URI, languageFilter))
 
                 const linkHeader = buildLinkHeader(hydraView)
                 if (linkHeader) res.setHeader('Link', linkHeader)
@@ -354,7 +354,7 @@ export function requestObjects(app, BASE_URI) {
             if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
             if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
-            const members = (data || []).map(row => buildMember(row, fullRecord, showColors, BASE_URI))
+            const members = (data || []).map(row => buildMember(row, fullRecord, showColors, BASE_URI, languageFilter))
 
             const linkHeader = buildLinkHeader(hydraView)
             if (linkHeader) res.setHeader('Link', linkHeader)
@@ -385,12 +385,41 @@ export function requestObjects(app, BASE_URI) {
 // ─────────────────────────────────────────────────────────────
 // MEMBER BUILDER
 // ─────────────────────────────────────────────────────────────
-function buildMember(row, fullRecord, showColors, BASE_URI) {
+function buildMember(row, fullRecord, showColors, BASE_URI, languageFilter) {
     if (!fullRecord) {
+        // Compact view honors ?language= for the label, same NLD/FRA/ENG mapping
+        // used for filtering elsewhere in this handler. Falls back to NL, then
+        // the bare object number, if the requested language isn't available.
+        const titleByLanguage = {
+            NLD: row["object_title_nl"],
+            FRA: row["object_title_fr"],
+            ENG: row["object_title_en"]
+        }
+        const label = (languageFilter && titleByLanguage[languageFilter])
+            ?? row["object_title_nl"]
+            ?? row.objectNumber
+
+        // Full multilingual title array, same shape as the fullRecord appellations
+        // block below, so compact-view consumers don't need fullRecord=true just
+        // to get all available languages.
+        const compactAppellations = []
+        if (row["object_title_nl"]) compactAppellations.push({ lang: "NLD", value: row["object_title_nl"] })
+        if (row["object_title_fr"]) compactAppellations.push({ lang: "FRA", value: row["object_title_fr"] })
+        if (row["object_title_en"]) compactAppellations.push({ lang: "ENG", value: row["object_title_en"] })
+
         return {
             "@id": `${BASE_URI}id/object/${row.objectNumber}`,
             "@type": "crm:E22_Human-Made_Object",
-            "rdfs:label": row["object_title_nl"] ?? row.objectNumber,
+            "rdfs:label": label,
+            ...(compactAppellations.length > 0 && {
+                "crm:P1_is_identified_by": compactAppellations.map(a => ({
+                    "@type": "crm:E41_Appellation",
+                    "rdfs:label": a.value,
+                    "crm:P72_has_language": {
+                        "@id": `http://publications.europa.eu/resource/authority/language/${a.lang}`
+                    }
+                }))
+            }),
             ...(row["iiif_manifest"] && {
                 "crm:P129i_is_subject_of": {
                     "@id": row["iiif_manifest"],

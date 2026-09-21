@@ -26,6 +26,10 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 - `?minCount=` and `?swatchesPerBase=` are now actually applied on `GET /v2/id/colors`. Both were documented in v2.6.0 but never read by the handler, so `?swatchesPerBase=40` silently returned the default six
 
+- `crm:P1_is_identified_by` on lightweight `GET /v2/id/objects` members — the object's title in every language that has one (`NLD`/`FRA`/`ENG`), same `crm:E41_Appellation` shape already used in full records. Omitted when no title exists in any language
+  - `rdfs:label` is unchanged in shape but now resolves to the language requested via `?language=` when available, rather than always being the Dutch title
+  - Backed by `object_title_fr` / `object_title_en` and `object_description_fr` / `object_description_en` on `dmg_objects_LDES`, now populated from the `dmg_translations` table for existing objects. Full records already exposed all three languages before this release and are unaffected
+
 ### Fixed
 
 - **Thumbnails were broken for every image on `beeldbank-temp.stad.gent`.** Thumbnail URLs were built by rewriting the size segment to `400,`, which that server rejects with `400 Invalid size requested` — it declares `"profile": "level0"` and accepts only a fixed set of named sizes. Thumbnails there now use `thm`
@@ -37,6 +41,8 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 - `GET /v2/id/colors/dominant` now excludes unhealthy and non-canonical records. It was the last collection endpoint that did not, so withdrawn objects and records whose URI redirects elsewhere could appear in results
 
+- Lightweight `GET /v2/id/objects` members selected only `object_title_nl` from the database, so `?language=FRA` / `?language=ENG` filtered which objects appeared but had no effect on the returned `rdfs:label` — it stayed Dutch regardless. `object_title_fr` and `object_title_en` are now selected and used for the label when requested
+
 ### Changed
 
 - Expect the dominant colour results to shift slightly with the health and canonicity filters applied. Nothing that disappears was correct to show
@@ -45,11 +51,13 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
 
 - New reference page for `/v2/id/object/{PID}/similar`, including what CLIP measures, what it cannot know, and how to walk a thread without getting stuck between mutual nearest neighbours
 - `thumbnail` described as a small derivative whose width varies by image server, rather than as 400px
+- Lightweight `hydra:member` table on the objects reference page updated with `crm:P1_is_identified_by` and the language-aware behaviour of `rdfs:label`
 
 ### Notes
 
 - All changes are additive within v2. No field removed or renamed
 - Three in ten published objects have no image embedding. `/similar` returns an empty collection with `200` for those — the object exists, the question is simply unanswerable for it
+- Translation coverage is not complete: objects without a French or English translation on file will only show the languages that exist, in both `rdfs:label` fallback and `crm:P1_is_identified_by`
 
 ## [v2.6.0] — 2026-09-18
 
@@ -300,21 +308,21 @@ This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PAT
   - Compatible with all existing filters
   - Example: `GET /v2/id/objects?q=roze glas&hasImages=true`
   - Example: `GET /v2/id/agents?q=Sabino`
-  
+
 ## [v2.1.0] — 2026-05-04
 
 ### Added
 
 - `modifiedSince` query parameter on all collection endpoints (`/v2/id/objects`, `/v2/id/agents`, `/v2/id/exhibitions`, `/v2/id/concepts`) — filter records modified on or after a given date
-    - Format: `YYYY-MM-DD`
-    - Example: `GET /v2/id/objects?modifiedSince=2026-05-01&fullRecord=true`
-    - Invalid date format returns `400 Bad Request`
-    - Parameter is preserved in all Hydra pagination links
+  - Format: `YYYY-MM-DD`
+  - Example: `GET /v2/id/objects?modifiedSince=2026-05-01&fullRecord=true`
+  - Invalid date format returns `400 Bad Request`
+  - Parameter is preserved in all Hydra pagination links
 
 - Incremental harvesting in all harvesters — each harvester now records the timestamp of its last successful run in a new `dmg_harvest_log` Supabase table and uses `modifiedSince` on subsequent runs
-    - Full harvest on first run (no previous timestamp)
-    - Subsequent runs fetch only records modified since the last harvest date
-    - Harvest log can be reset per endpoint to force a full re-harvest
+  - Full harvest on first run (no previous timestamp)
+  - Subsequent runs fetch only records modified since the last harvest date
+  - Harvest log can be reset per endpoint to force a full re-harvest
 
 - `colors` query parameter on the object endpoint (`/v2/id/object/{PID}`) and objects collection (`/v2/id/objects`) — include full color data in the response
   - Hidden by default to keep payloads small

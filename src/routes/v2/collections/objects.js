@@ -190,6 +190,7 @@ export function requestObjects(app, BASE_URI) {
                 q = q.eq('STATUS', 'HEALTHY')
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
+                q= q.eq('is_hidden', false)
                 // PURI must resolve to itself. Redirecting records (merged, renumbered,
                 // withdrawn) stay resolvable at /id/object/:id but are omitted from this
                 // listing, which is what site builders consume.

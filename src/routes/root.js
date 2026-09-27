@@ -2250,7 +2250,7 @@ rootRouter.get('/', (req, res, next) => {
   //
   // So each is tried in turn until one returns objects, and the note under
   // the box says which kind of match was found.
-  var DEFAULT_QUERY = 'art nouveau';
+  var DEFAULT_QUERY = '';
 
   var open = null;    // the currently expanded base segment, if any
   var allBases = [];  // kept so the legend can be rebuilt on close

@@ -2,6 +2,24 @@ import { fetchObjectByID } from "../../../utils/parsers.js";
 import { applyImagesToObject } from "../../../utils/iiif_images.js";
 import { supabase } from '../../../../supabaseClient.js'
 
+// Last change to OUR representation of the object: either a source change
+// (generated_at_time, the LDES/PROV timestamp) or a local change
+// (modified_at — exhibition links, translations, colors, relations, status).
+// Used for Last-Modified and ETag so revalidating clients see local fixes too.
+const changedAt = (row) => new Date(Math.max(
+    row?.generated_at_time ? Date.parse(row.generated_at_time) : 0,
+    row?.modified_at       ? Date.parse(row.modified_at)       : 0,
+))
+
+function setCacheHeaders(res, ObjectPID, row) {
+    const ts = changedAt(row)
+    if (ts.getTime() > 0) {
+        res.setHeader('Last-Modified', ts.toUTCString())
+        res.setHeader('ETag', `"${ObjectPID}-${ts.getTime()}"`)
+        res.setHeader('Cache-Control', 'public, max-age=3600')
+    }
+}
+
 export function requestObject(app, BASE_URI) {
     const objectHandler = async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json');
@@ -295,12 +313,7 @@ export function requestObject(app, BASE_URI) {
             }
 
             // ── cache headers ────────────────────────────────────────────
-            if (row["generated_at_time"]) {
-                const lastModified = new Date(row["generated_at_time"]).toUTCString()
-                res.setHeader('Last-Modified', lastModified)
-                res.setHeader('ETag', `"${ObjectPID}-${new Date(row["generated_at_time"]).getTime()}"`)
-                res.setHeader('Cache-Control', 'public, max-age=3600')
-            }
+            setCacheHeaders(res, ObjectPID, row)
 
             return res.status(200).json(obj)
 
@@ -320,7 +333,7 @@ export function requestObject(app, BASE_URI) {
         try {
             const { data, error } = await supabase
                 .from('dmg_objects_LDES')
-                .select('objectNumber, RESOLVES_TO, generated_at_time')
+                .select('objectNumber, RESOLVES_TO, generated_at_time, modified_at')
                 .eq('objectNumber', ObjectPID)
                 .maybeSingle()
 
@@ -338,12 +351,7 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
-            if (data['generated_at_time']) {
-                const lastModified = new Date(data['generated_at_time']).toUTCString()
-                res.setHeader('Last-Modified', lastModified)
-                res.setHeader('ETag', `"${ObjectPID}-${new Date(data['generated_at_time']).getTime()}"`)
-                res.setHeader('Cache-Control', 'public, max-age=3600')
-            }
+            setCacheHeaders(res, ObjectPID, data)
 
             return res.status(200).end()
 

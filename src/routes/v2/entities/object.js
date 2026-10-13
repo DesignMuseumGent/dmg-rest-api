@@ -1,160 +1,360 @@
-import * as dotenv from 'dotenv'
+import { fetchObjectByID } from "../../../utils/parsers.js";
+import { applyImagesToObject } from "../../../utils/iiif_images.js";
 import { supabase } from '../../../../supabaseClient.js'
-import { buildModifiedSince, getLastFetch, setLastFetch } from "../utils/harvestLog.js"
-import { buildLookupMaps } from '../utils/lookupMaps.js'
-import {
-    buildObjectJsonLd,
-    extractYear
-} from '../utils/buildObjectJsonLd.js'
 
-dotenv.config()
+export function requestObject(app, BASE_URI) {
+    const objectHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json');
+        res.setHeader('Content-Disposition', 'inline');
+        const showColors = req.query.colors === 'true'
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+        const { ObjectPID } = req.params;
 
-const isDMGObject = (url) => url?.includes('/dmg/') ?? false
+        if (ObjectPID === "REMOVED") {
+            return res.status(410).json({ error: "This object has been permanently removed from our collection." });
+        }
 
-// ---------------------------------------------------------------------------
-// TEXT FIELDS
-//
-// NL always comes from the source. FR/EN are only written when the source
-// actually supplies them: the source almost never does, and those columns are
-// filled from dmg_translations (backfill_object_translations.sql). Writing
-// `null` here would wipe the translations on every incremental update.
-// ---------------------------------------------------------------------------
+        try {
+            const record = await fetchObjectByID(ObjectPID);
 
-function textFields(item) {
-    const fields = {
-        object_title_nl:       item.titel_nl || item.titel || null,
-        object_description_nl: item.omschrijving_nl || item.omschrijving || null,
-    }
-    if (item.titel_fr)        fields.object_title_fr       = item.titel_fr
-    if (item.titel_en)        fields.object_title_en       = item.titel_en
-    if (item.omschrijving_fr) fields.object_description_fr = item.omschrijving_fr
-    if (item.omschrijving_en) fields.object_description_en = item.omschrijving_en
-    return fields
-}
-
-// ---------------------------------------------------------------------------
-// MAIN HARVEST
-// ---------------------------------------------------------------------------
-
-export async function getObjectData() {
-
-    const lastFetch = await getLastFetch('objects')
-    const modifiedSince = buildModifiedSince(lastFetch)
-
-    let baseUrl = process.env.API_ARTEFACTS_URL
-    if (modifiedSince) {
-        baseUrl += `${baseUrl.includes('?') ? '&' : '?'}modifiedSince=${modifiedSince}`
-        console.log(`📅 Incremental harvest from ${modifiedSince}`)
-    } else {
-        console.log(`📅 Full harvest — no previous fetch recorded`)
-    }
-
-    let url = baseUrl
-    let processedCount = 0
-    let validCount = 0
-    let writtenCount = 0
-    let totalRecords = null
-
-    const { agentMap, conceptMap, objectMap, exhibitionMap } = await buildLookupMaps()
-
-    while (url) {
-        const res = await fetch(url)
-        if (!res.ok) throw new Error('Failed to fetch erfgoedAPI data: ' + res.statusText)
-        const data = await res.json()
-
-        if (totalRecords === null) totalRecords = data.total ?? '?'
-
-        if (data.items && Array.isArray(data.items)) {
-            for (const item of data.items) {
-                processedCount++
-
-                if (!isDMGObject(item.id)) continue
-                validCount++
-
-                const objectNumber = item.objectNummer
-                if (!objectNumber) continue
-
-                const built = buildObjectJsonLd(item, { agentMap, conceptMap, objectMap, exhibitionMap })
-                if (!built) continue
-
-                const { object, generatedAtTime, production_year_begin, production_year_end } = built
-
-                const result = await saveObject(
-                    item, object, generatedAtTime,
-                    production_year_begin, production_year_end,
-                    processedCount, totalRecords
-                )
-                if (result === 'inserted' || result === 'updated') writtenCount++
+            if (!record || record.length === 0) {
+                return res.status(404).json({ error: 'Object not found' });
             }
+
+            const row = record[0]
+
+            if (row["RESOLVES_TO"]) {
+                const resolvedNumber = row["RESOLVES_TO"].replace("id/object/", "")
+
+                if (resolvedNumber === ObjectPID) {
+                    // self-referencing resolver — serve directly
+                } else if (resolvedNumber.includes("REMOVED")) {
+                    return res.status(410).json({ error: "This object has been permanently removed from our collection." })
+                } else {
+                    return res.status(301)
+                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
+                        .json({
+                            message: `This object has been merged into ${resolvedNumber}.`,
+                            resolved: `${BASE_URI}id/object/${resolvedNumber}`
+                        })
+                }
+            }
+
+            const obj = row["json_ld_v2"] ?? {}
+
+            // ── multilingual titles ──────────────────────────────────────
+            const appellations = []
+            if (row["object_title_nl"]) appellations.push({ lang: "NLD", value: row["object_title_nl"] })
+            if (row["object_title_fr"]) appellations.push({ lang: "FRA", value: row["object_title_fr"] })
+            if (row["object_title_en"]) appellations.push({ lang: "ENG", value: row["object_title_en"] })
+
+            if (appellations.length > 0) {
+                const langsToReplace = ["NLD", "FRA", "ENG"]
+                if (Array.isArray(obj["crm:P1_is_identified_by"])) {
+                    obj["crm:P1_is_identified_by"] = obj["crm:P1_is_identified_by"].filter(node => {
+                        const langId = node["crm:P72_has_language"]?.["@id"] ?? ""
+                        return !langsToReplace.some(l => langId.endsWith(l))
+                    })
+                }
+                obj["crm:P1_is_identified_by"] = [
+                    ...(obj["crm:P1_is_identified_by"] ?? []),
+                    ...appellations.map(a => ({
+                        "@type": "crm:E41_Appellation",
+                        "rdfs:label": a.value,
+                        "crm:P72_has_language": {
+                            "@id": `http://publications.europa.eu/resource/authority/language/${a.lang}`
+                        }
+                    }))
+                ]
+            }
+
+            // ── multilingual descriptions ────────────────────────────────
+            const descriptions = []
+            if (row["object_description_nl"]) descriptions.push({ lang: "NLD", value: row["object_description_nl"] })
+            if (row["object_description_fr"]) descriptions.push({ lang: "FRA", value: row["object_description_fr"] })
+            if (row["object_description_en"]) descriptions.push({ lang: "ENG", value: row["object_description_en"] })
+
+            if (descriptions.length > 0) {
+                obj["crm:P67i_is_referred_to_by"] = descriptions.map(d => ({
+                    "@type": "crm:E33_Linguistic_Object",
+                    "rdfs:label": d.value,
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300080091",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "description"
+                    },
+                    "crm:P72_has_language": {
+                        "@id": `http://publications.europa.eu/resource/authority/language/${d.lang}`
+                    }
+                }))
+            }
+
+            // ── isPartOf — this object is a member of a koepelrecord set ─
+            // Overwrite from computed column — single value, no rich data lost
+            delete obj["crm:P46i_forms_part_of"]
+            const isPartOf = row["isPartOf"] ?? null
+
+            if (isPartOf) {
+                obj["crm:P46i_forms_part_of"] = {
+                    "@id": `${BASE_URI}id/object/${isPartOf}`,
+                    "@type": "crm:E22_Human-Made_Object"
+                }
+            }
+
+            // ── hasParts — koepelrecord: this set is composed of these objects
+            // Uses crm:P106_is_composed_of — distinct from crm:P46_has_component
+            // crm:P46_has_component (fysiekeOnderdelen with names, materials, dimensions)
+            // is left untouched from json_ld_v2
+            delete obj["crm:P106_is_composed_of"]
+            const hasParts = row["hasParts"] ?? null
+
+            if (hasParts) {
+                const parts = typeof hasParts === 'string'
+                    ? hasParts.split(',').map(p => p.trim()).filter(Boolean)
+                    : Array.isArray(hasParts) ? hasParts : []
+
+                if (parts.length > 0) {
+                    obj["crm:P106_is_composed_of"] = parts.map(p => ({
+                        "@id": `${BASE_URI}id/object/${p}`,
+                        "@type": "crm:E22_Human-Made_Object"
+                    }))
+                }
+            }
+
+            // ── collection presentation ──────────────────────────────
+            if (row["COLLECTION_PRESENTATION"] === true) {
+                obj["crm:P55_has_current_location"] = {
+                    "@id":   "https://data.designmuseumgent.be/v2/id/place/collection-presentation",
+                    "@type": "crm:E53_Place",
+                    "crm:P2_has_type": {
+                        "@id":        "http://vocab.getty.edu/aat/300054766",
+                        "@type":      "crm:E55_Type",
+                        "rdfs:label": "permanent collection display"
+                    },
+                    "rdfs:label": "Collection presentation Design Museum Gent"
+                }
+            }
+
+
+            // ── IIIF images ──────────────────────────────────────────────
+            applyImagesToObject(obj, row)
+
+            // ── color data — only when ?colors=true ─────────────────────
+            if (showColors) {
+                const colorsData   = row["colors"] ?? null
+                const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
+
+                if (colorsData && iiifImageUri) {
+                    const colorFeatures = colorsData.map((imageColors, imageIndex) => {
+                        const baseColorMap = {}
+                        for (const c of imageColors) {
+                            if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
+                            baseColorMap[c.base] += c.percentage
+                        }
+
+                        return {
+                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}`,
+                            "@type": "crm:E36_Visual_Item",
+                            "crm:P2_has_type": {
+                                "@id": "http://vocab.getty.edu/aat/300264863",
+                                "@type": "crm:E55_Type",
+                                "rdfs:label": "digital image"
+                            },
+                            "crm:P138i_has_representation": {
+                                "@id": iiifImageUri,
+                                "@type": "crm:E38_Image"
+                            },
+                            "crm:P56_bears_feature": [
+                                {
+                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
+                                    "@type": "crm:E26_Physical_Feature",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300056130",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "color"
+                                    },
+                                    "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
+                                    "crm:P3_has_note": imageColors.map(c => ({
+                                        "@type": "crm:E62_String",
+                                        "rdf:value": c.hex,
+                                        "rdfs:label": c.css,
+                                        "crm:P43_has_dimension": {
+                                            "@type": "crm:E54_Dimension",
+                                            "crm:P2_has_type": {
+                                                "@id": "http://vocab.getty.edu/aat/300417476",
+                                                "@type": "crm:E55_Type",
+                                                "rdfs:label": "percentage"
+                                            },
+                                            "crm:P90_has_value": {
+                                                "@value": Math.round(c.percentage * 100 * 100) / 100,
+                                                "@type": "xsd:decimal"
+                                            },
+                                            "crm:P91_has_unit": {
+                                                "@id": "http://vocab.getty.edu/aat/300417476",
+                                                "rdfs:label": "%"
+                                            }
+                                        }
+                                    }))
+                                },
+                                {
+                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
+                                    "@type": "crm:E26_Physical_Feature",
+                                    "crm:P2_has_type": {
+                                        "@id": "http://vocab.getty.edu/aat/300056130",
+                                        "@type": "crm:E55_Type",
+                                        "rdfs:label": "color"
+                                    },
+                                    "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
+                                    "crm:P3_has_note": Object.entries(baseColorMap)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([base, pct]) => ({
+                                            "@type": "crm:E62_String",
+                                            "rdf:value": base,
+                                            "crm:P43_has_dimension": {
+                                                "@type": "crm:E54_Dimension",
+                                                "crm:P2_has_type": {
+                                                    "@id": "http://vocab.getty.edu/aat/300417476",
+                                                    "@type": "crm:E55_Type",
+                                                    "rdfs:label": "percentage"
+                                                },
+                                                "crm:P90_has_value": {
+                                                    "@value": Math.round(pct * 100 * 100) / 100,
+                                                    "@type": "xsd:decimal"
+                                                },
+                                                "crm:P91_has_unit": {
+                                                    "@id": "http://vocab.getty.edu/aat/300417476",
+                                                    "rdfs:label": "%"
+                                                }
+                                            }
+                                        }))
+                                }
+                            ]
+                        }
+                    })
+
+                    obj["crm:P65_shows_visual_item"] = colorFeatures.length === 1
+                        ? colorFeatures[0]
+                        : colorFeatures
+                }
+            }
+
+            // ── media — video and audio ──────────────────────────────────
+            const media = row["_media"] ?? []
+
+            if (media.length > 0) {
+                const mediaNodes = media.map(m => ({
+                    "@id": m.url,
+                    "@type": "crm:E73_Information_Object",
+                    "crm:P2_has_type": m.type === 'video'
+                        ? { "@id": "http://vocab.getty.edu/aat/300263419", "@type": "crm:E55_Type", "rdfs:label": "video" }
+                        : { "@id": "http://vocab.getty.edu/aat/300263472", "@type": "crm:E55_Type", "rdfs:label": "audio" },
+                    ...(m.title && {
+                        "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": m.title }
+                    }),
+                    ...(m.date && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": m.date,
+                            "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": m.date },
+                            "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": m.date }
+                        }
+                    })
+                }))
+
+                const existing = obj["crm:P129i_is_subject_of"]
+                if (existing) {
+                    const existingArray = Array.isArray(existing) ? existing : [existing]
+                    obj["crm:P129i_is_subject_of"] = [...existingArray, ...mediaNodes]
+                } else {
+                    obj["crm:P129i_is_subject_of"] = mediaNodes.length === 1 ? mediaNodes[0] : mediaNodes
+                }
+            }
+
+            // ── projects ─────────────────────────────────────────────────
+            const projects = row["_projects"] ?? []
+
+            if (projects.length > 0) {
+                obj["crm:P15i_was_motivation_of"] = projects.map(p => ({
+                    "@type": "crm:E7_Activity",
+                    "crm:P2_has_type": {
+                        "@id": "http://vocab.getty.edu/aat/300404591",
+                        "@type": "crm:E55_Type",
+                        "rdfs:label": "creative project"
+                    },
+                    ...(p.title && { "crm:P102_has_title": { "@type": "crm:E35_Title", "rdfs:label": p.title } }),
+                    ...(p.url   && { "crm:P129i_is_subject_of": { "@id": p.url, "@type": "crm:E73_Information_Object" } }),
+                    ...(p.date  && {
+                        "crm:P4_has_time-span": {
+                            "@type": "crm:E52_Time-Span",
+                            "rdfs:label": p.date,
+                            "crm:P82a_begin_of_the_begin": { "@type": "xsd:gYear", "@value": p.date },
+                            "crm:P82b_end_of_the_end":     { "@type": "xsd:gYear", "@value": p.date }
+                        }
+                    })
+                }))
+            }
+
+            // ── cache headers ────────────────────────────────────────────
+            if (row["generated_at_time"]) {
+                const lastModified = new Date(row["generated_at_time"]).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${ObjectPID}-${new Date(row["generated_at_time"]).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
+
+            return res.status(200).json(obj)
+
+        } catch (error) {
+            console.error('Error handling object request:', error);
+            return res.status(500).json({ error: 'Internal Server Error' });
         }
+    };
 
-        console.log(`📄 page ${data.page} done — processed ${processedCount}/${totalRecords} | valid: ${validCount} | written: ${writtenCount}`)
-        url = data.next
-        if (url) await sleep(250)
-    }
+    const headHandler = async (req, res) => {
+        res.setHeader('Content-Type', 'application/ld+json')
 
-    await setLastFetch('objects')
-    console.log(`✅ Done. ${validCount} valid objects, ${writtenCount} written.`)
-}
+        const { ObjectPID } = req.params
 
-// ---------------------------------------------------------------------------
-// SAVE
-// ---------------------------------------------------------------------------
+        if (ObjectPID === 'REMOVED') return res.status(410).end()
 
-async function saveObject(item, jsonLd, generatedAtTime, production_year_begin, production_year_end, current, total) {
-    const objectNumber = item.objectNummer
-    const progress = `[${current}/${total}]`
+        try {
+            const { data, error } = await supabase
+                .from('dmg_objects_LDES')
+                .select('objectNumber, RESOLVES_TO, generated_at_time')
+                .eq('objectNumber', ObjectPID)
+                .maybeSingle()
 
-    const { data: existing, error: checkError } = await supabase
-        .from('dmg_objects_LDES')
-        .select('objectNumber')
-        .eq('objectNumber', objectNumber)
-        .maybeSingle()
+            if (error) return res.status(500).end()
+            if (!data)  return res.status(404).end()
 
-    if (checkError) {
-        console.error(`${progress} ✖ check failed for ${objectNumber}:`, checkError.message)
-        return 'error'
-    }
+            if (data['RESOLVES_TO']) {
+                const resolvedNumber = data['RESOLVES_TO'].replace('id/object/', '')
+                if (resolvedNumber.includes('REMOVED')) return res.status(410).end()
+                if (resolvedNumber !== ObjectPID) {
+                    return res
+                        .status(301)
+                        .setHeader('Location', `${BASE_URI}id/object/${resolvedNumber}`)
+                        .end()
+                }
+            }
 
-    // Shared between update and insert.
-    const payload = {
-        json_ld_v2: jsonLd,
-        generated_at_time: generatedAtTime,
-        ...textFields(item),
-        // iiif_manifest: item.iiifManifestUri || null,
-        production_year_begin,
-        production_year_end
-    }
+            if (data['generated_at_time']) {
+                const lastModified = new Date(data['generated_at_time']).toUTCString()
+                res.setHeader('Last-Modified', lastModified)
+                res.setHeader('ETag', `"${ObjectPID}-${new Date(data['generated_at_time']).getTime()}"`)
+                res.setHeader('Cache-Control', 'public, max-age=3600')
+            }
 
-    if (existing) {
-        const { error } = await supabase
-            .from('dmg_objects_LDES')
-            .update(payload)
-            .eq('objectNumber', objectNumber)
+            return res.status(200).end()
 
-        if (error) {
-            console.error(`${progress} ✖ update failed for ${objectNumber}:`, error.message)
-            return 'error'
+        } catch (error) {
+            console.error('Error handling HEAD request:', error)
+            return res.status(500).end()
         }
-        console.log(`${progress} ↻ updated ${objectNumber}`)
-        return 'updated'
-
-    } else {
-        const { error } = await supabase
-            .from('dmg_objects_LDES')
-            .insert({
-                objectNumber,
-                is_version_of: item.id,
-                ...payload
-            })
-
-        if (error) {
-            console.error(`${progress} ✖ insert failed for ${objectNumber}:`, error.message)
-            return 'error'
-        }
-        console.log(`${progress} + inserted ${objectNumber}`)
-        return 'inserted'
     }
+
+    app.get(`/id/object/:ObjectPID`, objectHandler);
+    app.get(`/id/ark:/29417/object/:ObjectPID`, objectHandler);
+    app.head('/id/object/:ObjectPID', headHandler)
+    app.head('/id/ark:/29417/object/:ObjectPID', headHandler)
 }

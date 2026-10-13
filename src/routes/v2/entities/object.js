@@ -2,6 +2,7 @@ import { fetchObjectByID } from "../../../utils/parsers.js";
 import { applyImagesToObject } from "../../../utils/iiif_images.js";
 import { supabase } from '../../../../supabaseClient.js'
 
+
 // Last change to OUR representation of the object: either a source change
 // (generated_at_time, the LDES/PROV timestamp) or a local change
 // (modified_at — exhibition links, translations, colors, relations, status).

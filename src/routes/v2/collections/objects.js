@@ -1,6 +1,14 @@
-import { supabase } from '../../../../supabaseClient.js'
+import { supabase } from '../../../../supabaseClient.js';
 import { buildLinkHeader } from "../../../utils/linkHeader.js"
 import { applyImagesToObject } from "../../../utils/iiif_images.js"
+import { fetchSimilarForObjects, buildSimilarBlock, attachSimilar, parseSimilarLimit } from '../../../utils/similar_block.js'
+
+const CONTEXT = {
+    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
+    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
+    "hydra": "http://www.w3.org/ns/hydra/core#",
+    "owl":   "http://www.w3.org/2002/07/owl#"
+}
 
 export function requestObjects(app, BASE_URI) {
     const objectsHandler = async (req, res) => {
@@ -24,6 +32,10 @@ export function requestObjects(app, BASE_URI) {
             const modifiedSince = req.query.modifiedSince ?? null
             const searchQuery   = req.query.q ?? null
             const excludeKoepels = req.query.koepels === 'exclude'
+
+            // Similar objects — full record only (precomputed, see utils/similar_block.js)
+            const showSimilar   = fullRecord && req.query.similar === 'true'
+            const similarLimit  = parseSimilarLimit(req.query.similarLimit)
 
             const typeFilter = req.query.type
                 ? req.query.type.split(',').map(t => t.trim())
@@ -91,6 +103,8 @@ export function requestObjects(app, BASE_URI) {
                     itemsPerPage,
                     ...(fullRecord        && { fullRecord: 'true' }),
                     ...(showColors        && { colors: 'true' }),
+                    ...(showSimilar       && { similar: 'true' }),
+                    ...(showSimilar && req.query.similarLimit !== undefined && { similarLimit }),
                     ...(hasImages         && { hasImages: 'true' }),
                     ...(hasColors         && { hasColors: 'true' }),
                     ...(hasParts          && { hasParts: 'true' }),
@@ -117,12 +131,7 @@ export function requestObjects(app, BASE_URI) {
             }
 
             const emptyCollection = () => res.status(200).json({
-                "@context": {
-                    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
-                    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
-                    "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl":   "https://www.w3.org/2002/07/owl#"
-                },
+                "@context": CONTEXT,
                 "@id": collectionId,
                 "@type": "hydra:Collection",
                 "hydra:totalItems": 0,
@@ -190,7 +199,7 @@ export function requestObjects(app, BASE_URI) {
                 q = q.eq('STATUS', 'HEALTHY')
                 q = q.not('RESOLVES_TO', 'like', '%REMOVED%')
                 q = q.not('RESOLVES_TO', 'like', '%UNHEALTHY%')
-                q= q.eq('is_hidden', false)
+                q = q.eq('is_hidden', false)
                 // PURI must resolve to itself. Redirecting records (merged, renumbered,
                 // withdrawn) stay resolvable at /id/object/:id but are omitted from this
                 // listing, which is what site builders consume.
@@ -265,6 +274,23 @@ export function requestObjects(app, BASE_URI) {
                 }
             }
 
+            // Similar objects — one batched lookup per page, AFTER members exist.
+            // A failure here degrades to "no similar block" rather than a 500.
+            async function attachSimilarToMembers(rows, members) {
+                if (!showSimilar || !rows?.length) return
+                try {
+                    const similar = await fetchSimilarForObjects(rows.map(r => r.objectNumber), similarLimit)
+                    rows.forEach((row, i) => {
+                        attachSimilar(
+                            members[i],
+                            buildSimilarBlock(row.objectNumber, similar.get(row.objectNumber) ?? [], BASE_URI)
+                        )
+                    })
+                } catch (err) {
+                    console.error('Similar objects lookup failed:', err.message)
+                }
+            }
+
             // ─────────────────────────────────────────────────────────────
             // AGENT FILTER — via RPC
             // ─────────────────────────────────────────────────────────────
@@ -299,17 +325,13 @@ export function requestObjects(app, BASE_URI) {
                 if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
                 const members = sliced.map(row => buildMember(row, fullRecord, showColors, BASE_URI, languageFilter))
+                await attachSimilarToMembers(sliced, members)
 
                 const linkHeader = buildLinkHeader(hydraView)
                 if (linkHeader) res.setHeader('Link', linkHeader)
 
                 return res.status(200).json({
-                    "@context": {
-                        "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
-                        "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
-                        "hydra": "http://www.w3.org/ns/hydra/core#",
-                        "owl":   "https://www.w3.org/2002/07/owl#"
-                    },
+                    "@context": CONTEXT,
                     "@id": collectionId,
                     "@type": "hydra:Collection",
                     "hydra:totalItems": total,
@@ -342,7 +364,9 @@ export function requestObjects(app, BASE_URI) {
                 return res.status(500).json({ error: 'Error fetching objects', details: error.message })
             }
 
-            await Promise.all([attachProjects(data), attachMedia(data)])
+            const rows = data || []
+
+            await Promise.all([attachProjects(rows), attachMedia(rows)])
 
             const totalPages = Math.ceil(count / itemsPerPage)
 
@@ -355,18 +379,14 @@ export function requestObjects(app, BASE_URI) {
             if (page > 1)          hydraView["hydra:previous"] = buildParams(page - 1)
             if (page < totalPages) hydraView["hydra:next"]     = buildParams(page + 1)
 
-            const members = (data || []).map(row => buildMember(row, fullRecord, showColors, BASE_URI, languageFilter))
+            const members = rows.map(row => buildMember(row, fullRecord, showColors, BASE_URI, languageFilter))
+            await attachSimilarToMembers(rows, members)
 
             const linkHeader = buildLinkHeader(hydraView)
             if (linkHeader) res.setHeader('Link', linkHeader)
 
             return res.status(200).json({
-                "@context": {
-                    "crm":   "http://www.cidoc-crm.org/cidoc-crm/",
-                    "rdfs":  "http://www.w3.org/2000/01/rdf-schema#",
-                    "hydra": "http://www.w3.org/ns/hydra/core#",
-                    "owl":   "https://www.w3.org/2002/07/owl#"
-                },
+                "@context": CONTEXT,
                 "@id": collectionId,
                 "@type": "hydra:Collection",
                 "hydra:totalItems": count,

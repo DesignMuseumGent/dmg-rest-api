@@ -1,7 +1,12 @@
 import { fetchObjectByID } from "../../../utils/parsers.js";
 import { applyImagesToObject } from "../../../utils/iiif_images.js";
 import { supabase } from '../../../../supabaseClient.js'
+import { applyColorVisualItems, dedupeExhibitions } from '../../../utils/visual_items.js'
 
+
+// Bump this whenever the SHAPE of the JSON-LD output changes, so clients and
+// CDNs holding an ETag from the old shape revalidate instead of getting a 304.
+const SHAPE_VERSION = 's2'
 
 // Last change to OUR representation of the object: either a source change
 // (generated_at_time, the LDES/PROV timestamp) or a local change
@@ -12,11 +17,12 @@ const changedAt = (row) => new Date(Math.max(
     row?.modified_at       ? Date.parse(row.modified_at)       : 0,
 ))
 
-function setCacheHeaders(res, ObjectPID, row) {
+// The ?colors=true variant has a different body, so it needs its own ETag.
+function setCacheHeaders(res, ObjectPID, row, showColors = false) {
     const ts = changedAt(row)
     if (ts.getTime() > 0) {
         res.setHeader('Last-Modified', ts.toUTCString())
-        res.setHeader('ETag', `"${ObjectPID}-${ts.getTime()}"`)
+        res.setHeader('ETag', `"${ObjectPID}-${ts.getTime()}-${SHAPE_VERSION}${showColors ? 'c' : ''}"`)
         res.setHeader('Cache-Control', 'public, max-age=3600')
     }
 }
@@ -108,6 +114,11 @@ export function requestObject(app, BASE_URI) {
                 }))
             }
 
+            // ── exhibitions — de-duplicate on @id ────────────────────────
+            // Safety net: the duplicate (e.g. TE_2016-008 twice on 1977-0002)
+            // most likely originates upstream in json_ld_v2 / exhibition linking.
+            dedupeExhibitions(obj)
+
             // ── isPartOf — this object is a member of a koepelrecord set ─
             // Overwrite from computed column — single value, no rich data lost
             delete obj["crm:P46i_forms_part_of"]
@@ -159,103 +170,7 @@ export function requestObject(app, BASE_URI) {
             applyImagesToObject(obj, row)
 
             // ── color data — only when ?colors=true ─────────────────────
-            if (showColors) {
-                const colorsData   = row["colors"] ?? null
-                const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
-
-                if (colorsData && iiifImageUri) {
-                    const colorFeatures = colorsData.map((imageColors, imageIndex) => {
-                        const baseColorMap = {}
-                        for (const c of imageColors) {
-                            if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
-                            baseColorMap[c.base] += c.percentage
-                        }
-
-                        return {
-                            "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}`,
-                            "@type": "crm:E36_Visual_Item",
-                            "crm:P2_has_type": {
-                                "@id": "http://vocab.getty.edu/aat/300264863",
-                                "@type": "crm:E55_Type",
-                                "rdfs:label": "digital image"
-                            },
-                            "crm:P138i_has_representation": {
-                                "@id": iiifImageUri,
-                                "@type": "crm:E38_Image"
-                            },
-                            "crm:P56_bears_feature": [
-                                {
-                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
-                                    "@type": "crm:E26_Physical_Feature",
-                                    "crm:P2_has_type": {
-                                        "@id": "http://vocab.getty.edu/aat/300056130",
-                                        "@type": "crm:E55_Type",
-                                        "rdfs:label": "color"
-                                    },
-                                    "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
-                                    "crm:P3_has_note": imageColors.map(c => ({
-                                        "@type": "crm:E62_String",
-                                        "rdf:value": c.hex,
-                                        "rdfs:label": c.css,
-                                        "crm:P43_has_dimension": {
-                                            "@type": "crm:E54_Dimension",
-                                            "crm:P2_has_type": {
-                                                "@id": "http://vocab.getty.edu/aat/300417476",
-                                                "@type": "crm:E55_Type",
-                                                "rdfs:label": "percentage"
-                                            },
-                                            "crm:P90_has_value": {
-                                                "@value": Math.round(c.percentage * 100 * 100) / 100,
-                                                "@type": "xsd:decimal"
-                                            },
-                                            "crm:P91_has_unit": {
-                                                "@id": "http://vocab.getty.edu/aat/300417476",
-                                                "rdfs:label": "%"
-                                            }
-                                        }
-                                    }))
-                                },
-                                {
-                                    "@id": `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
-                                    "@type": "crm:E26_Physical_Feature",
-                                    "crm:P2_has_type": {
-                                        "@id": "http://vocab.getty.edu/aat/300056130",
-                                        "@type": "crm:E55_Type",
-                                        "rdfs:label": "color"
-                                    },
-                                    "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
-                                    "crm:P3_has_note": Object.entries(baseColorMap)
-                                        .sort((a, b) => b[1] - a[1])
-                                        .map(([base, pct]) => ({
-                                            "@type": "crm:E62_String",
-                                            "rdf:value": base,
-                                            "crm:P43_has_dimension": {
-                                                "@type": "crm:E54_Dimension",
-                                                "crm:P2_has_type": {
-                                                    "@id": "http://vocab.getty.edu/aat/300417476",
-                                                    "@type": "crm:E55_Type",
-                                                    "rdfs:label": "percentage"
-                                                },
-                                                "crm:P90_has_value": {
-                                                    "@value": Math.round(pct * 100 * 100) / 100,
-                                                    "@type": "xsd:decimal"
-                                                },
-                                                "crm:P91_has_unit": {
-                                                    "@id": "http://vocab.getty.edu/aat/300417476",
-                                                    "rdfs:label": "%"
-                                                }
-                                            }
-                                        }))
-                                }
-                            ]
-                        }
-                    })
-
-                    obj["crm:P65_shows_visual_item"] = colorFeatures.length === 1
-                        ? colorFeatures[0]
-                        : colorFeatures
-                }
-            }
+            if (showColors) applyColorVisualItems(obj, row)
 
             // ── media — video and audio ──────────────────────────────────
             const media = row["_media"] ?? []
@@ -314,7 +229,7 @@ export function requestObject(app, BASE_URI) {
             }
 
             // ── cache headers ────────────────────────────────────────────
-            setCacheHeaders(res, ObjectPID, row)
+            setCacheHeaders(res, ObjectPID, row, showColors)
 
             return res.status(200).json(obj)
 
@@ -327,6 +242,7 @@ export function requestObject(app, BASE_URI) {
     const headHandler = async (req, res) => {
         res.setHeader('Content-Type', 'application/ld+json')
 
+        const showColors = req.query.colors === 'true'
         const { ObjectPID } = req.params
 
         if (ObjectPID === 'REMOVED') return res.status(410).end()
@@ -352,7 +268,7 @@ export function requestObject(app, BASE_URI) {
                 }
             }
 
-            setCacheHeaders(res, ObjectPID, data)
+            setCacheHeaders(res, ObjectPID, data, showColors)
 
             return res.status(200).end()
 

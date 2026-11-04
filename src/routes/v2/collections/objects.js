@@ -1,6 +1,7 @@
 import { supabase } from '../../../../supabaseClient.js';
 import { buildLinkHeader } from "../../../utils/linkHeader.js"
 import { applyImagesToObject } from "../../../utils/iiif_images.js"
+import { applyColorVisualItems, dedupeExhibitions } from '../../../utils/visual_items.js'
 import { fetchSimilarForObjects, buildSimilarBlock, attachSimilar, parseSimilarLimit } from '../../../utils/similar_block.js'
 
 const CONTEXT = {
@@ -452,6 +453,10 @@ function buildMember(row, fullRecord, showColors, BASE_URI, languageFilter) {
 
     const obj = row["json_ld_v2"] ?? {}
 
+    // ── exhibitions — de-duplicate on @id ────────────────────
+    // Safety net: duplicates most likely originate upstream in json_ld_v2.
+    dedupeExhibitions(obj)
+
     // ── multilingual titles ──────────────────────────────────
     const appellations = []
     if (row["object_title_nl"]) appellations.push({ lang: "NLD", value: row["object_title_nl"] })
@@ -606,103 +611,8 @@ function buildMember(row, fullRecord, showColors, BASE_URI, languageFilter) {
     }
 
     // ── color data — only when ?colors=true ─────────────────
-    if (showColors) {
-        const colorsData   = row["colors"] ?? null
-        const iiifImageUri = row["iiif_image_uris"]?.[0] ?? null
-
-        if (colorsData && iiifImageUri) {
-            const colorFeatures = colorsData.map((imageColors, imageIndex) => {
-                const baseColorMap = {}
-                for (const c of imageColors) {
-                    if (!baseColorMap[c.base]) baseColorMap[c.base] = 0
-                    baseColorMap[c.base] += c.percentage
-                }
-
-                return {
-                    "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}`,
-                    "@type": "crm:E36_Visual_Item",
-                    "crm:P2_has_type": {
-                        "@id":        "http://vocab.getty.edu/aat/300264863",
-                        "@type":      "crm:E55_Type",
-                        "rdfs:label": "digital image"
-                    },
-                    "crm:P138i_has_representation": {
-                        "@id":   iiifImageUri,
-                        "@type": "crm:E38_Image"
-                    },
-                    "crm:P56_bears_feature": [
-                        {
-                            "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/hex`,
-                            "@type": "crm:E26_Physical_Feature",
-                            "crm:P2_has_type": {
-                                "@id":        "http://vocab.getty.edu/aat/300056130",
-                                "@type":      "crm:E55_Type",
-                                "rdfs:label": "color"
-                            },
-                            "rdfs:comment": "Dominant colors extracted from the digital image as HEX values",
-                            "crm:P3_has_note": imageColors.map(c => ({
-                                "@type":      "crm:E62_String",
-                                "rdf:value":  c.hex,
-                                "rdfs:label": c.css,
-                                "crm:P43_has_dimension": {
-                                    "@type": "crm:E54_Dimension",
-                                    "crm:P2_has_type": {
-                                        "@id":        "http://vocab.getty.edu/aat/300417476",
-                                        "@type":      "crm:E55_Type",
-                                        "rdfs:label": "percentage"
-                                    },
-                                    "crm:P90_has_value": {
-                                        "@value": Math.round(c.percentage * 100 * 100) / 100,
-                                        "@type":  "xsd:decimal"
-                                    },
-                                    "crm:P91_has_unit": {
-                                        "@id":        "http://vocab.getty.edu/aat/300417476",
-                                        "rdfs:label": "%"
-                                    }
-                                }
-                            }))
-                        },
-                        {
-                            "@id":   `${obj["@id"]}/visual/image/${imageIndex + 1}/colors/base`,
-                            "@type": "crm:E26_Physical_Feature",
-                            "crm:P2_has_type": {
-                                "@id":        "http://vocab.getty.edu/aat/300056130",
-                                "@type":      "crm:E55_Type",
-                                "rdfs:label": "color"
-                            },
-                            "rdfs:comment": "Dominant base colors grouped and aggregated for indexing",
-                            "crm:P3_has_note": Object.entries(baseColorMap)
-                                .sort((a, b) => b[1] - a[1])
-                                .map(([base, pct]) => ({
-                                    "@type":     "crm:E62_String",
-                                    "rdf:value": base,
-                                    "crm:P43_has_dimension": {
-                                        "@type": "crm:E54_Dimension",
-                                        "crm:P2_has_type": {
-                                            "@id":        "http://vocab.getty.edu/aat/300417476",
-                                            "@type":      "crm:E55_Type",
-                                            "rdfs:label": "percentage"
-                                        },
-                                        "crm:P90_has_value": {
-                                            "@value": Math.round(pct * 100 * 100) / 100,
-                                            "@type":  "xsd:decimal"
-                                        },
-                                        "crm:P91_has_unit": {
-                                            "@id":        "http://vocab.getty.edu/aat/300417476",
-                                            "rdfs:label": "%"
-                                        }
-                                    }
-                                }))
-                        }
-                    ]
-                }
-            })
-
-            obj["crm:P65_shows_visual_item"] = colorFeatures.length === 1
-                ? colorFeatures[0]
-                : colorFeatures
-        }
-    }
+    // Shared with the single-object handler (utils/visual_items.js)
+    if (showColors) applyColorVisualItems(obj, row)
 
     return obj
 }

@@ -2,7 +2,7 @@ export const swaggerDefinition = {
     openapi: '3.0.0',
     info: {
         title: 'Design Museum Gent API',
-        version: '2.8.0',
+        version: '2.9.0',
         description: 'CIDOC-CRM compliant JSON-LD REST API for the Design Museum Gent collection.',
         contact: {
             name: "Olivier Van D'huynslager",
@@ -83,8 +83,8 @@ export const swaggerDefinition = {
             onDisplay: {
                 name: 'onDisplay',
                 in: 'query',
-                description: 'Only return objects currently on display in the collection presentation',
-                schema: { type: 'boolean', default: false }
+                description: 'Tri-state. Omit for all objects; true (or 1) for objects currently in the collection presentation; false (or 0) for objects NOT in it. false is not the same as omitting the parameter.',
+                schema: { type: 'boolean' }
             },
             language: {
                 name: 'language',
@@ -137,6 +137,23 @@ export const swaggerDefinition = {
                     '@id': { type: 'string', format: 'uri', example: 'https://data.designmuseumgent.be/v2/id/object/1987-1105' },
                     '@type': { type: 'string', example: 'crm:E22_Human-Made_Object' },
                     'rdfs:label': { type: 'string', example: 'Beeldje van een vis in opaalglas' },
+                    'crm:P1_is_identified_by': {
+                        type: 'array',
+                        description: 'Title in every available language (NLD/FRA/ENG). Omitted if no title exists in any language.',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                '@type': { type: 'string', example: 'crm:E41_Appellation' },
+                                'rdfs:label': { type: 'string' },
+                                'crm:P72_has_language': {
+                                    type: 'object',
+                                    properties: {
+                                        '@id': { type: 'string', format: 'uri', example: 'http://publications.europa.eu/resource/authority/language/NLD' }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     'crm:P129i_is_subject_of': {
                         type: 'object',
                         properties: {
@@ -182,7 +199,7 @@ export const swaggerDefinition = {
             get: {
                 tags: ['Objects'],
                 summary: 'Paginated collection of all objects',
-                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, type filter, material filter, agent filter, full text search, incremental harvesting and collection presentation filter. Pagination links are also exposed via RFC 8288 Link headers.',
+                description: 'Returns a Hydra paginated collection of objects. Supports full records, image filter, color filter, type filter, material filter, agent filter, full text search, incremental harvesting and collection presentation filter. Only healthy, canonical records are listed; merged or withdrawn records stay resolvable at /id/object/{ObjectPID} (301/410). Pagination links are also exposed via RFC 8288 Link headers.',
                 parameters: [
                     { $ref: '#/components/parameters/page' },
                     { $ref: '#/components/parameters/itemsPerPage' },
@@ -200,14 +217,20 @@ export const swaggerDefinition = {
                     {
                         name: 'hasParts',
                         in: 'query',
-                        description: 'Only return koepelrecords — objects that have physical components',
+                        description: 'Only return koepelrecords: objects composed of a set of member objects (crm:P106_is_composed_of)',
                         schema: { type: 'boolean', default: false }
                     },
                     {
                         name: 'isPartOf',
                         in: 'query',
-                        description: 'Only return components — objects that belong to a parent koepelrecord',
+                        description: 'Only return set members: objects that belong to a koepelrecord (crm:P46i_forms_part_of)',
                         schema: { type: 'boolean', default: false }
+                    },
+                    {
+                        name: 'koepels',
+                        in: 'query',
+                        description: 'Set to exclude to hide koepelrecords from results. Useful for image-based browsing where koepelrecords typically have no image.',
+                        schema: { type: 'string', enum: ['exclude'] }
                     },
                     {
                         name: 'hasColors',
@@ -218,7 +241,7 @@ export const swaggerDefinition = {
                     {
                         name: 'colors',
                         in: 'query',
-                        description: 'Include color data in full records. Requires fullRecord=true.',
+                        description: 'Include color data in full records as crm:P65_shows_visual_item: always an array, one crm:E36_Visual_Item per image, each pointing at its own image. Requires fullRecord=true.',
                         schema: { type: 'boolean', default: false }
                     },
                     {
@@ -248,7 +271,7 @@ export const swaggerDefinition = {
                     {
                         name: 'agent',
                         in: 'query',
-                        description: 'Filter by agent PID or full URI. Returns all objects where the agent appears as designer (crm:P94i_was_created_by) or producer (crm:P108i_was_produced_by). Accepts DMG-A-00162 or full URI.',
+                        description: 'Filter by agent PID or full URI. Returns all objects where the agent appears as designer (crm:P94i_was_created_by) or producer (crm:P108i_was_produced_by). Accepts DMG-A-00162 or full URI. Sorting is not applied on agent queries.',
                         schema: { type: 'string', example: 'DMG-A-00162' }
                     },
                     {
@@ -272,14 +295,30 @@ export const swaggerDefinition = {
                     {
                         name: 'concept',
                         in: 'query',
-                        description: 'Filter by thesaurus concept PID or full URI. Matches objects where the concept appears as object type, material, technique or sub-collection. Accepts 530000049 or full URI.',
+                        description: 'Filter by thesaurus concept PID or full URI. Matches objects where the concept appears as object type, material, technique or sub-collection. Expands to narrower concepts. Accepts 530000049 or full URI.',
                         schema: { type: 'string', example: '530000049' }
                     },
                     {
                         name: 'conceptSearch',
                         in: 'query',
-                        description: 'Filter by concept label. Searches the thesaurus for matching concepts and returns objects tagged with any of them. Accepts partial labels ("stoel", "computer"). Use ?concept= for exact URI matching.',
+                        description: 'Filter by concept label. Searches the thesaurus for matching concepts and returns objects tagged with any of them (including narrower concepts). Accepts partial labels ("stoel", "computer"). Use ?concept= for exact URI matching.',
                         schema: { type: 'string', example: 'stoel' }
+                    },
+                    {
+                        name: 'sortBy',
+                        in: 'query',
+                        description: 'Field to sort by. Objects without a value for the chosen field appear last. Not applied on ?agent= queries.',
+                        schema: {
+                            type: 'string',
+                            default: 'objectNumber',
+                            enum: ['objectNumber', 'modified', 'titleNL', 'titleFR', 'titleEN', 'dateBegin', 'dateEnd']
+                        }
+                    },
+                    {
+                        name: 'sortOrder',
+                        in: 'query',
+                        description: 'Sort direction.',
+                        schema: { type: 'string', default: 'asc', enum: ['asc', 'desc'] }
                     }
                 ],
                 responses: {
@@ -316,7 +355,7 @@ export const swaggerDefinition = {
                     {
                         name: 'colors',
                         in: 'query',
-                        description: 'Include color data',
+                        description: 'Include color data as crm:P65_shows_visual_item: always an array, one visual item per image (also for single-image objects). The ?colors=true variant has its own ETag.',
                         schema: { type: 'boolean', default: false }
                     }
                 ],
@@ -324,8 +363,8 @@ export const swaggerDefinition = {
                     200: {
                         description: 'Object found',
                         headers: {
-                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
-                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' },
+                            'ETag': { schema: { type: 'string' }, description: 'Opaque cache validation token. Changes when the record or the response shape changes; the ?colors=true variant has its own ETag' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of the last change to the record (source harvest or local correction)' },
                             'Cache-Control': { schema: { type: 'string' }, description: 'Cache duration' }
                         },
                         content: { 'application/ld+json': { schema: { type: 'object' } } }
@@ -346,14 +385,20 @@ export const swaggerDefinition = {
                         in: 'path',
                         required: true,
                         schema: { type: 'string', example: '1987-1105' }
+                    },
+                    {
+                        name: 'colors',
+                        in: 'query',
+                        description: 'Return the ETag of the ?colors=true variant',
+                        schema: { type: 'boolean', default: false }
                     }
                 ],
                 responses: {
                     200: {
                         description: 'Object exists',
                         headers: {
-                            'ETag': { schema: { type: 'string' }, description: 'Cache validation token' },
-                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of last harvest' }
+                            'ETag': { schema: { type: 'string' }, description: 'Opaque cache validation token' },
+                            'Last-Modified': { schema: { type: 'string' }, description: 'Timestamp of the last change to the record (source harvest or local correction)' }
                         }
                     },
                     301: { description: 'Object has been merged — follow Location header' },

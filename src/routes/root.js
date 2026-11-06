@@ -2130,14 +2130,16 @@ rootRouter.get('/', (req, res, next) => {
 <script src="/js/paths.js"></script>
 <script>
 // ── Resemblance: paths / thread tabs ─────────────────────────────────
-// "From one to another" is the default view. The paths component
-// (public/js/paths.js) is mounted shortly before the section scrolls into
-// view rather than on page load or on tab click, so:
-//   • the graph is laid out at the panel's real width, and
-//   • visitors who never scroll that far trigger no fetches at all.
+// "From one to another" is the default view, and it is drawn on page load
+// from a curated pair, so every visitor arrives at the same path — one you
+// can point someone to. A random pair stands in only if the curated one
+// cannot be drawn (e.g. an object lost its embedding).
 //
-// On mount it is given something to show instead of an empty frame.
+// The component is public/js/paths.js, shared with /paths/. Change the
+// starting pair in START.
 (function () {
+  var START = { from: '0001_1-2', to: '1982-0064', fallbackRandom: true };
+
   var tabThread = document.getElementById('tab-thread');
   var tabPaths = document.getElementById('tab-paths');
   var panelThread = document.getElementById('view-thread');
@@ -2163,54 +2165,16 @@ rootRouter.get('/', (req, res, next) => {
     return;
   }
 
-  // Give the view something to show. Prefers a random() method on the
-  // component; falls back to pressing its own random button; failing both,
-  // at least starts from a curated seed.
-  //
-  // TODO: replace this heuristic with a real API on paths.js (random(), and
-  // setTo()/run() so the page can open on a fixed, curated pair — a random
-  // pair means every visitor sees a different path).
-  function autoStart(p) {
-    if (typeof p.random === 'function') { p.random(); return; }
-
-    var btn = Array.prototype.find.call(host.querySelectorAll('button'), function (b) {
-      return /random/i.test(b.textContent);
-    });
-    if (btn) { btn.click(); return; }
-
-    var seeds = window.dmgSeeds || [];
-    if (seeds[0] && !p.getFrom()) p.setFrom(seeds[0]);
-  }
-
-  function ensureMounted() {
-    if (paths) return paths;
-    paths = window.DMGPaths.mount(host, { api: '/v2/', openHref: '/paths/' });
-    autoStart(paths);
-    return paths;
-  }
-
-  // Mount shortly before the section scrolls into view, not on page load.
-  var section = document.getElementById('index-resemblance') || panelPaths;
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      if (!entries.some(function (e) { return e.isIntersecting; })) return;
-      io.disconnect();
-      ensureMounted();
-      if (!panelPaths.hidden) paths.relayout();
-    }, { rootMargin: '400px 0px' });
-    io.observe(section);
-  } else {
-    ensureMounted();
-  }
+  paths = window.DMGPaths.mount(host, { api: '/v2/', openHref: '/paths/', initial: START });
 
   tabThread.addEventListener('click', function () { show('thread'); });
-  tabPaths.addEventListener('click', function () { ensureMounted(); show('paths'); });
+  tabPaths.addEventListener('click', function () { show('paths'); });
 
   // Called from the thread seed's "Find a path from this object" link.
   window.dmgOpenPaths = function (pid) {
-    ensureMounted();
     show('paths');
     paths.setFrom(pid);
+    paths.setTo('');
     paths.focusTo();
   };
 })();

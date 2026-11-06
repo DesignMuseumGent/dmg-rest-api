@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paths through the collection — Design Museum Gent</title>
+<meta name="description" content="Walk from one object in the Design Museum Gent collection to another through visual resemblance, measured from the photographs alone.">
+<link rel="icon" href="/images/Pixel-Logo-41-frames-transparent.gif" type="image/gif">
+<link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
+<link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>
+<style>
+  /* Same system as the landing page (src/routes/root.js), which follows
+     DMG25_Huisstijlhandboek_Essentials: Museum + Heins, black / white /
+     Magic Purple, cropmark grid. Light only, like the landing page.
+     If a token changes there, change it here. */
+  @font-face { font-family:'Museum'; src:url('/fonts/Museum-Light.otf') format('opentype');   font-weight:300; font-display:swap; }
+  @font-face { font-family:'Museum'; src:url('/fonts/Museum-Regular.otf') format('opentype'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Museum'; src:url('/fonts/Museum-Medium.otf') format('opentype');  font-weight:500; font-display:swap; }
+  @font-face { font-family:'Museum'; src:url('/fonts/Museum-Bold.otf') format('opentype');    font-weight:700; font-display:swap; }
+  @font-face { font-family:'Heins';  src:url('/fonts/ArmandHeins1-Regular.otf') format('opentype'); font-weight:400; font-display:swap; }
+
+  :root {
+    color-scheme: light;
+    --magic-purple:  #93268f;
+    --dimmed-yellow: #ffcc00;
+    --shy-gray:      #c7c8ca;
+    --neutral-gray:  #949699;
+    --lawful-gray:   #636466;
+    --reliable-black:#000000;
+    --snow-white:    #ffffff;
+
+    --ink:    var(--reliable-black);
+    --paper:  var(--snow-white);
+    --accent: var(--magic-purple);
+    --rule:   var(--shy-gray);
+    --mark:   var(--reliable-black);
+
+    --grid-factor: 0.05;
+    --margin: calc(min(100vw, 100vh) * var(--grid-factor));
+    --cross:  calc(var(--margin) * 2);
+    --rule-w: 1px;
+    --pad: var(--margin);
+
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --heins: 'Heins', 'Museum', Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--paper); color: var(--ink);
+    font-family: 'Museum', Arial, system-ui, sans-serif;
+    font-size: 1rem; line-height: 1.0833;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ─── .framed — identical to the landing page ─────────────────────── */
+  .framed {
+    padding: calc(var(--pad) * 2.5) calc(var(--pad) * 1.5);
+    background-image:
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+      linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark));
+    background-size:
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross),
+      var(--cross) var(--rule-w), var(--rule-w) var(--cross);
+    background-position:
+      left  0 top    calc(var(--pad) - var(--rule-w) / 2),
+      left  calc(var(--pad) - var(--rule-w) / 2) top 0,
+      right 0 top    calc(var(--pad) - var(--rule-w) / 2),
+      right calc(var(--pad) - var(--rule-w) / 2) top 0,
+      left  0 bottom calc(var(--pad) - var(--rule-w) / 2),
+      left  calc(var(--pad) - var(--rule-w) / 2) bottom 0,
+      right 0 bottom calc(var(--pad) - var(--rule-w) / 2),
+      right calc(var(--pad) - var(--rule-w) / 2) bottom 0;
+    background-repeat: no-repeat;
+  }
+
+  /* ─── Header ───────────────────────────────────────────────────────── */
+  .back {
+    font-family: var(--mono); font-size: .8125rem; color: var(--neutral-gray);
+    text-decoration: none; display: inline-block; margin: 0 0 calc(var(--pad) * 1.5);
+  }
+  .back:hover, .back:focus-visible { color: var(--accent); }
+
+  .index-number {
+    font-family: var(--mono); font-size: .8125rem; letter-spacing: .06em;
+    color: var(--neutral-gray); margin: 0 0 .35rem;
+  }
+  h1 {
+    font-weight: 700; font-size: clamp(2rem, 7vw, 3.25rem);
+    line-height: 1; letter-spacing: 0; margin: 0 0 .75rem; max-width: 20ch;
+  }
+  .lede {
+    font-family: var(--heins); font-size: 1.125rem; line-height: 1.15;
+    max-width: 34rem; margin: 0 0 calc(var(--pad) * 2);
+  }
+  .label {
+    font-family: var(--heins); font-size: .8125rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--lawful-gray);
+  }
+
+  /* ─── Controls — the landing page's search and tab idiom ───────────── */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: flex-end;
+    gap: calc(var(--pad) * 1) calc(var(--pad) * 1.5);
+  }
+  .field { display: flex; flex-direction: column; gap: .35rem; }
+  .field input[type=text] {
+    font: inherit; font-size: .9375rem; color: var(--ink);
+    background: none; border: 0; border-bottom: var(--rule-w) solid var(--mark);
+    border-radius: 0; padding: .4rem .2rem; width: 11rem;
+  }
+  .field input[type=text]::placeholder { color: var(--neutral-gray); }
+  .field input[type=text]:focus { outline: 0; border-bottom-width: 2px; }
+
+  .tabs { display: flex; gap: 1rem; padding-bottom: .2rem; }
+  .tabs button {
+    background: none; border: 0; padding: .2rem 0; font: inherit;
+    font-size: .8125rem; font-weight: 500; color: var(--neutral-gray);
+    cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--mark); }
+
+  .steps-field[hidden] { display: none; }
+  .steps-field output { font-family: var(--mono); }
+  input[type=range] { accent-color: var(--accent); width: 8rem; }
+
+  .check { flex-direction: row; align-items: center; gap: .45rem; padding-bottom: .4rem; }
+  .check input { accent-color: var(--accent); margin: 0; }
+  .check label { font-size: .875rem; }
+
+  .actions { display: flex; gap: 1rem; padding-bottom: .1rem; }
+  .actions button {
+    background: none; border: 0; padding: .4rem .2rem; font: inherit;
+    font-size: .9375rem; font-weight: 500; color: var(--ink); cursor: pointer;
+    border-bottom: var(--rule-w) solid var(--mark);
+  }
+  .actions .primary { font-weight: 700; border-bottom-width: 2px; }
+  .actions button:hover, .actions button:focus-visible { color: var(--accent); }
+  .actions button:disabled { color: var(--neutral-gray); cursor: progress; }
+
+  /* ─── Result ───────────────────────────────────────────────────────── */
+  .result h2 {
+    font-weight: 700; font-size: clamp(1.5rem, 4vw, 2.25rem);
+    line-height: 1.05; margin: 0 0 .5rem; max-width: 34ch;
+  }
+  .result h2 .via { font-weight: 400; color: var(--neutral-gray); }
+  .band-note {
+    font-family: var(--heins); font-size: .9375rem; line-height: 1.4;
+    color: var(--lawful-gray); max-width: 46rem; margin: 0 0 calc(var(--pad) * 1.5);
+  }
+  .band-note b { font-weight: 400; color: var(--ink); }
+  .band-note.error { color: var(--ink); }
+  .band-note button {
+    margin-left: .5rem; background: none; border: 0; padding: 0; font: inherit;
+    color: var(--ink); cursor: pointer; border-bottom: var(--rule-w) solid var(--mark);
+  }
+  .band-note button:hover { color: var(--accent); }
+
+  .note-columns { columns: 2; column-gap: calc(var(--pad) * 2); column-fill: balance; }
+  .note-columns .band-note { max-width: none; margin: 0 0 1em; break-inside: avoid-column; }
+
+  .stage { position: relative; height: clamp(280px, min(60vh, calc(38vw + 120px)), 660px); margin: 0 0 calc(var(--pad) * 1.5); }
+  .stage[hidden] { display: none; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .edge-path   { stroke: var(--accent); stroke-width: 2; }
+  .edge-branch { stroke: var(--rule); stroke-width: 1; }
+  .edge-cross  { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 4; opacity: .7; }
+  .axis        { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 5; }
+  .drop        { stroke: var(--accent); stroke-width: 1; }
+  .t-label     { font: 10px var(--mono); fill: var(--neutral-gray); }
+
+  .node { position: absolute; margin: 0; transform: translate(-50%, -50%); }
+  .node a { display: block; text-decoration: none; }
+  /* Same plate as the landing page's object cards: contained, never cropped. */
+  .shot {
+    position: relative; width: var(--s); height: var(--s);
+    background-color: #f4f4f4; outline: var(--rule-w) solid var(--rule);
+    overflow: hidden; display: grid; place-items: center;
+  }
+  .shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .shot .noimg { font-family: var(--mono); font-size: .625rem; color: var(--neutral-gray); }
+  .node.end .shot { outline: 2px solid var(--mark); }
+  .node a:hover .shot, .node a:focus-visible .shot { outline: 2px solid var(--accent); }
+  .node.branch { opacity: .62; }
+  .node.branch:hover, .node.branch:focus-within { opacity: 1; z-index: 2; }
+
+  /* Similarity out of a hundred, as on the landing page's thread. */
+  .sim {
+    position: absolute; left: 0; bottom: 0; padding: .15rem .35rem;
+    font-family: var(--mono); font-size: .6875rem;
+    color: var(--reliable-black); background-color: var(--dimmed-yellow);
+  }
+  .node figcaption {
+    position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    width: max(var(--s), 9rem); padding-top: .4rem; text-align: center;
+    font-size: .8125rem; line-height: 1.25;
+  }
+  .node figcaption .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .node figcaption .num { display: block; font-family: var(--mono); font-size: .6875rem; color: var(--neutral-gray); margin-top: .15rem; }
+  .node a:hover figcaption .t { color: var(--accent); }
+
+  .legend { font-family: var(--heins); font-size: .875rem; line-height: 1.35; color: var(--lawful-gray); max-width: 46rem; margin: 0; }
+
+  @media (max-width: 720px) {
+    .framed { background-image: none; padding: 2rem 1.5rem; }
+    .note-columns { columns: 1; }
+    .field input[type=text] { width: 9rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .stage.reveal .node, .stage.reveal svg { animation: appear .45s ease-out both; }
+    .stage.reveal .node.branch { animation-delay: .25s; }
+    @keyframes appear { from { opacity: 0; } }
+  }
+</style>
+</head>
+<body>
+
+<section class="framed" aria-labelledby="page-heading">
+  <a class="back" href="/">← Design Museum Gent API</a>
+  <p class="index-number">Resemblance · Paths</p>
+  <h1 id="page-heading">From one object to another</h1>
+  <p class="lede">Pick two objects and see what connects them — measured from
+  the photographs alone, by a machine that has never seen a catalogue.</p>
+
+  <form class="controls" id="controls">
+    <div class="field">
+      <label class="label" for="from">From</label>
+      <input type="text" id="from" placeholder="0001_1-2" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label class="label" for="to">To</label>
+      <input type="text" id="to" placeholder="1982-0064" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <span class="label" id="mode-label">Path</span>
+      <div class="tabs" role="tablist" aria-labelledby="mode-label">
+        <button type="button" role="tab" data-mode="graph" aria-selected="true">Resemblances</button>
+        <button type="button" role="tab" data-mode="line" aria-selected="false">Straight line</button>
+      </div>
+    </div>
+    <div class="field steps-field" id="steps-field" hidden>
+      <label class="label" for="steps">In between: <output id="steps-out">5</output></label>
+      <input type="range" id="steps" min="1" max="20" value="5">
+    </div>
+    <div class="field check">
+      <input type="checkbox" id="branches" checked>
+      <label for="branches">Show nearby objects</label>
+    </div>
+    <div class="actions">
+      <button type="submit" class="primary" id="go">Find path</button>
+      <button type="button" id="random">Random pair</button>
+    </div>
+  </form>
+</section>
+
+<section class="framed result" id="result" aria-live="polite">
+  <div id="heading">
+    <h2>Two objects, and what connects them</h2>
+    <div class="note-columns">
+      <p class="band-note"><b>Resemblances</b> follows a chain: each step is
+      among the nearest look-alikes of the one before, and the path takes as
+      many small steps as it needs rather than one large leap. The space
+      between two objects grows as they look less alike.</p>
+      <p class="band-note"><b>Straight line</b> draws the direct route between
+      the two in the model's space and asks, at evenly spaced points along it,
+      which object sits nearest. Objects hang below the line by how far they
+      sit from that point — the collection's way of filling a gap it may not
+      really have.</p>
+      <p class="band-note"><b>What it cannot know.</b> The model compares
+      pictures. It will connect objects through a shared backdrop or a similar
+      crop as readily as through form or material. It is a measurement of
+      photographs, not a judgement about design history, and it is worth
+      disagreeing with.</p>
+    </div>
+  </div>
+  <div class="stage" id="stage" hidden>
+    <svg id="edges" aria-hidden="true"></svg>
+    <div id="nodes"></div>
+  </div>
+  <p class="legend" id="legend" hidden></p>
+</section>
+
+<script>
+(function () {
+  var API = '/v2/';                 // same origin as this page
+  var NEIGHBOURS_PER_NODE = 3;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    form: $('controls'), from: $('from'), to: $('to'), steps: $('steps'),
+    stepsOut: $('steps-out'), stepsField: $('steps-field'), branches: $('branches'),
+    go: $('go'), random: $('random'), heading: $('heading'), stage: $('stage'),
+    edges: $('edges'), nodes: $('nodes'), legend: $('legend')
+  };
+  var tabs = document.querySelectorAll('.tabs [data-mode]');
+  var current = null;   // { data, neighbours }
+
+  function mode() {
+    var sel = document.querySelector('.tabs [aria-selected="true"]');
+    return sel ? sel.getAttribute('data-mode') : 'graph';
+  }
+  function setMode(m) {
+    Array.prototype.forEach.call(tabs, function (t) {
+      t.setAttribute('aria-selected', String(t.getAttribute('data-mode') === m));
+    });
+    els.stepsField.hidden = m !== 'line';
+  }
+  function normalizeRef(v) {
+    v = (v || '').trim();
+    var m = v.match(/\/object\/([^/?#]+)/);
+    return m ? decodeURIComponent(m[1]) : v;
+  }
+  function refOf(m) { return normalizeRef(m['@id']); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // ── URL state, so a path can be shared ────────────────────────────
+  function writeUrl() {
+    var p = new URLSearchParams({ from: normalizeRef(els.from.value), to: normalizeRef(els.to.value), mode: mode() });
+    if (mode() === 'line') p.set('steps', els.steps.value);
+    try { history.replaceState(null, '', location.pathname + '?' + p); } catch (e) {}
+  }
+  function readUrl() {
+    var p = new URLSearchParams(location.search);
+    if (p.get('from')) els.from.value = p.get('from');
+    if (p.get('to')) els.to.value = p.get('to');
+    if (p.get('steps')) els.steps.value = p.get('steps');
+    setMode(p.get('mode') === 'line' ? 'line' : 'graph');
+    els.stepsOut.textContent = els.steps.value;
+    return p.get('from') && p.get('to');
+  }
+
+  function setBusy(b) {
+    els.go.disabled = els.random.disabled = b;
+    els.go.textContent = b ? 'Finding path …' : 'Find path';
+  }
+  function showMessage(title, text, action) {
+    current = null;
+    els.stage.hidden = true; els.legend.hidden = true;
+    els.heading.innerHTML = '<h2>' + esc(title) + '</h2><p class="band-note error">' + esc(text) + '</p>';
+    if (action) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = action.label;
+      b.addEventListener('click', action.run);
+      els.heading.querySelector('.band-note').appendChild(b);
+    }
+  }
+
+  // ── images ────────────────────────────────────────────────────────
+  function imageSources(member) {
+    var img = member.image;
+    if (!img) return [];
+    var out = [], full = img['@id'];
+    if (img.thumbnail) out.push(img.thumbnail);
+    if (full) out.push(full);
+    return out;
+  }
+  function shotHtml(member, badge) {
+    var srcs = imageSources(member);
+    var inner = srcs.length
+      ? '<img alt="" src="' + esc(srcs[0]) + '" data-fallbacks="' + esc(JSON.stringify(srcs.slice(1))) + '">'
+      : '<span class="noimg">no image</span>';
+    return '<div class="shot">' + inner + (badge || '') + '</div>';
+  }
+  function wireFallbacks(root) {
+    root.querySelectorAll('img[data-fallbacks]').forEach(function (img) {
+      img.addEventListener('error', function () {
+        var rest = JSON.parse(img.dataset.fallbacks || '[]');
+        if (rest.length) { img.dataset.fallbacks = JSON.stringify(rest.slice(1)); img.src = rest[0]; }
+        else { var s = document.createElement('span'); s.className = 'noimg'; s.textContent = 'no image'; img.replaceWith(s); }
+      });
+    });
+  }
+
+  // ── layout ────────────────────────────────────────────────────────
+  // Path nodes placed exactly; branch nodes relaxed around them.
+  function layout(data, neighbours, W, H) {
+    var members = data['hydra:member'].slice().sort(function (a, b) { return a.position - b.position; });
+    var isLine = data.mode === 'line', n = members.length, capH = 46;
+    var size = clamp(Math.min((W / n) * 0.72, (H - capH) * 0.3), 34, 150);
+    var showCaptions = size >= 84;
+    var margin = size / 2 + 4, xs;
+
+    if (isLine) {
+      xs = members.map(function (m) { return margin + (m.t || 0) * (W - 2 * margin); });
+    } else {
+      // horizontal gaps proportional to dissimilarity, never touching
+      var d = members.slice(1).map(function (m) { return Math.max(0.005, 1 - (m.similarity == null ? 0.9 : m.similarity)); });
+      var minGap = size * 1.08, extra = (W - 2 * margin) - (n - 1) * minGap;
+      if (extra < 0) {
+        size = clamp((W - 8) / (n * 1.1), 24, size); margin = size / 2 + 4;
+        minGap = size * 1.08; extra = Math.max(0, (W - 2 * margin) - (n - 1) * minGap);
+      }
+      var total = d.reduce(function (a, b) { return a + b; }, 0);
+      xs = [margin];
+      d.forEach(function (di) { xs.push(xs[xs.length - 1] + minGap + extra * (di / total)); });
+    }
+
+    var axisY = isLine ? Math.max(size / 2 + 8, H * 0.2) : H * 0.46;
+    var maxDrop = H - axisY - size / 2 - (showCaptions ? capH : 8);
+    var ys = members.map(function (m, i) {
+      if (!isLine || i === 0 || i === n - 1 || m.similarity == null) return axisY;
+      return axisY + clamp((1 - m.similarity) * 4, 0, 1) * maxDrop;
+    });
+
+    var nodes = members.map(function (m, i) {
+      return { ref: refOf(m), member: m, x: xs[i], y: ys[i], size: size, fixed: true,
+               kind: (i === 0 || i === n - 1) ? 'end' : 'path', index: i };
+    });
+    var byRef = {}; nodes.forEach(function (nd) { byRef[nd.ref] = nd; });
+    var edges = [];
+    for (var i = 1; i < n; i++) edges.push({ a: nodes[i - 1], b: nodes[i], kind: 'path' });
+
+    if (neighbours) {
+      var bsize = clamp(size * 0.42, 22, 64);
+      var UP = -Math.PI / 2, DOWN = Math.PI / 2;
+      var fanAbove = [UP - 0.6, UP + 0.6, DOWN, UP, DOWN - 0.6, DOWN + 0.6];
+      var fanBelow = [DOWN - 0.6, DOWN + 0.6, UP, DOWN, UP - 0.6, UP + 0.6];
+      nodes.filter(function (nd) { return nd.kind !== 'branch'; }).forEach(function (parent) {
+        var list = (neighbours[parent.ref] || []).slice(0, NEIGHBOURS_PER_NODE), k = 0;
+        list.forEach(function (nb) {
+          var ref = refOf(nb), sim = nb.similarity == null ? 0.85 : nb.similarity;
+          var existing = byRef[ref];
+          if (existing) {
+            var consecutive = existing.kind !== 'branch' && Math.abs(existing.index - parent.index) === 1;
+            var dup = edges.some(function (e) { return (e.a === parent && e.b === existing) || (e.b === parent && e.a === existing); });
+            if (!consecutive && !dup) {
+              edges.push({ a: parent, b: existing, kind: existing.kind === 'branch' ? 'branch' : 'cross' });
+              if (existing.kind === 'branch') existing.parents.push(parent);
+            }
+            return;
+          }
+          var fan = parent.index % 2 ? fanBelow : fanAbove;
+          var ang = fan[k++ % fan.length];
+          var dist = size * 0.62 + bsize * 0.6 + (1 - sim) * size * 2.2;
+          var node = { ref: ref, member: nb, size: bsize, fixed: false, kind: 'branch', parents: [parent],
+                       x: parent.x + Math.cos(ang) * dist, y: parent.y + Math.sin(ang) * dist, rest: dist };
+          nodes.push(node); byRef[ref] = node;
+          edges.push({ a: parent, b: node, kind: 'branch' });
+        });
+      });
+      relax(nodes, W, H, showCaptions ? capH : 0);
+    }
+    return { nodes: nodes, edges: edges, size: size, showCaptions: showCaptions, isLine: isLine, axisY: axisY, xs: xs };
+  }
+
+  function relax(nodes, W, H, capH) {
+    var movable = nodes.filter(function (n) { return !n.fixed; }), obstacles = [];
+    nodes.filter(function (n) { return n.fixed; }).forEach(function (n) {
+      obstacles.push({ x: n.x, y: n.y, r: n.size * 0.6 });
+      if (capH) obstacles.push({ x: n.x, y: n.y + n.size / 2 + capH / 2, r: Math.max(capH * 0.75, 60) });
+    });
+    for (var it = 0; it < 240; it++) {
+      movable.forEach(function (n) {
+        var r = n.size * 0.62;
+        n.parents.forEach(function (p) {
+          var dx = n.x - p.x, dy = n.y - p.y, d = Math.hypot(dx, dy) || 1, f = (d - n.rest) / d * 0.08;
+          n.x -= dx * f; n.y -= dy * f;
+        });
+        obstacles.forEach(function (o) {
+          var dx = n.x - o.x, dy = n.y - o.y, d = Math.hypot(dx, dy) || 0.01, min = r + o.r + 4;
+          if (d < min) { var k = (min - d) / d; n.x += dx * k; n.y += dy * k; }
+        });
+        movable.forEach(function (o) {
+          if (o === n) return;
+          var dx = n.x - o.x, dy = n.y - o.y, d = Math.hypot(dx, dy) || 0.01, min = r + o.size * 0.62 + 4;
+          if (d < min) { var k = (min - d) / d * 0.5; n.x += dx * k; n.y += dy * k; }
+        });
+        n.x = clamp(n.x, n.size / 2 + 2, W - n.size / 2 - 2);
+        n.y = clamp(n.y, n.size / 2 + 2, H - n.size / 2 - 2);
+      });
+    }
+  }
+
+  // ── render ────────────────────────────────────────────────────────
+  function render() {
+    if (!current) return;
+    els.stage.hidden = false;
+    var W = els.stage.clientWidth, H = els.stage.clientHeight;
+    var L = layout(current.data, els.branches.checked ? current.neighbours : null, W, H);
+    var svg = els.edges;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.innerHTML = '';
+    function line(x1, y1, x2, y2, cls) {
+      var l = document.createElementNS(SVGNS, 'line');
+      l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+      l.setAttribute('class', cls); svg.appendChild(l);
+    }
+    if (L.isLine) {
+      line(L.xs[0], L.axisY, L.xs[L.xs.length - 1], L.axisY, 'axis');
+      L.nodes.filter(function (n) { return n.kind === 'path'; }).forEach(function (n) {
+        line(n.x, L.axisY, n.x, n.y - n.size / 2, 'drop');
+        var t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('x', n.x + 4); t.setAttribute('y', L.axisY + 12);
+        t.setAttribute('class', 't-label'); t.textContent = n.member.t;
+        svg.appendChild(t);
+      });
+    }
+    var order = { branch: 0, cross: 1, path: 2 };
+    L.edges.slice().sort(function (a, b) { return order[a.kind] - order[b.kind]; }).forEach(function (e) {
+      if (L.isLine && e.kind === 'path') return;
+      line(e.a.x, e.a.y, e.b.x, e.b.y, 'edge-' + e.kind);
+    });
+
+    var html = L.nodes.slice()
+      .sort(function (a, b) { return (b.kind === 'branch') - (a.kind === 'branch'); })
+      .map(function (n) {
+        var m = n.member, label = m['rdfs:label'] || n.ref;
+        var sim = m.similarity;
+        var badge = (n.kind !== 'end' && sim != null && n.size >= 60)
+          ? '<span class="sim">' + Math.round(sim * 100) + '</span>' : '';
+        var simTxt = sim != null && n.kind !== 'end'
+          ? (n.kind === 'branch' ? ', similarity ' : L.isLine ? ', similarity to its point on the line ' : ', similarity to the previous step ') + Math.round(sim * 100)
+          : '';
+        var caption = (n.kind !== 'branch' && L.showCaptions)
+          ? '<figcaption><span class="t">' + esc(label) + '</span><span class="num">' + esc(n.ref) + '</span></figcaption>' : '';
+        var title = label + ' — ' + n.ref + simTxt;
+        return '<figure class="node ' + n.kind + '" style="left:' + n.x + 'px;top:' + n.y + 'px;--s:' + n.size + 'px">' +
+               '<a href="' + esc(m['@id']) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '">' +
+               shotHtml(m, badge) + caption + '</a></figure>';
+      }).join('');
+    els.nodes.innerHTML = html;
+    wireFallbacks(els.nodes);
+
+    els.legend.hidden = false;
+    els.legend.textContent = (L.isLine
+      ? 'The dashed line runs straight from the first object to the last; each object in between hangs below its point on it, lower the further it sits from that point.'
+      : 'Left to right, the space between two objects grows as they look less alike.') +
+      ' The figure on each image is its similarity, out of a hundred.' +
+      (els.branches.checked && current.neighbours
+        ? ' Small faded images are look-alikes the path did not take; a dashed line means two objects on the path also resemble each other directly.'
+        : '');
+  }
+
+  function renderHeading(data) {
+    var members = data['hydra:member'].slice().sort(function (a, b) { return a.position - b.position; });
+    var first = members[0], last = members[members.length - 1], between = members.length - 2;
+    els.heading.innerHTML = '<h2>' + esc(first['rdfs:label']) + ' <span class="via">to</span> ' + esc(last['rdfs:label']) + '</h2>' +
+      '<p class="band-note">' + (data.mode === 'line'
+        ? between + ' object' + (between === 1 ? '' : 's') + ' nearest the straight line between them.'
+        : between + ' step' + (between === 1 ? '' : 's') + ' of resemblance between them.') + '</p>';
+  }
+
+  // ── data ──────────────────────────────────────────────────────────
+  function mapLimit(items, limit, fn) {
+    var out = new Array(items.length), i = 0;
+    function worker() {
+      if (i >= items.length) return Promise.resolve();
+      var k = i++;
+      return fn(items[k]).then(function (r) { out[k] = r; return worker(); });
+    }
+    var ws = []; for (var w = 0; w < Math.min(limit, items.length); w++) ws.push(worker());
+    return Promise.all(ws).then(function () { return out; });
+  }
+  function fetchNeighbours(refs) {
+    return mapLimit(refs, 5, function (ref) {
+      return fetch(API + 'id/object/' + encodeURIComponent(ref) + '/similar?limit=' + (NEIGHBOURS_PER_NODE + 2),
+                   { headers: { Accept: 'application/ld+json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (b) { return (b && b['hydra:member']) || []; })
+        .catch(function () { return []; });
+    }).then(function (lists) {
+      var map = {}; refs.forEach(function (r, i) { map[r] = lists[i]; }); return map;
+    });
+  }
+
+  function findPath() {
+    var from = normalizeRef(els.from.value), to = normalizeRef(els.to.value);
+    if (!from || !to) { showMessage('Two objects needed', 'Enter an object number in both fields, or try a random pair.'); return Promise.resolve(false); }
+    if (from === to) { showMessage('Pick two different objects', 'A path needs a start and an end that are not the same object.'); return Promise.resolve(false); }
+    writeUrl(); setBusy(true);
+    var params = new URLSearchParams({ from: from, to: to, mode: mode() });
+    if (mode() === 'line') params.set('steps', els.steps.value);
+
+    return fetch(API + 'id/path?' + params, { headers: { Accept: 'application/ld+json' } })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) { return { res: res, body: body }; });
+      })
+      .then(function (r) {
+        if (!r.res.ok) {
+          var canTryLine = mode() === 'graph' && /mode=line/.test(r.body.hint || '');
+          showMessage('No path found', r.body.error || ('The API answered with status ' + r.res.status + '.'),
+            canTryLine ? { label: 'Try the straight line', run: function () { setMode('line'); findPath(); } } : null);
+          return false;
+        }
+        renderHeading(r.body);
+        current = { data: r.body, neighbours: null };
+        els.stage.classList.remove('reveal'); render();
+        requestAnimationFrame(function () { els.stage.classList.add('reveal'); });
+        if (els.branches.checked) {
+          var data = r.body;
+          fetchNeighbours(data['hydra:member'].map(refOf)).then(function (nb) {
+            if (current && current.data === data) { current.neighbours = nb; render(); }
+          });
+        }
+        return true;
+      })
+      .catch(function () {
+        showMessage('Could not reach the API', 'The path service did not respond. Try again in a moment.');
+        return false;
+      })
+      .then(function (ok) { setBusy(false); return ok; });
+  }
+
+  var totalWithImages = null;
+  function randomRef() {
+    var url = function (page) { return API + 'id/objects?hasImages=true&itemsPerPage=1&page=' + page; };
+    var ready = totalWithImages === null
+      ? fetch(url(1)).then(function (r) { return r.json(); }).then(function (d) { totalWithImages = d['hydra:totalItems'] || 1; })
+      : Promise.resolve();
+    return ready.then(function () {
+      return fetch(url(1 + Math.floor(Math.random() * totalWithImages))).then(function (r) { return r.json(); });
+    }).then(function (d) { return refOf(d['hydra:member'][0]); });
+  }
+  function randomPair(attempt) {
+    attempt = attempt || 0;
+    if (attempt >= 4) return;
+    setBusy(true);
+    Promise.all([randomRef(), randomRef()]).then(function (ab) {
+      if (ab[0] === ab[1]) return randomPair(attempt + 1);
+      els.from.value = ab[0]; els.to.value = ab[1];
+      return findPath().then(function (ok) { if (!ok) return randomPair(attempt + 1); });
+    }).catch(function () {
+      setBusy(false);
+      showMessage('Could not reach the API', 'The collection did not respond. Try again in a moment.');
+    });
+  }
+
+  // ── events ────────────────────────────────────────────────────────
+  els.form.addEventListener('submit', function (e) { e.preventDefault(); findPath(); });
+  els.random.addEventListener('click', function () { randomPair(0); });
+  Array.prototype.forEach.call(tabs, function (t) {
+    t.addEventListener('click', function () { setMode(t.getAttribute('data-mode')); });
+  });
+  els.steps.addEventListener('input', function () { els.stepsOut.textContent = els.steps.value; });
+  els.branches.addEventListener('change', function () {
+    if (!current) return;
+    if (els.branches.checked && !current.neighbours) {
+      var data = current.data;
+      fetchNeighbours(data['hydra:member'].map(refOf)).then(function (nb) {
+        if (current && current.data === data) { current.neighbours = nb; render(); }
+      });
+    }
+    render();
+  });
+  var resizeTimer;
+  new ResizeObserver(function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); }).observe(els.stage);
+
+  if (readUrl()) findPath();
+})();
+</script>
+</body>
+</html>

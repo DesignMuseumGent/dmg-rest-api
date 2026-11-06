@@ -101,6 +101,7 @@ rootRouter.get('/', (req, res, next) => {
 
 <link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>
+<link rel="stylesheet" href="/css/paths.css">
 <style>
   /* ─── TYPEFACE (brandbook p.6-8) ────────────────────────────────────
      Museum, by Bruno Jacoby and Moritz Appich. Arial is the prescribed
@@ -1561,14 +1562,34 @@ rootRouter.get('/', (req, res, next) => {
   <p class="index-lead">The other two indexes sort the collection into
   categories. This one does not sort it at all. It measures how close any two
   photographs sit in a space built by a machine that has looked at several
-  hundred million captioned images — and lets you walk from one object to its
-  nearest neighbours, and on from there.</p>
+  hundred million captioned images — and lets you find a route of look-alikes
+  between any two objects, or walk from one object to its nearest neighbours,
+  and on from there.</p>
 
   <div class="band-group framed">
     <div class="view-head">
-      <h3>Following a thread</h3>
-      <button type="button" class="clear-btn" id="reseed"
-              style="margin-left:auto">Start somewhere else</button>
+      <h3 id="resemblance-view-heading">Two ways through</h3>
+      <div class="view-switch" role="tablist" aria-labelledby="resemblance-view-heading">
+        <button type="button" role="tab" id="tab-paths"
+                aria-selected="true" aria-controls="view-paths">From one to another</button>
+        <button type="button" role="tab" id="tab-thread"
+                aria-selected="false" aria-controls="view-thread">Following a thread</button>
+      </div>
+    </div>
+
+    <div class="view-panel" id="view-paths" role="tabpanel" aria-labelledby="tab-paths">
+      <p class="band-note"><b>Two objects, and what lies between them.</b>
+      Resemblances follows a chain of look-alikes from one to the other,
+      taking many small steps rather than one large leap. Straight line draws
+      the direct route through the model's space and asks which object sits
+      nearest each point along it. The same measurement as the thread, read
+      as a route instead of a neighbourhood.</p>
+      <div id="paths-mount"></div>
+    </div>
+
+    <div class="view-panel" id="view-thread" role="tabpanel" aria-labelledby="tab-thread" hidden>
+    <div style="display:flex;justify-content:flex-end;margin:0 0 calc(var(--pad) * 1.5)">
+      <button type="button" class="clear-btn" id="reseed">Start somewhere else</button>
     </div>
 
     <div class="note-columns">
@@ -1597,6 +1618,7 @@ rootRouter.get('/', (req, res, next) => {
     <div class="seed" id="seed"></div>
     <p class="band-note" id="thread-note"></p>
     <ul class="object-grid" id="thread-grid"></ul>
+    </div>
   </div>
 </section>
 
@@ -1937,6 +1959,10 @@ rootRouter.get('/', (req, res, next) => {
   ];
   var seedIndex = 0;
 
+  // Shared with the paths view below, which opens on the same curated points
+  // instead of an empty frame.
+  window.dmgSeeds = SEEDS;
+
   function card(o, onPick) {
     var img = o.image;
     var li = document.createElement('li');
@@ -1981,6 +2007,7 @@ rootRouter.get('/', (req, res, next) => {
 
   function renderSeed(pid, obj) {
     seedBox.innerHTML = '';
+    seedBox.dataset.pid = pid;
 
     var shot = document.createElement('div');
     shot.className = 'shot';
@@ -2012,6 +2039,22 @@ rootRouter.get('/', (req, res, next) => {
     meta.appendChild(lab);
     meta.appendChild(h);
     meta.appendChild(num);
+
+    // Hands the seed to the paths view. The href is real, so ctrl-click
+    // opens the standalone page instead.
+    var pathP = document.createElement('p');
+    pathP.className = 'panel-more';
+    var pathA = document.createElement('a');
+    pathA.href = '/paths/?from=' + encodeURIComponent(pid);
+    pathA.textContent = 'Find a path from this object →';
+    pathA.addEventListener('click', function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      if (!window.dmgOpenPaths) return;
+      e.preventDefault();
+      window.dmgOpenPaths(pid);
+    });
+    pathP.appendChild(pathA);
+    meta.appendChild(pathP);
 
     seedBox.appendChild(shot);
     seedBox.appendChild(meta);
@@ -2081,6 +2124,95 @@ rootRouter.get('/', (req, res, next) => {
   });
 
   load(SEEDS[0]);
+})();
+</script>
+
+<script src="/js/paths.js"></script>
+<script>
+// ── Resemblance: paths / thread tabs ─────────────────────────────────
+// "From one to another" is the default view. The paths component
+// (public/js/paths.js) is mounted shortly before the section scrolls into
+// view rather than on page load or on tab click, so:
+//   • the graph is laid out at the panel's real width, and
+//   • visitors who never scroll that far trigger no fetches at all.
+//
+// On mount it is given something to show instead of an empty frame.
+(function () {
+  var tabThread = document.getElementById('tab-thread');
+  var tabPaths = document.getElementById('tab-paths');
+  var panelThread = document.getElementById('view-thread');
+  var panelPaths = document.getElementById('view-paths');
+  var host = document.getElementById('paths-mount');
+  if (!tabThread || !tabPaths || !panelThread || !panelPaths || !host) return;
+
+  var paths = null;
+
+  function show(name) {
+    panelThread.hidden = name !== 'thread';
+    panelPaths.hidden = name !== 'paths';
+    tabThread.setAttribute('aria-selected', String(name === 'thread'));
+    tabPaths.setAttribute('aria-selected', String(name === 'paths'));
+    if (name === 'paths' && paths) paths.relayout();
+  }
+
+  // Without the component the paths tab has nothing behind it: hide it and
+  // fall back to the thread, which would otherwise be the hidden panel.
+  if (!window.DMGPaths) {
+    tabPaths.hidden = true;
+    show('thread');
+    return;
+  }
+
+  // Give the view something to show. Prefers a random() method on the
+  // component; falls back to pressing its own random button; failing both,
+  // at least starts from a curated seed.
+  //
+  // TODO: replace this heuristic with a real API on paths.js (random(), and
+  // setTo()/run() so the page can open on a fixed, curated pair — a random
+  // pair means every visitor sees a different path).
+  function autoStart(p) {
+    if (typeof p.random === 'function') { p.random(); return; }
+
+    var btn = Array.prototype.find.call(host.querySelectorAll('button'), function (b) {
+      return /random/i.test(b.textContent);
+    });
+    if (btn) { btn.click(); return; }
+
+    var seeds = window.dmgSeeds || [];
+    if (seeds[0] && !p.getFrom()) p.setFrom(seeds[0]);
+  }
+
+  function ensureMounted() {
+    if (paths) return paths;
+    paths = window.DMGPaths.mount(host, { api: '/v2/', openHref: '/paths/' });
+    autoStart(paths);
+    return paths;
+  }
+
+  // Mount shortly before the section scrolls into view, not on page load.
+  var section = document.getElementById('index-resemblance') || panelPaths;
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries.some(function (e) { return e.isIntersecting; })) return;
+      io.disconnect();
+      ensureMounted();
+      if (!panelPaths.hidden) paths.relayout();
+    }, { rootMargin: '400px 0px' });
+    io.observe(section);
+  } else {
+    ensureMounted();
+  }
+
+  tabThread.addEventListener('click', function () { show('thread'); });
+  tabPaths.addEventListener('click', function () { ensureMounted(); show('paths'); });
+
+  // Called from the thread seed's "Find a path from this object" link.
+  window.dmgOpenPaths = function (pid) {
+    ensureMounted();
+    show('paths');
+    paths.setFrom(pid);
+    paths.focusTo();
+  };
 })();
 </script>
 
@@ -2833,6 +2965,8 @@ rootRouter.get('/', (req, res, next) => {
   }
 
   function readColors(obj, acc) {
+    // crm:P65_shows_visual_item is always an array (one visual item per
+    // image). The wrap below is kept as a guard for older cached responses.
     var vis = obj['crm:P65_shows_visual_item'];
     if (!vis) return false;
     if (!Array.isArray(vis)) vis = [vis];

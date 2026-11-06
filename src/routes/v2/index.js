@@ -20,6 +20,7 @@ import { requestRoles } from './index/roles.js'
 import {requestMaterials} from "./index/materials.js";
 import {requestProduction} from "./index/production.js";
 import {requestSimilar} from "./index/similar.js";
+import {requestPath} from "./collections/path.js";
 
 import {
     publicLimiter,
@@ -64,6 +65,7 @@ v2Router.use('/id/production', aggregationLimiter)
 v2Router.use('/id/similar', aggregationLimiter)
 
 v2Router.use('/id/private/', privateLimiter)
+v2Router.use('/id/path', privateLimiter)
 
 // ---------------------------------------------------------------------------
 // SWAGGER
@@ -111,5 +113,6 @@ requestProduction(v2Router, V2_BASE)
 requestSimilar(v2Router, V2_BASE)
 
 requestPrivateObjects(v2Router, V2_BASE)
+requestPath(v2Router, V2_BASE)
 
 export default v2Router

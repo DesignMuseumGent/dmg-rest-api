@@ -15,6 +15,11 @@
 // The landing page follows DMG25_Huisstijlhandboek_Essentials (2025):
 // grid with cropmark crosses (p.10-13), Museum typeface (p.6-8),
 // palette and contrast rules (p.14-16).
+//
+// Components loaded from public/ (kept out of this template literal, where
+// backslashes and backticks would be mangled):
+//   /js/paths.js            + /css/paths.css            — Resemblance: paths
+//   /js/exhibited-index.js  + /css/exhibited-index.css  — Exhibited index
 
 import { Router } from 'express'
 import fs from 'fs'
@@ -102,6 +107,7 @@ rootRouter.get('/', (req, res, next) => {
 <link rel="preload" href="/fonts/Museum-Regular.otf" as="font" type="font/otf" crossorigin>
 <link rel="preload" href="/fonts/Museum-Bold.otf" as="font" type="font/otf" crossorigin>
 <link rel="stylesheet" href="/css/paths.css">
+<link rel="stylesheet" href="/css/exhibited-index.css">
 <style>
   /* ─── TYPEFACE (brandbook p.6-8) ────────────────────────────────────
      Museum, by Bruno Jacoby and Moritz Appich. Arial is the prescribed
@@ -1555,11 +1561,49 @@ rootRouter.get('/', (req, res, next) => {
   </div>
 </section>
 
+<section class="palette framed index" id="index-exhibited"
+         aria-labelledby="exhibited-heading">
+  <p class="index-number"></p>
+  <h2 class="index-title" id="exhibited-heading">Exhibited</h2>
+  <p class="index-lead">Some objects return to the galleries again and again;
+  others, as far as the records show, have rarely or never been on view. This
+  index counts how many of the museum's registered exhibitions list each
+  object, and places those exhibitions on the museum's own timeline.</p>
+
+  <div class="band-group framed">
+    <div class="view-head">
+      <h3>Most exhibited</h3>
+    </div>
+
+    <div class="note-columns">
+      <p class="band-note"><b>A count of registrations, not of visibility.</b>
+      An object is counted when an exhibition record lists it. Many older
+      exhibitions were registered without an object list, so objects shown
+      mostly in earlier decades rank lower than their history warrants, and a
+      long absence on the line can be a gap in the records rather than in the
+      galleries.</p>
+
+      <p class="band-note"><b>One circle for every year on view.</b> A purple
+      circle marks each year the object was in an exhibition — larger when it
+      was in more than one that year. The small grey dots above mark every
+      year the museum registered exhibitions at all, on the same axis for
+      every object, so the years an object was left out stay visible too.</p>
+
+      <p class="band-note"><b>Sets and their parts are counted separately.</b>
+      Sometimes an exhibition lists a whole service, sometimes its cups and
+      saucers one by one. Both are counted as they were registered, so a set
+      and its parts can appear here side by side.</p>
+    </div>
+
+    <div id="exhibited-mount"></div>
+  </div>
+</section>
+
 <section class="palette framed index" id="index-resemblance"
          aria-labelledby="resemblance-heading">
   <p class="index-number"></p>
   <h2 class="index-title" id="resemblance-heading">Resemblance</h2>
-  <p class="index-lead">The other two indexes sort the collection into
+  <p class="index-lead">The other indexes sort the collection into
   categories. This one does not sort it at all. It measures how close any two
   photographs sit in a space built by a machine that has looked at several
   hundred million captioned images — and lets you find a route of look-alikes
@@ -1959,8 +2003,7 @@ rootRouter.get('/', (req, res, next) => {
   ];
   var seedIndex = 0;
 
-  // Shared with the paths view below, which opens on the same curated points
-  // instead of an empty frame.
+  // Shared with the paths view below.
   window.dmgSeeds = SEEDS;
 
   function card(o, onPick) {
@@ -2104,8 +2147,10 @@ rootRouter.get('/', (req, res, next) => {
         }
       })
       .catch(function () {
-        var section = document.getElementById('index-resemblance');
-        if (section) section.remove();
+        // Only the thread failed: say so in its own panel rather than
+        // removing the whole Resemblance section, which now also holds the
+        // paths view.
+        if (note) note.textContent = 'The thread could not be loaded just now.';
       });
   }
 
@@ -2124,6 +2169,25 @@ rootRouter.get('/', (req, res, next) => {
   });
 
   load(SEEDS[0]);
+})();
+</script>
+
+<script src="/js/exhibited-index.js"></script>
+<script>
+// ── Exhibited ─────────────────────────────────────────────────────────
+// Ranked list and per-object timeline, from /v2/id/exhibited. The component
+// is public/js/exhibited-index.js. Removes its own section if the endpoint
+// fails, like the other indexes, so the page never shows an empty frame.
+(function () {
+  var host = document.getElementById('exhibited-mount');
+  var section = document.getElementById('index-exhibited');
+  if (!host) return;
+  if (!window.DMGExhibited) { if (section) section.remove(); return; }
+  window.DMGExhibited.mount(host, {
+    api: '/v2/',
+    pageSize: 25,
+    onFail: function () { if (section) section.remove(); }
+  });
 })();
 </script>
 
@@ -2894,7 +2958,9 @@ rootRouter.get('/', (req, res, next) => {
       render(d.base_colors, d.css_colors || []);
     })
     .catch(function () {
-      var section = document.querySelector('.palette');
+      // By id: querySelector('.palette') would match the first .palette
+      // section, which is not necessarily this one.
+      var section = document.getElementById('index-colour');
       if (section) section.remove();
     });
 

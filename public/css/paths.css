@@ -1,0 +1,131 @@
+/* public/css/paths.css — the path explorer component (public/js/paths.js).
+   Used on the landing page (Resemblance index, second view) and on /paths/.
+   Reads the host page's tokens: --accent, --rule, --mark, --pad,
+   --dimmed-yellow, --neutral-gray, --lawful-gray, --rule-w.
+   Every class is prefixed dp- so nothing collides with the landing page. */
+
+.dp-controls {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: var(--pad) calc(var(--pad) * 1.5);
+  margin: 0 0 calc(var(--pad) * 1.5);
+}
+.dp-field { display: flex; flex-direction: column; gap: .35rem; }
+.dp-label {
+  font-family: 'Heins', 'Museum', Arial, sans-serif;
+  font-size: .8125rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--lawful-gray);
+}
+.dp-field input[type=text] {
+  font: inherit; font-size: .9375rem; color: var(--ink);
+  background: none; border: 0; border-bottom: var(--rule-w) solid var(--mark);
+  border-radius: 0; padding: .4rem .2rem; width: 11rem;
+}
+.dp-field input[type=text]::placeholder { color: var(--neutral-gray); }
+.dp-field input[type=text]:focus { outline: 0; border-bottom-width: 2px; }
+
+.dp-tabs { display: flex; gap: 1rem; padding-bottom: .2rem; }
+.dp-tabs button {
+  background: none; border: 0; padding: .2rem 0; font: inherit;
+  font-size: .8125rem; font-weight: 500; color: var(--neutral-gray);
+  cursor: pointer; border-bottom: 2px solid transparent;
+}
+.dp-tabs button:hover { color: var(--ink); }
+.dp-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--mark); }
+
+.dp-steps[hidden] { display: none; }
+.dp-steps output { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dp-steps input[type=range] { accent-color: var(--accent); width: 8rem; }
+
+.dp-check { flex-direction: row; align-items: center; gap: .45rem; padding-bottom: .4rem; }
+.dp-check input { accent-color: var(--accent); margin: 0; }
+.dp-check label { font-size: .875rem; }
+
+.dp-actions { display: flex; gap: 1rem; padding-bottom: .1rem; }
+.dp-actions button {
+  background: none; border: 0; padding: .4rem .2rem; font: inherit;
+  font-size: .9375rem; font-weight: 500; color: var(--ink); cursor: pointer;
+  border-bottom: var(--rule-w) solid var(--mark);
+}
+.dp-actions .dp-primary { font-weight: 700; border-bottom-width: 2px; }
+.dp-actions button:hover, .dp-actions button:focus-visible { color: var(--accent); }
+.dp-actions button:disabled { color: var(--neutral-gray); cursor: progress; }
+
+.dp-heading h3 {
+  font-weight: 700; font-size: clamp(1.25rem, 3vw, 1.75rem);
+  line-height: 1.1; margin: 0 0 .4rem; max-width: 40ch;
+}
+.dp-heading h3 .dp-via { font-weight: 400; color: var(--neutral-gray); }
+.dp-note {
+  font-family: 'Heins', 'Museum', Arial, sans-serif;
+  font-size: .9375rem; line-height: 1.4; color: var(--lawful-gray);
+  max-width: 46rem; margin: 0 0 var(--pad);
+}
+.dp-note.dp-error { color: var(--ink); }
+.dp-note button {
+  margin-left: .5rem; background: none; border: 0; padding: 0; font: inherit;
+  color: var(--ink); cursor: pointer; border-bottom: var(--rule-w) solid var(--mark);
+}
+.dp-note button:hover { color: var(--accent); }
+
+.dp-stage {
+  position: relative;
+  height: clamp(280px, min(60vh, calc(38vw + 120px)), 660px);
+  margin: 0 0 var(--pad);
+}
+.dp-stage[hidden] { display: none; }
+.dp-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.dp-edge-path   { stroke: var(--accent); stroke-width: 2; }
+.dp-edge-branch { stroke: var(--rule); stroke-width: 1; }
+.dp-edge-cross  { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 4; opacity: .7; }
+.dp-axis        { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 5; }
+.dp-drop        { stroke: var(--accent); stroke-width: 1; }
+.dp-t           { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--neutral-gray); }
+
+.dp-node { position: absolute; margin: 0; transform: translate(-50%, -50%); }
+.dp-node a { display: block; text-decoration: none; color: inherit; }
+/* Same plate as the landing page's object cards: contained, never cropped. */
+.dp-shot {
+  position: relative; width: var(--s); height: var(--s);
+  background-color: #f4f4f4; outline: var(--rule-w) solid var(--rule);
+  overflow: hidden; display: grid; place-items: center;
+}
+.dp-shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.dp-noimg { font: .625rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); }
+.dp-node.dp-end .dp-shot { outline: 2px solid var(--mark); }
+.dp-node a:hover .dp-shot, .dp-node a:focus-visible .dp-shot { outline: 2px solid var(--accent); }
+.dp-node.dp-branch { opacity: .62; }
+.dp-node.dp-branch:hover, .dp-node.dp-branch:focus-within { opacity: 1; z-index: 2; }
+
+/* Similarity out of a hundred — the landing page's .sim badge. */
+.dp-sim {
+  position: absolute; left: 0; bottom: 0; padding: .15rem .35rem;
+  font: .6875rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--reliable-black, #000); background-color: var(--dimmed-yellow);
+}
+.dp-node figcaption {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  width: max(var(--s), 9rem); padding-top: .4rem; text-align: center;
+  font-size: .8125rem; line-height: 1.25;
+}
+.dp-node figcaption .dp-t-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dp-node figcaption .dp-num { display: block; font: .6875rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); margin-top: .15rem; }
+.dp-node a:hover .dp-t-title { color: var(--accent); }
+
+.dp-legend {
+  font-family: 'Heins', 'Museum', Arial, sans-serif;
+  font-size: .875rem; line-height: 1.35; color: var(--lawful-gray);
+  max-width: 46rem; margin: 0;
+}
+.dp-legend[hidden], .dp-open[hidden] { display: none; }
+.dp-open { margin: calc(var(--pad) / 2) 0 0; font-size: .8125rem; }
+.dp-open a { color: inherit; font-weight: 500; }
+.dp-open a:hover { color: var(--accent); }
+
+@media (max-width: 720px) {
+  .dp-field input[type=text] { width: 9rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dp-stage.dp-reveal .dp-node, .dp-stage.dp-reveal svg { animation: dp-appear .45s ease-out both; }
+  .dp-stage.dp-reveal .dp-branch { animation-delay: .25s; }
+  @keyframes dp-appear { from { opacity: 0; } }
+}

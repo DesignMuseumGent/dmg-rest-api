@@ -1,0 +1,104 @@
+/* public/css/exhibited-index.css — the Exhibited index (public/js/exhibited-index.js).
+   Reads the landing page's tokens. Every class is prefixed ex-. */
+
+.ex-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: calc(var(--pad) * 2);
+  align-items: start;
+}
+
+/* ── the ranked list ─────────────────────────────────────────────── */
+.ex-list { list-style: none; margin: 0; padding: 0; }
+.ex-list li { border-top: var(--rule-w) solid var(--rule); }
+.ex-list li:last-child { border-bottom: var(--rule-w) solid var(--rule); }
+.ex-item {
+  display: grid; grid-template-columns: 2rem 2.75rem minmax(0, 1fr) auto;
+  gap: .75rem; align-items: center; width: 100%;
+  padding: .55rem 0; background: none; border: 0; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  transition: padding-left .15s ease, color .15s ease;
+}
+.ex-item:hover, .ex-item:focus-visible { color: var(--accent); padding-left: .4rem; }
+.ex-item[aria-pressed="true"] { color: var(--accent); }
+.ex-rank { font: .8125rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); }
+.ex-thumb {
+  width: 2.75rem; height: 2.75rem; background-color: #f4f4f4;
+  outline: var(--rule-w) solid var(--rule); overflow: hidden;
+}
+.ex-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ex-name { min-width: 0; }
+.ex-name .ex-t {
+  display: block; font-size: .875rem; font-weight: 500; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-pid { display: block; margin-top: .15rem; font: .6875rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); }
+.ex-bar { display: block; height: 3px; margin-top: .3rem; background-color: var(--shy-gray); }
+.ex-item[aria-pressed="true"] .ex-bar, .ex-item:hover .ex-bar { background-color: var(--accent); }
+.ex-count { font: 700 1.125rem 'Museum', Arial, sans-serif; font-variant-numeric: tabular-nums; }
+
+.ex-more {
+  margin-top: var(--pad); background: none; border: 0; padding: .15rem .4rem;
+  font: inherit; font-size: .8125rem; font-weight: 500; color: var(--ink); cursor: pointer;
+  border-bottom: var(--rule-w) solid var(--mark);
+}
+.ex-more:hover, .ex-more:focus-visible { color: var(--accent); }
+.ex-more[hidden] { display: none; }
+
+/* ── the selected object ─────────────────────────────────────────── */
+.ex-head { display: flex; gap: var(--pad); align-items: flex-start; margin: 0 0 calc(var(--pad) * 1.5); }
+.ex-head .ex-shot {
+  flex: 0 0 auto; width: 7rem; aspect-ratio: 1 / 1; background-color: #f4f4f4;
+  outline: 2px solid var(--mark); overflow: hidden;
+}
+.ex-head .ex-shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* .ex-detail raises specificity above the landing page's ".palette h3"
+   (small uppercase Heins), which would otherwise win as it loads later. */
+.ex-detail .ex-head h3 {
+  margin: 0 0 .35rem; font: 700 clamp(1.125rem, 2.4vw, 1.5rem)/1.1 'Museum', Arial, sans-serif;
+  text-transform: none; letter-spacing: 0; color: var(--ink);
+}
+.ex-detail .ex-head h3 a { color: inherit; text-decoration: none; }
+.ex-detail .ex-head h3 a:hover { color: var(--accent); }
+.ex-head .ex-num { font: .75rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); margin: 0 0 .5rem; }
+/* Museum, not Heins: a full sentence with figures in it has to read at a glance. */
+.ex-head .ex-sum {
+  font-family: 'Museum', Arial, sans-serif; font-size: .9375rem; line-height: 1.35;
+  color: var(--lawful-gray); margin: 0;
+}
+.ex-head .ex-sum b { font-weight: 700; color: var(--ink); }
+
+/* ── the timeline: one circle per year ───────────────────────────── */
+.ex-chart { width: 100%; display: block; overflow: visible; }
+.ex-chart .ex-grid    { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 1 3; }
+.ex-chart .ex-base    { stroke: var(--mark); stroke-width: 1; }
+.ex-chart .ex-rowline { stroke: var(--rule); stroke-width: 1; }
+.ex-chart .ex-tick    { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--neutral-gray); }
+.ex-chart .ex-lane    { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; fill: var(--neutral-gray); }
+.ex-chart .ex-museum  { fill: var(--neutral-gray); }
+/* White ring keeps neighbouring years apart where circles touch. */
+.ex-chart .ex-mine    { fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }
+.ex-chart .ex-n       { font: 700 10px 'Museum', Arial, sans-serif; fill: var(--paper); text-anchor: middle; pointer-events: none; }
+.ex-chart .ex-ylabel  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--accent); text-anchor: middle; }
+.ex-chart .ex-year-dot { cursor: pointer; outline: none; }
+.ex-chart .ex-year-dot:hover .ex-mine,
+.ex-chart .ex-year-dot:focus .ex-mine { fill: var(--ink); }
+
+/* ── the exhibitions, listed ─────────────────────────────────────── */
+.ex-shows { list-style: none; margin: calc(var(--pad) * 1.5) 0 0; padding: 0; columns: 2; column-gap: calc(var(--pad) * 1.5); }
+.ex-shows li { break-inside: avoid; display: flex; gap: .75rem; padding: .3rem 0; font-size: .8125rem; line-height: 1.25; }
+.ex-shows .ex-year { flex: 0 0 auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--neutral-gray); }
+.ex-shows a { color: inherit; text-decoration: none; }
+.ex-shows a:hover, .ex-shows a:focus-visible { color: var(--accent); }
+/* Lit while its year's circle is hovered or focused. */
+.ex-shows li.ex-hit a, .ex-shows li.ex-hit .ex-year { color: var(--accent); }
+
+@media (max-width: 720px) {
+  .ex-wrap { grid-template-columns: 1fr; gap: 2rem; }
+  .ex-shows { columns: 1; }
+  .ex-head .ex-shot { width: 5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-item { transition: none; }
+}
